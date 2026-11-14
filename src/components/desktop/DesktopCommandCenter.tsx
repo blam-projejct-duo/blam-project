@@ -56,7 +56,7 @@ export default function DesktopCommandCenter({ radar }: { radar: Radar }) {
           <span className="grid size-8 place-items-center rounded-full bg-cobalt text-white">
             <Leaf className="size-4" strokeWidth={2.5} />
           </span>
-          <span className="text-lg font-extrabold tracking-tight">Blum</span>
+          <span className="text-lg font-extrabold tracking-tight">Blam</span>
           <span className="relative ml-0.5 flex size-2">
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald opacity-60" />
             <span className="relative inline-flex size-2 rounded-full bg-emerald" />

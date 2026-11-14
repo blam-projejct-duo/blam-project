@@ -29,7 +29,7 @@ export function useRadar() {
       setSource('live')
       setSelectedId((cur) => (cur && live.some((s) => s.id === cur) ? cur : pickDefault(live)))
     } catch (err) {
-      console.warn('[Blum] Supabase gagal, pakai data lokal:', err)
+      console.warn('[Blam] Supabase gagal, pakai data lokal:', err)
       setAllSites(FALLBACK_SITES)
       setSource('fallback')
       setSelectedId((cur) => cur ?? pickDefault(FALLBACK_SITES))

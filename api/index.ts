@@ -14,7 +14,7 @@ const db = () => {
   return url && key ? createClient(url, key, { auth: { persistSession: false } }) : null
 }
 
-app.get('/health', (c) => c.json({ ok: true, service: 'blum-api', timestamp: new Date().toISOString() }))
+app.get('/health', (c) => c.json({ ok: true, service: 'blam-api', timestamp: new Date().toISOString() }))
 
 // ---------- helpers ----------
 async function getJson(url: string, ms = 3500): Promise<any | null> {
