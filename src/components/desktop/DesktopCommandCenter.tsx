@@ -1,4 +1,4 @@
-import { ChevronDown, Leaf, Smartphone, X } from 'lucide-react'
+import { ChevronDown, Leaf } from 'lucide-react'
 import { useState } from 'react'
 import { ECOSYSTEM_FILTERS, pinTone } from '../../data/mockConservationData'
 import type { Radar } from '../../hooks/useRadar'
@@ -7,7 +7,6 @@ import LeafletMap from '../map/LeafletMap'
 import MapStyleSwitcher from '../shared/MapStyleSwitcher'
 import QuickReportFlow from '../report/QuickReportFlow'
 import SiteDetail from '../shared/SiteDetail'
-import BumpMobileExperience from '../mobile/BumpMobileExperience'
 
 const NAV = ['Radar', 'Lapor', 'Dampak'] as const
 type Tab = (typeof NAV)[number]
@@ -45,7 +44,6 @@ function LayerToggle({
 }
 
 export default function DesktopCommandCenter({ radar }: { radar: Radar }) {
-  const [phoneMode, setPhoneMode] = useState(false)
   const [tab, setTab] = useState<Tab>('Radar')
   const { selected, sites } = radar
 
@@ -102,29 +100,10 @@ export default function DesktopCommandCenter({ radar }: { radar: Radar }) {
             </select>
             <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-ink-soft" />
           </label>
-          <button
-            type="button"
-            onClick={() => setPhoneMode((v) => !v)}
-            aria-pressed={phoneMode}
-            className={`flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors ${
-              phoneMode
-                ? 'border-ink bg-ink text-white'
-                : 'border-line text-ink hover:bg-canvas'
-            }`}
-          >
-            {phoneMode ? <X className="size-4" /> : <Smartphone className="size-4" />}
-            Mode HP
-          </button>
         </div>
       </header>
 
-      {phoneMode ? (
-        <main className="flex min-h-0 flex-1 items-center justify-center">
-          <div className="relative h-full max-h-[844px] w-[390px] overflow-hidden rounded-[44px] border-[8px] border-ink bg-canvas">
-            <BumpMobileExperience radar={radar} />
-          </div>
-        </main>
-      ) : tab === 'Lapor' ? (
+      {tab === 'Lapor' ? (
         <main className="flex min-h-0 flex-1 justify-center">
           <div className="h-full w-full max-w-[480px] overflow-hidden rounded-sheet border border-line">
             <QuickReportFlow
