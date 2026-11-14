@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import type { ConservationSite } from '../../types/conservation'
 import BeforeAfterSlider from './BeforeAfterSlider'
 import { StatusPill } from './atoms'
+import { usePulse } from '../../hooks/usePulse'
 
 interface Props {
   site: ConservationSite
@@ -36,7 +37,8 @@ function Tile({
 
 export default function SiteDetail({ site, joined, onToggleJoin }: Props) {
   const [copied, setCopied] = useState(false)
-  const { pulse, impact } = site
+  const { impact } = site
+  const { pulse, status } = usePulse(site)
   const count = site.participants + (joined ? 1 : 0)
 
   const copyLink = async () => {
@@ -94,7 +96,7 @@ export default function SiteDetail({ site, joined, onToggleJoin }: Props) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2.5 @md:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-2.5 @md:grid-cols-4 ${status === 'loading' ? 'animate-pulse' : ''}`}>
         <Tile icon={<Wind className="size-4" />} value={String(pulse.aqi)} label="Kualitas udara" />
         <Tile
           icon={<Waves className="size-4" />}

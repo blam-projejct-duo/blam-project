@@ -5,10 +5,13 @@ import type { Radar } from '../../hooks/useRadar'
 import type { Ecosystem } from '../../types/conservation'
 import LeafletMap from '../map/LeafletMap'
 import MapStyleSwitcher from '../shared/MapStyleSwitcher'
+import QuickReportFlow from '../report/QuickReportFlow'
 import SiteDetail from '../shared/SiteDetail'
 import BumpMobileExperience from '../mobile/BumpMobileExperience'
 
 const NAV = ['Radar', 'Lapor', 'Dampak'] as const
+type Tab = (typeof NAV)[number]
+const ENABLED: readonly Tab[] = ['Radar', 'Lapor']
 
 const DOT = {
   critical: 'bg-critical',
@@ -43,6 +46,7 @@ function LayerToggle({
 
 export default function DesktopCommandCenter({ radar }: { radar: Radar }) {
   const [phoneMode, setPhoneMode] = useState(false)
+  const [tab, setTab] = useState<Tab>('Radar')
   const { selected, sites } = radar
 
   return (
@@ -61,12 +65,14 @@ export default function DesktopCommandCenter({ radar }: { radar: Radar }) {
 
         <nav className="absolute left-1/2 flex -translate-x-1/2 gap-1" aria-label="Utama">
           {NAV.map((label) => {
-            const active = label === 'Radar'
+            const active = label === tab
+            const enabled = ENABLED.includes(label)
             return (
               <button
                 key={label}
                 type="button"
-                disabled={!active}
+                disabled={!enabled}
+                onClick={() => setTab(label)}
                 aria-current={active ? 'page' : undefined}
                 className={`h-10 rounded-full px-5 text-sm font-bold transition-colors ${
                   active
@@ -116,6 +122,20 @@ export default function DesktopCommandCenter({ radar }: { radar: Radar }) {
         <main className="flex min-h-0 flex-1 items-center justify-center">
           <div className="relative h-full max-h-[844px] w-[390px] overflow-hidden rounded-[44px] border-[8px] border-ink bg-canvas">
             <BumpMobileExperience radar={radar} />
+          </div>
+        </main>
+      ) : tab === 'Lapor' ? (
+        <main className="flex min-h-0 flex-1 justify-center">
+          <div className="h-full w-full max-w-[480px] overflow-hidden rounded-sheet border border-line">
+            <QuickReportFlow
+              onClose={() => setTab('Radar')}
+              onPublished={async (id) => {
+                setTab('Radar')
+                radar.setFilter('all')
+                await radar.refresh()
+                radar.setSelectedId(id)
+              }}
+            />
           </div>
         </main>
       ) : (

@@ -17,6 +17,7 @@ import type { Radar } from '../../hooks/useRadar'
 import type { ConservationSite, Ecosystem } from '../../types/conservation'
 import LeafletMap from '../map/LeafletMap'
 import MapStyleSwitcher from '../shared/MapStyleSwitcher'
+import QuickReportFlow from '../report/QuickReportFlow'
 import SiteDetail from '../shared/SiteDetail'
 import { EcoBadge } from '../shared/atoms'
 
@@ -115,6 +116,7 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
   const [tab, setTab] = useState<Tab>('Disarankan')
   const [query, setQuery] = useState('')
   const [focusSearch, setFocusSearch] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
 
   const controls = useDragControls()
   const anim = useAnimationControls()
@@ -333,6 +335,7 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
             <button
               type="button"
               aria-label="Lapor"
+              onClick={() => setReportOpen(true)}
               className="btn-primary orb !border-0 !bg-[linear-gradient(180deg,#2563EB,#4338CA)] !text-white"
               style={{ width: 68, height: 68 }}
             >
@@ -457,6 +460,21 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
           <X className="size-6 text-ink-soft" strokeWidth={3} />
         </Orb>
       </motion.div>
+
+      {reportOpen && (
+        <div className="absolute inset-0 z-[800] bg-canvas">
+          <QuickReportFlow
+            onClose={() => setReportOpen(false)}
+            onPublished={async (id) => {
+              setReportOpen(false)
+              radar.setFilter('all')
+              await radar.refresh()
+              radar.setSelectedId(id)
+              setMode('detail')
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }
