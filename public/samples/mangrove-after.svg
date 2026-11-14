@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fd0f0"/><stop offset="1" stop-color="#e6f5fb"/></linearGradient>
+    <linearGradient id="wat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5eb7c8"/><stop offset="1" stop-color="#3f9bb0"/></linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#sky)"/>
+  <path d="M0 120C70 100 150 125 230 110S350 100 400 116V300H0Z" fill="#2f8f55"/>
+  <path d="M0 160C90 140 170 170 260 152S360 146 400 158V300H0Z" fill="#1f7a46"/>
+  <rect y="214" width="400" height="86" fill="url(#wat)"/>
+  <g fill="#176a3b">
+    <ellipse cx="50" cy="168" rx="46" ry="30"/><ellipse cx="150" cy="176" rx="52" ry="32"/>
+    <ellipse cx="260" cy="170" rx="50" ry="30"/><ellipse cx="354" cy="176" rx="48" ry="30"/>
+  </g>
+  <g stroke="#4b3a28" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M30 214l10-34M50 214l-2-34M70 214l-10-34"/>
+    <path d="M130 214l10-34M150 214l-2-34M172 214l-10-34"/>
+    <path d="M240 214l10-34M260 214l-2-34M282 214l-10-34"/>
+    <path d="M336 214l10-34M356 214l-2-34M376 214l-10-34"/>
+  </g>
+  <g stroke="#fff" stroke-opacity=".5" stroke-width="2" stroke-linecap="round">
+    <path d="M40 250h60M180 262h80M300 246h70"/>
+  </g>
+</svg>

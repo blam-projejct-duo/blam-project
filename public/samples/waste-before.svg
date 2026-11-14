@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9aa3a8"/><stop offset="1" stop-color="#cfd3d1"/></linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6f8a8c"/><stop offset="1" stop-color="#8aa09b"/></linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#sky)"/>
+  <rect y="120" width="400" height="60" fill="url(#sea)"/>
+  <path d="M0 165C60 155 120 175 200 165S340 155 400 168V300H0Z" fill="#c9b99a"/>
+  <path d="M0 215C80 205 160 225 240 214S350 205 400 215V300H0Z" fill="#b9a784"/>
+  <g stroke="#5b4a35" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M40 190l-4-26M52 192l6-22M330 186l-3-24M346 190l7-20"/>
+  </g>
+  <g>
+    <rect x="70" y="208" width="14" height="8" rx="2" fill="#e8e8e8" transform="rotate(-18 77 212)"/>
+    <rect x="110" y="232" width="18" height="9" rx="2" fill="#3b82c4" transform="rotate(12 119 236)"/>
+    <rect x="160" y="200" width="12" height="7" rx="2" fill="#f2f2f2"/>
+    <rect x="200" y="238" width="22" height="10" rx="3" fill="#d94b4b" transform="rotate(-8 211 243)"/>
+    <rect x="248" y="206" width="16" height="8" rx="2" fill="#e9c24a" transform="rotate(20 256 210)"/>
+    <rect x="290" y="228" width="20" height="9" rx="2" fill="#f2f2f2" transform="rotate(-14 300 232)"/>
+    <rect x="340" y="214" width="14" height="8" rx="2" fill="#3b82c4"/>
+    <rect x="30" y="236" width="16" height="8" rx="2" fill="#e8e8e8" transform="rotate(8 38 240)"/>
+    <rect x="130" y="258" width="24" height="10" rx="3" fill="#2f9e6e" transform="rotate(-6 142 263)"/>
+    <rect x="260" y="262" width="18" height="9" rx="2" fill="#d94b4b" transform="rotate(16 269 266)"/>
+    <rect x="360" y="252" width="20" height="10" rx="3" fill="#e8e8e8" transform="rotate(-10 370 257)"/>
+    <rect x="62" y="270" width="14" height="7" rx="2" fill="#e9c24a"/>
+    <rect x="186" y="276" width="16" height="8" rx="2" fill="#3b82c4" transform="rotate(10 194 280)"/>
+  </g>
+</svg>
