@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:api": "tsx --env-file=.env dev-server.ts",
+    "dev:api": "node --env-file=.env dev-server.ts",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
@@ -16,10 +16,12 @@
     "@hono/node-server": "^2.1.8",
     "@supabase/supabase-js": "^2.119.0",
     "@tailwindcss/vite": "^4.3.5",
+    "@tanstack/react-query": "^5.107.1",
     "framer-motion": "^14.14.0",
     "hono": "^4.13.18",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.73.0",
+    "maplibre-gl": "^6.18.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "tailwindcss": "^4.3.5"

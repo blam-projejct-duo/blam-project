@@ -1,59 +1,39 @@
+import { motion, useAnimationControls, useDragControls } from 'framer-motion'
+import type { PanInfo } from 'framer-motion'
 import {
   Bell,
+  Building2,
   Camera,
   ChevronDown,
   Compass,
   ListChecks,
   LocateFixed,
   Search,
+  Shield,
   X,
 } from 'lucide-react'
-import { motion, useAnimationControls, useDragControls } from 'framer-motion'
-import type { PanInfo } from 'framer-motion'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ECOSYSTEM_FILTERS } from '../../data/mockConservationData'
-import type { Radar } from '../../hooks/useRadar'
-import type { ConservationSite, Ecosystem } from '../../types/conservation'
-import LeafletMap from '../map/LeafletMap'
-import MapStyleSwitcher from '../shared/MapStyleSwitcher'
-import QuickReportFlow from '../report/QuickReportFlow'
-import SiteDetail from '../shared/SiteDetail'
-import { EcoBadge } from '../shared/atoms'
+import { Orb } from '../../components/ui/atoms'
+import { ECOSYSTEM_FILTERS } from '../../lib/constants'
+import AdminPanel from '../../modules/admin/AdminPanel'
+import AgencyInboxPanel from '../../modules/agency/AgencyInboxPanel'
+import { useAuth } from '../../modules/auth/AuthContext'
+import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
+import MapView from '../../modules/map/MapView'
+import type { Radar } from '../../modules/map/useRadar'
+import OrgsPanel from '../../modules/organizations/OrgsPanel'
+import ProfilePanel from '../../modules/profile/ProfilePanel'
+import QuickReportFlow from '../../modules/reports/QuickReportFlow'
+import SiteDetail from '../../modules/reports/SiteDetail'
+import ReportListPanel from './ReportListPanel'
+import type { Ecosystem } from '../../types'
 
 type Snap = 'peek' | 'half' | 'full'
-type Mode = 'detail' | 'list' | null
-type Tab = 'Disarankan' | 'Terbaru' | 'Dampak'
+type Mode = 'detail' | 'list' | 'orgs' | 'profile' | 'agency' | 'admin' | null
 
-const TABS: Tab[] = ['Disarankan', 'Terbaru', 'Dampak']
 const SPRING = { type: 'spring', stiffness: 350, damping: 30 } as const
 const PEEK_PX = 214
-
-function Orb({
-  size,
-  label,
-  onClick,
-  className = '',
-  children,
-}: {
-  size: number
-  label: string
-  onClick?: () => void
-  className?: string
-  children: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      className={`orb ${className}`}
-      style={{ width: size, height: size }}
-    >
-      {children}
-    </button>
-  )
-}
 
 function DockItem({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -64,56 +44,13 @@ function DockItem({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-function SiteRow({
-  site,
-  tab,
-  joined,
-  onOpen,
-  onJoin,
-}: {
-  site: ConservationSite
-  tab: Tab
-  joined: boolean
-  onOpen: () => void
-  onJoin: () => void
-}) {
-  const meta =
-    tab === 'Dampak' && site.impact
-      ? `${(site.impact.co2Kg / 1000).toFixed(2)} tCO₂e • ${site.impact.trees} bibit`
-      : `${site.participants + (joined ? 1 : 0)} relawan • ${site.province}`
-
-  return (
-    <li className="dashed-row flex items-center gap-3 py-3.5">
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-      >
-        <EcoBadge ecosystem={site.ecosystem} />
-        <span className="min-w-0">
-          <span className="block truncate text-[15px] font-semibold text-ink">{site.title}</span>
-          <span className="block truncate text-[13px] text-ink-soft">{meta}</span>
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={onJoin}
-        aria-pressed={joined}
-        className={`h-10 shrink-0 rounded-full px-4 text-[13px] ${joined ? 'btn-joined' : 'btn-primary'}`}
-      >
-        {joined ? 'Tergabung' : 'Gabung'}
-      </button>
-    </li>
-  )
-}
-
-export default function BumpMobileExperience({ radar }: { radar: Radar }) {
+export default function MobileBumpShell({ radar }: { radar: Radar }) {
+  const { profile, notifications, openAuthModal } = useAuth()
   const rootRef = useRef<HTMLDivElement>(null)
   const [H, setH] = useState(0)
   const [mode, setMode] = useState<Mode>(null)
   const [snap, setSnap] = useState<Snap>('half')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [tab, setTab] = useState<Tab>('Disarankan')
   const [query, setQuery] = useState('')
   const [focusSearch, setFocusSearch] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
@@ -163,11 +100,12 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
     setMode('detail')
     setSnap('half')
   }
-  const openList = (search = false) => {
+
+  const openSheet = (nextMode: Exclude<Mode, null>, full = false, search = false) => {
     setMenuOpen(false)
     setFocusSearch(search)
-    setMode('list')
-    setSnap(search ? 'full' : 'half')
+    setMode(nextMode)
+    setSnap(full || search ? 'full' : 'half')
   }
 
   const onDragEnd = (_: unknown, info: PanInfo) => {
@@ -189,33 +127,29 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
 
   const sheetOpen = mode !== null
   const padBottom = !sheetOpen ? 0 : snap === 'peek' ? PEEK_PX : Math.round(H * 0.58)
+  const openCount = radar.reports.filter((r) => r.status !== 'resolved').length
+  const unreadCount = notifications.filter((n) => !n.is_read).length
 
-  const openCount = radar.sites.filter((s) => s.status !== 'resolved').length
-
-  const listSites = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    const base = radar.sites.filter(
-      (s) =>
-        !q ||
-        s.title.toLowerCase().includes(q) ||
-        s.locationName.toLowerCase().includes(q) ||
-        s.province.toLowerCase().includes(q),
-    )
-    if (tab === 'Terbaru') return [...base].sort((a, b) => a.updatedMinutes - b.updatedMinutes)
-    if (tab === 'Dampak')
-      return base
-        .filter((s) => s.impact)
-        .sort((a, b) => (b.impact?.co2Kg ?? 0) - (a.impact?.co2Kg ?? 0))
-    const rank = { ai_verified: 0, in_progress: 1, resolved: 2 } as const
-    return [...base].sort((a, b) => rank[a.status] - rank[b.status] || b.aiScore - a.aiScore)
-  }, [radar.sites, tab, query])
+  const hotspotLabel = radar.showHotspots
+    ? radar.layersLoading && radar.hotspots.length === 0
+      ? 'Hotspot…'
+      : `Hotspot · ${radar.hotspots.length}`
+    : 'Hotspot'
+  const speciesLabel = radar.showSpecies
+    ? radar.layersLoading && radar.speciesPoints.length === 0
+      ? 'Spesies…'
+      : `Spesies · ${radar.speciesPoints.length}`
+    : 'Spesies'
 
   const selected = radar.selected
+  const initials = profile?.full_name ? profile.full_name.slice(0, 1).toUpperCase() : '?'
 
   return (
     <div ref={rootRef} className="relative h-full w-full select-none overflow-hidden bg-canvas">
-      <LeafletMap
-        sites={radar.sites}
+      <MapView
+        reports={radar.reports}
+        hotspots={radar.hotspots}
+        speciesPoints={radar.speciesPoints}
         selectedId={radar.selectedId}
         onSelect={openDetail}
         style={radar.style}
@@ -226,16 +160,16 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
         locateSignal={radar.locateSignal}
       />
 
-      {/* Top pill + menu */}
+      {/* Top status pill + filter menu */}
       <div className="absolute top-[calc(env(safe-area-inset-top)+16px)] left-1/2 z-[500] -translate-x-1/2">
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
           aria-expanded={menuOpen}
-          className="glass flex h-12 items-center gap-2 rounded-full px-5 text-sm font-bold whitespace-nowrap shadow-[0_6px_18px_rgba(17,24,39,0.12)]"
+          className="glass flex h-12 items-center gap-2 rounded-full px-5 text-sm font-bold whitespace-nowrap"
         >
           <span className="size-2 rounded-full bg-emerald" />
-          {radar.sites.length} titik
+          {radar.reports.length} titik
           <ChevronDown
             className={`size-4 text-ink-soft transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`}
           />
@@ -250,7 +184,7 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
             className="absolute inset-0 z-[510] cursor-default"
             onClick={() => setMenuOpen(false)}
           />
-          <div className="glass absolute top-[calc(env(safe-area-inset-top)+76px)] left-1/2 z-[520] flex w-[min(340px,calc(100%-32px))] -translate-x-1/2 flex-col gap-4 rounded-card p-4 shadow-[0_12px_32px_rgba(17,24,39,0.16)]">
+          <div className="glass absolute top-[calc(env(safe-area-inset-top)+76px)] left-1/2 z-[520] flex w-[min(340px,calc(100%-32px))] -translate-x-1/2 flex-col gap-4 rounded-card p-4">
             <div className="flex flex-wrap gap-2">
               {ECOSYSTEM_FILTERS.map((f) => {
                 const active = radar.filter === f.id
@@ -273,12 +207,12 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
             <div className="flex gap-2">
               {(
                 [
-                  ['Hotspot', radar.showHotspots, radar.toggleHotspots],
-                  ['Spesies', radar.showSpecies, radar.toggleSpecies],
+                  ['hotspot', hotspotLabel, radar.showHotspots, radar.toggleHotspots],
+                  ['species', speciesLabel, radar.showSpecies, radar.toggleSpecies],
                 ] as const
-              ).map(([label, on, toggle]) => (
+              ).map(([key, label, on, toggle]) => (
                 <button
-                  key={label}
+                  key={key}
                   type="button"
                   onClick={toggle}
                   aria-pressed={on}
@@ -290,26 +224,59 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => openSheet('orgs', true)}
+              className="flex h-10 items-center justify-center gap-2 rounded-full bg-white text-[13px] font-bold text-ink"
+            >
+              <Building2 className="size-4 text-cobalt" /> Organisasi &amp; Komunitas
+            </button>
+            {profile?.role === 'agency' && (
+              <button
+                type="button"
+                onClick={() => openSheet('agency', true)}
+                className="flex h-10 items-center justify-center gap-2 rounded-full bg-[#FEE9E7] text-[13px] font-bold text-[#B91C1C]"
+              >
+                <Shield className="size-4" /> Inbox Eskalasi Instansi
+              </button>
+            )}
+            {profile?.role === 'admin' && (
+              <button
+                type="button"
+                onClick={() => openSheet('admin', true)}
+                className="flex h-10 items-center justify-center gap-2 rounded-full bg-ink text-[13px] font-bold text-white"
+              >
+                <Shield className="size-4" /> Panel Super Admin
+              </button>
+            )}
           </div>
         </>
       )}
 
-      {/* Top-right orbs */}
+      {/* Top-right 2 orbs (Avatar + Bell) */}
       <div className="absolute top-[calc(env(safe-area-inset-top)+16px)] right-4 z-[500] flex flex-col gap-2.5">
         <Orb
           size={48}
           label="Profil"
+          onClick={() => (profile ? openSheet('profile', true) : openAuthModal())}
           className="text-sm font-extrabold ring-[3px] ring-emerald/45"
         >
-          R
+          {initials}
         </Orb>
-        <Orb size={48} label="Notifikasi" className="relative !bg-cobalt !text-white">
+        <Orb
+          size={48}
+          label="Notifikasi"
+          onClick={() => openSheet('profile', true)}
+          className="relative !bg-cobalt !text-white"
+        >
           <Bell className="size-5" strokeWidth={2.25} />
-          <span className="absolute top-2.5 right-3 size-2.5 rounded-full border-2 border-cobalt bg-critical" />
+          {unreadCount > 0 && (
+            <span className="absolute top-2.5 right-3 size-2.5 rounded-full border-2 border-cobalt bg-critical" />
+          )}
         </Orb>
       </div>
 
-      {/* Dock */}
+      {/* Bottom Dock */}
       <motion.div
         initial={false}
         animate={{ y: sheetOpen ? 140 : 0, opacity: sheetOpen ? 0 : 1 }}
@@ -318,7 +285,7 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
         className="pointer-events-none absolute inset-x-0 bottom-0 z-[500]"
       >
         <div className="pointer-events-auto flex justify-between px-5 pb-4">
-          <Orb size={48} label="Cari lokasi" onClick={() => openList(true)}>
+          <Orb size={48} label="Cari lokasi" onClick={() => openSheet('list', false, true)}>
             <Search className="size-5 text-cobalt" strokeWidth={2.5} />
           </Orb>
           <Orb size={48} label="Lokasi saya" onClick={radar.locate}>
@@ -336,14 +303,14 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
               type="button"
               aria-label="Lapor"
               onClick={() => setReportOpen(true)}
-              className="btn-primary orb !border-0 !bg-[linear-gradient(180deg,#2563EB,#4338CA)] !text-white"
+              className="btn-primary orb !border-0 !bg-cobalt !text-white"
               style={{ width: 68, height: 68 }}
             >
               <Camera className="size-7" strokeWidth={2} />
             </button>
           </DockItem>
           <DockItem label="Aksi">
-            <Orb size={56} label="Aksi" onClick={() => openList()} className="relative">
+            <Orb size={56} label="Aksi" onClick={() => openSheet('list')} className="relative">
               <ListChecks className="size-6 text-ink" strokeWidth={2} />
               {openCount > 0 && (
                 <span className="num absolute -top-1 -right-1 grid size-5 place-items-center rounded-full border-2 border-white bg-critical text-[10px] text-white">
@@ -355,7 +322,7 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
         </div>
       </motion.div>
 
-      {/* Bottom sheet */}
+      {/* Bottom Sheet */}
       {H > 0 && (
         <motion.div
           initial={{ y: snapY.closed }}
@@ -369,8 +336,8 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
           onDragEnd={onDragEnd}
           inert={!sheetOpen}
           role="dialog"
-          aria-label={mode === 'list' ? 'Daftar titik' : 'Detail titik'}
-          className="absolute inset-x-0 bottom-0 z-[600] flex flex-col rounded-t-sheet border-t border-line/80 bg-white shadow-[0_-8px_24px_rgba(17,24,39,0.08)]"
+          aria-label="Panel informasi"
+          className="absolute inset-x-0 bottom-0 z-[600] flex flex-col rounded-t-sheet border-t border-line/80 bg-white"
           style={{ height: sheetH }}
         >
           <div
@@ -387,63 +354,41 @@ export default function BumpMobileExperience({ radar }: { radar: Radar }) {
             {mode === 'detail' && selected && (
               <SiteDetail
                 key={selected.id}
-                site={selected}
-                joined={radar.joined.has(selected.id)}
-                onToggleJoin={() => radar.toggleJoin(selected.id)}
+                report={selected}
+                joined={radar.joinedIds.has(selected.id)}
+                onJoin={async () => {
+                  await radar.joinAction(selected.id)
+                }}
+                onRefresh={radar.refresh}
               />
             )}
 
             {mode === 'list' && (
-              <div>
-                <label className="flex h-12 items-center gap-2.5 rounded-full bg-canvas px-4">
-                  <Search className="size-4.5 shrink-0 text-ink-soft" />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    autoFocus={focusSearch}
-                    placeholder="Cari lokasi"
-                    className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-soft"
-                  />
-                  {query && (
-                    <button type="button" aria-label="Hapus" onClick={() => setQuery('')}>
-                      <X className="size-4 text-ink-soft" />
-                    </button>
-                  )}
-                </label>
+              <ReportListPanel
+                reports={radar.reports}
+                joinedIds={radar.joinedIds}
+                query={query}
+                onQueryChange={setQuery}
+                autoFocus={focusSearch}
+                onOpen={openDetail}
+                onJoin={(id) => {
+                  if (!profile) openAuthModal()
+                  else void radar.joinAction(id)
+                }}
+              />
+            )}
 
-                <div role="tablist" className="mt-4 flex gap-1">
-                  {TABS.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      role="tab"
-                      aria-selected={tab === t}
-                      onClick={() => setTab(t)}
-                      className={`h-11 rounded-full px-4 text-[15px] font-bold transition-colors ${
-                        tab === t ? 'bg-canvas text-cobalt' : 'text-ink-soft'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-
-                <ul className="mt-2">
-                  {listSites.map((s) => (
-                    <SiteRow
-                      key={s.id}
-                      site={s}
-                      tab={tab}
-                      joined={radar.joined.has(s.id)}
-                      onOpen={() => openDetail(s.id)}
-                      onJoin={() => radar.toggleJoin(s.id)}
-                    />
-                  ))}
-                </ul>
-                {listSites.length === 0 && (
-                  <p className="py-10 text-center text-sm font-semibold text-ink-soft">Tidak ada titik</p>
-                )}
-              </div>
+            {mode === 'orgs' && <OrgsPanel />}
+            {mode === 'profile' && <ProfilePanel />}
+            {mode === 'agency' && (
+              <AgencyInboxPanel
+                reports={radar.allReports}
+                onSelectReport={openDetail}
+                onRefresh={radar.refresh}
+              />
+            )}
+            {mode === 'admin' && (
+              <AdminPanel reports={radar.allReports} onRefreshReports={radar.refresh} />
             )}
           </div>
         </motion.div>

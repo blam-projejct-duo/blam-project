@@ -1,6 +1,6 @@
 @import '@fontsource-variable/plus-jakarta-sans';
 @import 'tailwindcss';
-@import 'leaflet/dist/leaflet.css';
+@import 'maplibre-gl/dist/maplibre-gl.css';
 
 @theme {
   --font-sans: 'Plus Jakarta Sans Variable', system-ui, sans-serif;
@@ -14,10 +14,8 @@
   --color-ink-soft: #6b7280;
 
   --color-cobalt: #2563eb;
-  --color-cobalt-deep: #4338ca;
   --color-emerald: #059669;
   --color-emerald-soft: #d1fae5;
-  --color-ocean: #0284c7;
 
   --color-critical: #ef4444;
   --color-progress: #f59e0b;
@@ -72,7 +70,7 @@ button {
   border-radius: 9999px;
   background: #fff;
   border: 1px solid rgba(255, 255, 255, 0.92);
-  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.12);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.1);
   color: var(--color-ink);
   transition: transform 120ms var(--ease-spring);
 }
@@ -94,10 +92,9 @@ button {
   gap: 8px;
   border: 0;
   border-radius: 9999px;
-  background: linear-gradient(180deg, #2563eb, #4338ca);
+  background: var(--color-cobalt);
   color: #fff;
   font-weight: 700;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.22);
   transition: transform 120ms var(--ease-spring);
 }
 .btn-primary:active,
@@ -118,19 +115,29 @@ button {
   transition: transform 120ms var(--ease-spring);
 }
 
-/* Leaflet */
-[data-style='terang'] .leaflet-tile-pane {
-  filter: sepia(0.28) saturate(0.85) hue-rotate(-6deg) brightness(1.03);
-}
-
-.leaflet-container {
+/* MapLibre GL */
+.maplibregl-map {
   font-family: var(--font-sans);
   background: var(--color-canvas);
 }
-.leaflet-control-attribution {
-  background: rgba(255, 255, 255, 0.7) !important;
-  font-size: 10px;
+[data-style='gelap'] .maplibregl-map {
+  background: #0f1419;
+}
+.maplibregl-ctrl-attrib {
+  background: rgba(255, 255, 255, 0.72) !important;
+  font-size: 10px !important;
   border-radius: 8px 0 0 0;
+}
+
+.blam-popup .maplibregl-popup-content {
+  border-radius: 14px;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  padding: 8px 12px;
+  font-family: var(--font-sans);
+}
+.blam-popup .maplibregl-popup-tip {
+  border-top-color: var(--color-surface);
 }
 
 .pin {
@@ -144,7 +151,7 @@ button {
   font-weight: 800;
   font-size: 14px;
   border: 2.5px solid #fff;
-  box-shadow: 0 3px 10px rgba(17, 24, 39, 0.22);
+  box-shadow: 0 1px 4px rgba(17, 24, 39, 0.18);
   transition: transform 200ms var(--ease-spring);
 }
 .pin[data-selected='true'] {
@@ -163,6 +170,18 @@ button {
 .pin[data-status='resolved'] {
   --pin-color: var(--color-resolved);
   background: var(--color-resolved);
+}
+.pin[data-source='nasa_firms']::after,
+.pin[data-source='nasa_eonet']::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 11px;
+  height: 11px;
+  border-radius: 9999px;
+  background: var(--color-cobalt);
+  border: 2px solid #fff;
 }
 
 .me-dot {

@@ -1,12 +1,12 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowLeft, Camera, Check, ImagePlus, LocateFixed, ShieldCheck, X } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { DEMO_REPORTER_ID } from '../../services/demoUser'
-import { verifyReport } from '../../services/apiClient'
-import type { VerifyReportResult } from '../../services/apiClient'
-import type { Ecosystem } from '../../types/conservation'
-import { compressImage } from '../../utils/imageCompress'
-import type { CompressedImage } from '../../utils/imageCompress'
+import { verifyAndCreateReport } from '../../lib/api'
+import type { VerifyReportResult } from '../../lib/api'
+import { compressImage, haversineDistanceKm } from '../../lib/imageCompress'
+import type { CompressedImage } from '../../lib/imageCompress'
+import type { Ecosystem } from '../../types'
+import { useAuth } from '../auth/AuthContext'
 
 interface Props {
   onClose: () => void
@@ -40,7 +40,7 @@ function Confetti() {
           <motion.span
             key={i}
             className="absolute size-2 rounded-full"
-            style={{ background: ['#2563EB', '#059669', '#F59E0B', '#4338CA'][i % 4] }}
+            style={{ background: ['#2563EB', '#059669', '#F59E0B', '#10B981'][i % 4] }}
             initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
             animate={{ x: Math.cos(a) * d, y: Math.sin(a) * d, opacity: 0, scale: 0.4 }}
             transition={{ duration: 0.9, ease: 'easeOut' }}
@@ -52,11 +52,13 @@ function Confetti() {
 }
 
 export default function QuickReportFlow({ onClose, onPublished }: Props) {
+  const { profile, openAuthModal, refreshMe } = useAuth()
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [eco, setEco] = useState<Ecosystem>('coastal_mangrove')
   const [place, setPlace] = useState('')
   const [lat, setLat] = useState('')
   const [lng, setLng] = useState('')
+  const [deviceGps, setDeviceGps] = useState<{ lat: number; lng: number } | null>(null)
   const [gpsBusy, setGpsBusy] = useState(false)
   const [note, setNote] = useState('')
   const [anon, setAnon] = useState(false)
@@ -67,7 +69,7 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
 
   const latN = Number(lat)
   const lngN = Number(lng)
-  const coordsOk = lat !== '' && lng !== '' && Math.abs(latN) <= 90 && Math.abs(lngN) <= 180
+  const coordsOk = lat !== '' && lng !== '' && Number.isFinite(latN) && Number.isFinite(lngN) && Math.abs(latN) <= 90 && Math.abs(lngN) <= 180
   const step1Ok = place.trim().length > 2 && coordsOk
 
   const useGps = () => {
@@ -75,8 +77,11 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
     setGpsBusy(true)
     navigator.geolocation.getCurrentPosition(
       (p) => {
-        setLat(p.coords.latitude.toFixed(5))
-        setLng(p.coords.longitude.toFixed(5))
+        const dLat = p.coords.latitude
+        const dLng = p.coords.longitude
+        setDeviceGps({ lat: dLat, lng: dLng })
+        setLat(dLat.toFixed(5))
+        setLng(dLng.toFixed(5))
         setGpsBusy(false)
         setError(null)
       },
@@ -101,23 +106,34 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
 
   const scan = async () => {
     if (!photo) return
+    if (!profile) {
+      openAuthModal()
+      return
+    }
     setStep(3)
     setResult(null)
     setError(null)
+    const locationMismatch = deviceGps
+      ? haversineDistanceKm(deviceGps.lat, deviceGps.lng, latN, lngN) > 5
+      : false
+
     try {
-      const r = await verifyReport({
+      const r = await verifyAndCreateReport({
         imageBase64: photo.base64,
         mimeType: photo.mimeType,
-        ecosystemType: eco,
+        ecosystem: eco,
         description: note.trim(),
         locationName: place.trim(),
         lat: latN,
         lng: lngN,
+        locationMismatch,
         isAnonymous: anon,
-        reporterId: DEMO_REPORTER_ID,
       })
       setResult(r)
-      if (r.isValid && r.saved) setStep(4)
+      if (r.isValid && r.saved) {
+        await refreshMe()
+        setStep(4)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal memindai')
     }
@@ -152,6 +168,15 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
+        {!profile && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-card border border-line bg-white p-4">
+            <p className="text-sm font-semibold text-ink">Masuk untuk mengirim laporan.</p>
+            <button type="button" onClick={openAuthModal} className="btn-primary h-10 shrink-0 px-4 text-xs">
+              Masuk
+            </button>
+          </div>
+        )}
+
         {step === 1 && (
           <section className="flex flex-col gap-4">
             <h2 className="text-2xl font-extrabold tracking-tight">Lokasi</h2>
@@ -193,7 +218,7 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
               )}
             </button>
             {photo && <p className="num text-center text-xs text-ink-soft">{Math.round(photo.bytes / 1024)} KB · EXIF dihapus</p>}
-            <input className={field} placeholder="Catatan (opsional)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
+            <input className={field} placeholder="Catatan kondisi atau aksi" value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
             <label className="flex h-12 items-center justify-between rounded-full border border-line bg-white px-4 text-sm font-bold">
               Lapor anonim
               <input type="checkbox" checked={anon} onChange={(e) => setAnon(e.target.checked)} className="size-5 accent-[#2563EB]" />
@@ -208,7 +233,7 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
               <div className="relative aspect-[4/3] w-full overflow-hidden rounded-card bg-muted">
                 <img src={photo.previewUrl} alt="" className="size-full object-cover" />
                 {scanning && (
-                  <motion.div className="absolute inset-x-0 top-0 h-1 bg-cobalt shadow-[0_0_16px_#2563EB]" animate={{ y: [0, 250, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }} />
+                  <motion.div className="absolute inset-x-0 top-0 h-1 bg-cobalt" animate={{ y: [0, 250, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }} />
                 )}
               </div>
             )}
@@ -217,7 +242,7 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
               <div className="w-full rounded-card border border-line bg-white p-5 text-left">
                 <p className="text-base font-extrabold text-[#B91C1C]">Ditolak</p>
                 <p className="mt-1 text-sm text-ink/80">{result.reason}</p>
-                <p className="num mt-2 text-xs text-ink-soft">Skor {result.confidence}</p>
+                <p className="num mt-2 text-xs text-ink-soft">Skor {result.confidence}%</p>
               </div>
             )}
           </section>
