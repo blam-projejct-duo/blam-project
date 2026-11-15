@@ -15,6 +15,7 @@
 
   --color-cobalt: #2563eb;
   --color-emerald: #059669;
+  --color-emerald-soft: #d1fae5;
 
   --color-critical: #ef4444;
   --color-progress: #f59e0b;
@@ -108,8 +109,8 @@ button {
   gap: 8px;
   border: 0;
   border-radius: 9999px;
-  background: var(--color-muted);
-  color: var(--color-ink);
+  background: var(--color-emerald-soft);
+  color: #047857;
   font-weight: 700;
   transition: transform 120ms var(--ease-spring);
 }
@@ -143,17 +144,19 @@ button {
   position: relative;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 38px;
+  height: 38px;
   border-radius: 9999px;
   color: #fff;
+  font-weight: 800;
+  font-size: 14px;
   border: 2.5px solid #fff;
   box-shadow: 0 1px 4px rgba(17, 24, 39, 0.18);
   transition: transform 200ms var(--ease-spring);
 }
 .pin[data-selected='true'] {
-  transform: scale(1.35);
-  outline: 2px solid var(--pin-color);
+  transform: scale(1.22);
+  outline: 3px solid var(--pin-color);
   outline-offset: 2px;
 }
 .pin[data-status='critical'] {
@@ -168,6 +171,19 @@ button {
   --pin-color: var(--color-resolved);
   background: var(--color-resolved);
 }
+.pin[data-source='nasa_firms']::after,
+.pin[data-source='nasa_eonet']::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 11px;
+  height: 11px;
+  border-radius: 9999px;
+  background: var(--color-cobalt);
+  border: 2px solid #fff;
+}
+
 .me-dot {
   width: 16px;
   height: 16px;

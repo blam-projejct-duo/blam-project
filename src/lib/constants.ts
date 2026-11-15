@@ -1,17 +1,11 @@
-import type { Ecosystem, EventStatus, PinTone, ReportStatus, UserRole } from '../types'
+import type { Ecosystem, PinTone, ReportStatus, UserRole } from '../types'
 
-export const EVENT_STATUS_LABEL: Record<EventStatus, string> = {
-  open: 'Terbuka',
-  in_progress: 'Berjalan',
-  resolved: 'Pulih',
-  cancelled: 'Dibatalkan',
-}
-
-export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
+export const STATUS_LABEL: Record<ReportStatus, string> = {
   rejected: 'Ditolak',
-  pending_verification: 'Antrean',
+  open: 'Menunggu',
   escalated: 'Eskalasi',
-  verified: 'Terverifikasi',
+  in_progress: 'Ditangani',
+  resolved: 'Pulih',
 }
 
 export const ECOSYSTEM_LABEL: Record<Ecosystem, string> = {
@@ -34,15 +28,9 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   admin: 'Admin',
 }
 
-export function eventPinTone(status: EventStatus): PinTone {
+export function pinTone(status: ReportStatus): PinTone {
   if (status === 'resolved') return 'resolved'
   if (status === 'in_progress') return 'progress'
-  return 'critical'
-}
-
-export function reportPinTone(status: ReportStatus): PinTone {
-  if (status === 'verified') return 'resolved'
-  if (status === 'pending_verification') return 'progress'
   return 'critical'
 }
 

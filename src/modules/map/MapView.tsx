@@ -337,12 +337,14 @@ export default function MapView({
       const selected = report.id === selectedId
       const tone = pinTone(report.status)
       const source = report.source ?? 'user'
+      const label = String(report.ai_confidence)
       const existing = markers.get(report.id)
 
       if (existing) {
         existing.el.dataset.status = tone
         existing.el.dataset.source = source
         existing.el.dataset.selected = String(selected)
+        if (existing.el.textContent !== label) existing.el.textContent = label
         existing.wrapper.style.zIndex = selected ? '10' : '1'
         existing.marker.setLngLat([report.lng, report.lat])
       } else {
@@ -354,6 +356,7 @@ export default function MapView({
         el.dataset.source = source
         el.dataset.selected = String(selected)
         el.title = report.title
+        el.textContent = label
         el.style.cursor = 'pointer'
         wrapper.style.zIndex = selected ? '10' : '1'
         wrapper.appendChild(el)

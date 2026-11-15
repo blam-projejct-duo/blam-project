@@ -5,17 +5,14 @@ import { isSupabaseConfigured, supabase } from '../../lib/supabase'
 import type { NotificationItem, OrganizationMember, Profile } from '../../types'
 
 interface AuthContextValue {
-  isDemo: boolean
   profile: Profile | null
   memberships: OrganizationMember[]
   notifications: NotificationItem[]
   demoAccounts: Profile[]
-  demoError: string | null
   loading: boolean
   authModalOpen: boolean
   openAuthModal: () => void
   closeAuthModal: () => void
-  refreshDemoAccounts: () => Promise<void>
   loginDemo: (userId: string) => Promise<void>
   loginWithEmail: (email: string, password: string) => Promise<void>
   registerWithEmail: (email: string, password: string, fullName: string) => Promise<void>
@@ -29,60 +26,22 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [memberships, setMemberships] = useState<OrganizationMember[]>([])
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [demoAccounts, setDemoAccounts] = useState<Profile[]>([])
-  const [demoError, setDemoError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [authModalOpen, setAuthModalOpen] = useState(false)
 
-  const refreshDemoAccounts = useCallback(async () => {
-    if (!isDemo) {
-      setDemoAccounts([])
-      setDemoError(null)
-      return
-    }
-    try {
-      const demos = await fetchDemoAccounts()
-      setDemoAccounts(demos)
-      setDemoError(null)
-    } catch (err) {
-      setDemoAccounts([])
-      setDemoError(err instanceof Error ? err.message : 'Gagal memuat akun demo')
-    }
-  }, [isDemo])
-
   const refreshMe = useCallback(async () => {
-    if (isDemo) {
-      if (!getDemoSessionId()) {
-        setProfile(null)
-        setMemberships([])
-        setNotifications([])
-        return
-      }
-      try {
-        const me = await fetchMe()
-        setProfile(me.profile)
-        setMemberships(me.memberships)
-        setNotifications(me.notifications)
-      } catch (err) {
-        console.warn('[Blam:AuthDemo] Gagal memuat sesi demo:', err)
-        setDemoSessionId(null)
-        setProfile(null)
-        setMemberships([])
-        setNotifications([])
-      }
-      return
-    }
-
+    const hasDemo = Boolean(getDemoSessionId())
     let hasSupaSession = false
     if (supabase) {
       const { data } = await supabase.auth.getSession()
       hasSupaSession = Boolean(data.session?.access_token)
     }
-    if (!hasSupaSession) {
+    if (!hasDemo && !hasSupaSession) {
       setProfile(null)
       setMemberships([])
       setNotifications([])
@@ -95,23 +54,20 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
       setNotifications(me.notifications)
     } catch (err) {
       console.warn('[Blam:Auth] Gagal memuat sesi:', err)
+      setDemoSessionId(null)
       setProfile(null)
       setMemberships([])
       setNotifications([])
     }
-  }, [isDemo])
+  }, [])
 
   useEffect(() => {
     let active = true
     const init = async () => {
       setLoading(true)
       try {
-        if (isDemo) {
-          await refreshDemoAccounts()
-        } else {
-          setDemoAccounts([])
-          setDemoError(null)
-        }
+        const demos = await fetchDemoAccounts().catch(() => [])
+        if (active) setDemoAccounts(demos)
         await refreshMe()
       } finally {
         if (active) setLoading(false)
@@ -119,10 +75,8 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
     }
     void init()
 
-    if (isDemo || !supabase) {
-      return () => {
-        active = false
-      }
+    if (!supabase) return () => {
+      active = false
     }
 
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
@@ -132,18 +86,16 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
       active = false
       sub.subscription.unsubscribe()
     }
-  }, [isDemo, refreshDemoAccounts, refreshMe])
+  }, [refreshMe])
 
   const loginDemo = useCallback(
     async (userId: string) => {
-      if (!isDemo) {
-        throw new Error('Akun demo hanya tersedia di halaman /demo')
-      }
+      if (supabase) await supabase.auth.signOut().catch(() => {})
       setDemoSessionId(userId)
       await refreshMe()
       setAuthModalOpen(false)
     },
-    [isDemo, refreshMe],
+    [refreshMe],
   )
 
   const loginWithEmail = useCallback(
@@ -151,6 +103,7 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
       if (!isSupabaseConfigured || !supabase) {
         throw new Error('Supabase Auth belum dikonfigurasi di .env')
       }
+      setDemoSessionId(null)
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw new Error(error.message)
       await refreshMe()
@@ -164,6 +117,7 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
       if (!isSupabaseConfigured || !supabase) {
         throw new Error('Supabase Auth belum dikonfigurasi di .env')
       }
+      setDemoSessionId(null)
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -180,6 +134,7 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
     if (!isSupabaseConfigured || !supabase) {
       throw new Error('Supabase Auth belum dikonfigurasi di .env')
     }
+    setDemoSessionId(null)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin },
@@ -188,15 +143,12 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
   }, [])
 
   const logout = useCallback(async () => {
-    if (isDemo) {
-      setDemoSessionId(null)
-    } else if (supabase) {
-      await supabase.auth.signOut().catch(() => {})
-    }
+    setDemoSessionId(null)
+    if (supabase) await supabase.auth.signOut().catch(() => {})
     setProfile(null)
     setMemberships([])
     setNotifications([])
-  }, [isDemo])
+  }, [])
 
   const readNotification = useCallback(async (id: string) => {
     await markNotificationRead(id)
@@ -223,17 +175,14 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      isDemo,
       profile,
       memberships,
       notifications,
       demoAccounts,
-      demoError,
       loading,
       authModalOpen,
       openAuthModal: () => setAuthModalOpen(true),
       closeAuthModal: () => setAuthModalOpen(false),
-      refreshDemoAccounts,
       loginDemo,
       loginWithEmail,
       registerWithEmail,
@@ -245,15 +194,12 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
       isActiveMemberOf,
     }),
     [
-      isDemo,
       profile,
       memberships,
       notifications,
       demoAccounts,
-      demoError,
       loading,
       authModalOpen,
-      refreshDemoAccounts,
       loginDemo,
       loginWithEmail,
       registerWithEmail,

@@ -1,50 +1,74 @@
 import { Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { pinTone, shortLocation, STATUS_LABEL } from '../../lib/constants'
 import { EcoBadge } from '../ui/atoms'
 import type { Report } from '../../types'
 
 type ListTab = 'Disarankan' | 'Terbaru' | 'Dampak'
 
 const TABS: ListTab[] = ['Disarankan', 'Terbaru', 'Dampak']
-const DOT = { critical: 'bg-critical', progress: 'bg-progress', resolved: 'bg-resolved' } as const
 const RANK = { escalated: 0, open: 1, in_progress: 2, resolved: 3, rejected: 4 } as const
 
-function ReportRow({ report, tab, onOpen }: { report: Report; tab: ListTab; onOpen: () => void }) {
+function ReportRow({
+  report,
+  tab,
+  joined,
+  onOpen,
+  onJoin,
+}: {
+  report: Report
+  tab: ListTab
+  joined: boolean
+  onOpen: () => void
+  onJoin: () => void
+}) {
   const action = report.report_actions?.[0]
+  const count = report.action_participants?.length ?? 0
   const meta =
     tab === 'Dampak' && action
-      ? `${Number(action.waste_kg)} kg · ${action.trees_planted} bibit`
-      : shortLocation(report.location_name)
+      ? `${Number(action.waste_kg)} kg sampah • ${action.trees_planted} bibit`
+      : `${count} relawan • ${report.location_name}`
 
   return (
-    <li className="dashed-row">
-      <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 py-3.5 text-left">
+    <li className="dashed-row flex items-center gap-3 py-3.5">
+      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left">
         <EcoBadge ecosystem={report.ecosystem} />
-        <span className="min-w-0 flex-1">
+        <span className="min-w-0">
           <span className="block truncate text-[15px] font-semibold text-ink">{report.title}</span>
           <span className="block truncate text-[13px] text-ink-soft">{meta}</span>
         </span>
-        <span className={`size-2.5 shrink-0 rounded-full ${DOT[pinTone(report.status)]}`} aria-label={STATUS_LABEL[report.status]} />
       </button>
+      {report.status !== 'resolved' && (
+        <button
+          type="button"
+          onClick={onJoin}
+          aria-pressed={joined}
+          className={`h-10 shrink-0 rounded-full px-4 text-[13px] ${joined ? 'btn-joined' : 'btn-primary'}`}
+        >
+          {joined ? 'Tergabung' : 'Gabung'}
+        </button>
+      )}
     </li>
   )
 }
 
 export default function ReportListPanel({
   reports,
+  joinedIds,
   query,
   onQueryChange,
   showSearch = true,
   autoFocus = false,
   onOpen,
+  onJoin,
 }: {
   reports: Report[]
+  joinedIds: Set<string>
   query: string
   onQueryChange: (q: string) => void
   showSearch?: boolean
   autoFocus?: boolean
   onOpen: (id: string) => void
+  onJoin: (id: string) => void
 }) {
   const [tab, setTab] = useState<ListTab>('Disarankan')
 
@@ -91,7 +115,7 @@ export default function ReportListPanel({
             aria-selected={tab === t}
             onClick={() => setTab(t)}
             className={`h-11 rounded-full px-4 text-[15px] font-bold transition-colors ${
-              tab === t ? 'bg-canvas text-ink' : 'text-ink-soft'
+              tab === t ? 'bg-canvas text-cobalt' : 'text-ink-soft'
             }`}
           >
             {t}
@@ -101,8 +125,13 @@ export default function ReportListPanel({
 
       <ul className="mt-2">
         {rows.map((r) => (
-          <ReportRow key={r.id} report={r} tab={tab}
+          <ReportRow
+            key={r.id}
+            report={r}
+            tab={tab}
+            joined={joinedIds.has(r.id)}
             onOpen={() => onOpen(r.id)}
+            onJoin={() => onJoin(r.id)}
           />
         ))}
       </ul>

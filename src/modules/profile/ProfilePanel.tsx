@@ -1,17 +1,25 @@
-import { LogOut } from 'lucide-react'
+import { Bell, LogOut, ShieldCheck, UserCheck } from 'lucide-react'
 import { DashedRow, Pill } from '../../components/ui/atoms'
 import { ROLE_LABEL } from '../../lib/constants'
 import { useAuth } from '../auth/AuthContext'
 
 export default function ProfilePanel() {
-  const { isDemo, profile, memberships, notifications, openAuthModal, logout, readNotification } = useAuth()
+  const { profile, memberships, notifications, openAuthModal, logout, readNotification } = useAuth()
 
   if (!profile) {
     return (
       <div className="flex flex-col items-center gap-4 rounded-[20px] border border-line bg-white p-6 text-center">
-        <h3 className="text-lg font-extrabold text-ink">{isDemo ? 'Peran Demo' : 'Masuk'}</h3>
+        <span className="grid size-14 place-items-center rounded-full bg-canvas text-cobalt">
+          <UserCheck className="size-6" />
+        </span>
+        <div>
+          <h3 className="text-lg font-extrabold text-ink">Mode Pengunjung</h3>
+          <p className="mt-1 text-xs font-medium text-ink-soft">
+            Masuk untuk melapor, gabung aksi, atau kelola organisasi.
+          </p>
+        </div>
         <button type="button" onClick={openAuthModal} className="btn-primary h-11 w-full text-sm">
-          {isDemo ? 'Pilih Peran' : 'Masuk'}
+          Masuk / Akun Demo
         </button>
       </div>
     )
@@ -27,7 +35,7 @@ export default function ProfilePanel() {
             {profile.email && <p className="truncate text-xs text-ink-soft">{profile.email}</p>}
           </div>
           <div className="text-right">
-            <p className="num text-2xl text-ink">{profile.points}</p>
+            <p className="num text-2xl text-cobalt">{profile.points}</p>
             <p className="text-[11px] font-bold text-ink-soft">Poin</p>
           </div>
         </div>
@@ -38,12 +46,12 @@ export default function ProfilePanel() {
             onClick={openAuthModal}
             className="h-10 flex-1 rounded-full border border-line bg-canvas text-xs font-bold text-ink"
           >
-            {isDemo ? 'Ganti Peran' : 'Ganti Akun'}
+            Ganti Akun
           </button>
           <button
             type="button"
             onClick={() => void logout()}
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-4 text-xs font-bold text-ink-soft"
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-4 text-xs font-bold text-[#B91C1C]"
           >
             <LogOut className="size-3.5" /> Keluar
           </button>
@@ -51,9 +59,11 @@ export default function ProfilePanel() {
       </section>
 
       <section className="rounded-[20px] border border-line bg-white p-4">
-        <p className="text-xs font-extrabold text-ink-soft uppercase">Organisasi ({memberships.length})</p>
+        <p className="flex items-center gap-1.5 text-xs font-extrabold text-ink-soft uppercase">
+          <ShieldCheck className="size-3.5 text-emerald" /> Organisasi Saya ({memberships.length})
+        </p>
         {memberships.length === 0 ? (
-          <p className="mt-2 text-xs font-medium text-ink-soft">Kosong</p>
+          <p className="mt-2 text-xs font-medium text-ink-soft">Belum tergabung di organisasi.</p>
         ) : (
           <div className="mt-1">
             {memberships.map((m) => (
@@ -72,9 +82,11 @@ export default function ProfilePanel() {
       </section>
 
       <section className="rounded-[20px] border border-line bg-white p-4">
-        <p className="text-xs font-extrabold text-ink-soft uppercase">Notifikasi ({notifications.length})</p>
+        <p className="flex items-center gap-1.5 text-xs font-extrabold text-ink-soft uppercase">
+          <Bell className="size-3.5 text-cobalt" /> Notifikasi ({notifications.length})
+        </p>
         {notifications.length === 0 ? (
-          <p className="mt-2 text-xs font-medium text-ink-soft">Kosong</p>
+          <p className="mt-2 text-xs font-medium text-ink-soft">Belum ada notifikasi.</p>
         ) : (
           <div className="mt-1">
             {notifications.map((n) => (
@@ -87,7 +99,7 @@ export default function ProfilePanel() {
                   <button
                     type="button"
                     onClick={() => void readNotification(n.id)}
-                    className="shrink-0 rounded-full bg-canvas px-2.5 py-1 text-[10px] font-bold text-ink-soft"
+                    className="shrink-0 rounded-full bg-canvas px-2.5 py-1 text-[10px] font-bold text-cobalt"
                   >
                     Tandai
                   </button>

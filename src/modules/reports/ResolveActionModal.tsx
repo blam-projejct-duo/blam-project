@@ -1,4 +1,4 @@
-import { ImagePlus } from 'lucide-react'
+import { ImagePlus, ShieldCheck } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { ModalShell } from '../../components/ui/atoms'
 import { resolveReport } from '../../lib/api'
@@ -94,7 +94,7 @@ export default function ResolveActionModal({
             <img src={photo.previewUrl} alt="Foto After" className="size-full object-cover" />
           ) : (
             <span className="flex flex-col items-center gap-2 text-sm font-bold">
-              <ImagePlus className="size-7" /> Foto sesudah
+              <ImagePlus className="size-7" /> Pilih foto kondisi sesudah
             </span>
           )}
         </button>
@@ -105,21 +105,21 @@ export default function ResolveActionModal({
             <input type="number" min="0" step="0.5" className={field} value={wasteKg} onChange={(e) => setWasteKg(e.target.value)} />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-bold text-ink-soft">Bibit</label>
+            <label className="mb-1 block text-xs font-bold text-ink-soft">Bibit ditanam</label>
             <input type="number" min="0" step="1" className={field} value={treesPlanted} onChange={(e) => setTreesPlanted(e.target.value)} />
           </div>
         </div>
 
         <input
           className={field}
-          placeholder="Catatan"
+          placeholder="Catatan aksi lapangan"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           maxLength={400}
         />
 
         {error && (
-          <p role="alert" className="rounded-card border border-line bg-white px-4 py-3 text-sm font-semibold text-ink">
+          <p role="alert" className="rounded-[16px] bg-[#FEE9E7] px-4 py-3 text-sm font-semibold text-[#B91C1C]">
             {error}
           </p>
         )}
@@ -130,7 +130,8 @@ export default function ResolveActionModal({
           onClick={() => void submit()}
           className="btn-primary h-12 w-full text-sm disabled:opacity-50"
         >
-          {busy ? 'Memverifikasi…' : 'Pulihkan'}
+          <ShieldCheck className="size-4" />
+          {busy ? 'Memverifikasi AI…' : 'Audit Before–After & Pulihkan'}
         </button>
       </div>
     </ModalShell>

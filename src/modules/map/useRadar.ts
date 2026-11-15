@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { fetchReports, joinReportAction } from '../../lib/api'
+import { CACHE_TTL_MS } from '../../lib/queryClient'
 import type { Ecosystem, MapStyle, Report } from '../../types'
 import type { ZoomCommand } from './MapView'
 import { useEnvLayers } from './useEnvLayers'
@@ -24,8 +25,7 @@ export function useRadar(currentUserId?: string | null) {
   const reportsQuery = useQuery({
     queryKey: ['reports'],
     queryFn: () => fetchReports(false),
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: CACHE_TTL_MS,
   })
 
   const allReports = useMemo(() => reportsQuery.data ?? [], [reportsQuery.data])
@@ -42,9 +42,9 @@ export function useRadar(currentUserId?: string | null) {
       : null
 
   const refresh = useCallback(async () => {
-    const fresh = await fetchReports(false, true)
-    queryClient.setQueryData(['reports'], fresh)
-  }, [queryClient])
+    await queryClient.invalidateQueries({ queryKey: ['reports'] })
+    await reportsQuery.refetch()
+  }, [queryClient, reportsQuery])
 
   const reports = useMemo(
     () => (filter === 'all' ? allReports : allReports.filter((r) => r.ecosystem === filter)),
