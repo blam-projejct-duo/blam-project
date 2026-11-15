@@ -11,6 +11,7 @@ import type {
   OrganizationMember,
   OrgType,
   Profile,
+  RefSource,
   ReportStatus,
   Severity,
 } from '../types'
@@ -96,6 +97,8 @@ export async function fetchEvents(includeCancelled = false, forceRefresh = false
 export interface CreateEventInput {
   organizationId?: string
   reportId?: string
+  refSource?: RefSource
+  refExternalId?: string
   visibility: EventVisibility
   title: string
   description?: string
@@ -283,6 +286,14 @@ export async function moderateEventAdmin(eventId: string, status: 'cancelled' | 
     method: 'POST',
     requireAuth: true,
     body: JSON.stringify({ eventId, status }),
+  })
+}
+
+export async function moderateHotspotAdmin(hotspotId: string): Promise<void> {
+  await apiFetch('/admin/moderate-hotspot', {
+    method: 'POST',
+    requireAuth: true,
+    body: JSON.stringify({ hotspotId }),
   })
 }
 

@@ -4,11 +4,12 @@ import { useRef, useState } from 'react'
 import { createEvent, fetchOrgs } from '../../lib/api'
 import { compressImage } from '../../lib/imageCompress'
 import type { CompressedImage } from '../../lib/imageCompress'
-import type { CitizenReport, Ecosystem, EventVisibility } from '../../types'
+import type { CitizenReport, Ecosystem, EventVisibility, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 
 interface Props {
   initialReport?: CitizenReport | null
+  initialSignal?: SatelliteSignal | null
   onClose: () => void
   onCreated: (eventId: string) => Promise<void> | void
 }
@@ -24,7 +25,7 @@ const CATEGORIES = ['Aksi Pemulihan', 'Bersih Sampah', 'Tanam Bibit', 'Pantau Sa
 const field =
   'h-11 w-full rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-ink focus:outline-none'
 
-export default function CreateEventForm({ initialReport, onClose, onCreated }: Props) {
+export default function CreateEventForm({ initialReport, initialSignal, onClose, onCreated }: Props) {
   const queryClient = useQueryClient()
   const { profile, memberships, isLeadOf } = useAuth()
   const activeOrgs = memberships.filter((m) => m.status === 'active' && m.organization?.is_verified)
@@ -49,13 +50,41 @@ export default function CreateEventForm({ initialReport, onClose, onCreated }: P
         }))
 
   const [orgId, setOrgId] = useState(selectableOrgs[0]?.id ?? '')
-  const [title, setTitle] = useState(initialReport?.title ?? '')
-  const [ecosystem, setEcosystem] = useState<Ecosystem>(initialReport?.ecosystem ?? 'coastal_mangrove')
-  const [category, setCategory] = useState(initialReport?.threat_category ?? 'Aksi Pemulihan')
-  const [locationName, setLocationName] = useState(initialReport?.location_name ?? '')
-  const [lat, setLat] = useState(initialReport ? initialReport.lat.toFixed(5) : '')
-  const [lng, setLng] = useState(initialReport ? initialReport.lng.toFixed(5) : '')
-  const [description, setDescription] = useState(initialReport?.ai_site_brief ?? initialReport?.description ?? '')
+  const [title, setTitle] = useState(
+    initialReport?.title ??
+      (initialSignal ? `Respon ${initialSignal.title}` : ''),
+  )
+  const [ecosystem, setEcosystem] = useState<Ecosystem>(
+    initialReport?.ecosystem ?? initialSignal?.ecosystem ?? 'coastal_mangrove',
+  )
+  const [category, setCategory] = useState(
+    initialReport?.threat_category ?? (initialSignal ? 'Pantau Satelit' : 'Aksi Pemulihan'),
+  )
+  const [locationName, setLocationName] = useState(
+    initialReport?.location_name ?? initialSignal?.title ?? '',
+  )
+  const [lat, setLat] = useState(
+    initialReport
+      ? initialReport.lat.toFixed(5)
+      : initialSignal
+        ? initialSignal.lat.toFixed(5)
+        : '',
+  )
+  const [lng, setLng] = useState(
+    initialReport
+      ? initialReport.lng.toFixed(5)
+      : initialSignal
+        ? initialSignal.lng.toFixed(5)
+        : '',
+  )
+  const [description, setDescription] = useState(
+    initialReport?.ai_site_brief ??
+      initialReport?.description ??
+      (initialSignal
+        ? `Tindak lanjut ${initialSignal.source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'} (${initialSignal.categoryLabel})`
+        : ''),
+  )
+  const [startAt, setStartAt] = useState('')
   const [visibility, setVisibility] = useState<EventVisibility>('public')
   const [maxParticipants, setMaxParticipants] = useState('')
   const [photo, setPhoto] = useState<CompressedImage | null>(null)
@@ -111,6 +140,8 @@ export default function CreateEventForm({ initialReport, onClose, onCreated }: P
       const res = await createEvent({
         organizationId: effectiveOrgId || undefined,
         reportId: initialReport?.id,
+        refSource: initialSignal?.source,
+        refExternalId: initialSignal?.externalId,
         visibility: canSetMembersOnly ? visibility : 'public',
         title: title.trim(),
         description: description.trim() || undefined,
@@ -121,6 +152,7 @@ export default function CreateEventForm({ initialReport, onClose, onCreated }: P
         locationName: locationName.trim(),
         coverImageBase64: photo?.base64,
         coverMimeType: photo?.mimeType,
+        startAt: startAt ? new Date(startAt).toISOString() : undefined,
         maxParticipants: maxParticipants ? Math.max(1, Math.round(Number(maxParticipants))) : undefined,
       })
       await Promise.all([
@@ -156,6 +188,12 @@ export default function CreateEventForm({ initialReport, onClose, onCreated }: P
           {initialReport && (
             <div className="rounded-[16px] border border-line bg-white px-4 py-2.5 text-xs font-bold text-ink">
               Tautan laporan: {initialReport.threat_category}
+            </div>
+          )}
+
+          {initialSignal && (
+            <div className="rounded-[16px] border border-line bg-white px-4 py-2.5 text-xs font-bold text-ink">
+              Rujukan satelit: {initialSignal.source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'}
             </div>
           )}
 
@@ -253,6 +291,14 @@ export default function CreateEventForm({ initialReport, onClose, onCreated }: P
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={600}
+          />
+
+          <input
+            type="datetime-local"
+            className={field}
+            aria-label="Jadwal mulai"
+            value={startAt}
+            onChange={(e) => setStartAt(e.target.value)}
           />
 
           <div className="grid grid-cols-2 gap-2">

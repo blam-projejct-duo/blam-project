@@ -3,7 +3,7 @@ import type { GeoJSONSource } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { useEffect, useRef } from 'react'
 import { eventPinTone } from '../../lib/constants'
-import type { ConservationEvent, EonetPoint, HotspotPoint, MapStyle, SpeciesPoint } from '../../types'
+import type { ConservationEvent, Ecosystem, EonetPoint, HotspotPoint, MapStyle, SatelliteSignal, SpeciesPoint } from '../../types'
 import { applyMapStyle, createInitialMapStyle } from './mapStyles'
 
 setWorkerUrl(maplibreWorkerUrl)
@@ -27,7 +27,9 @@ interface Props {
   eonetPoints: EonetPoint[]
   speciesPoints: SpeciesPoint[]
   selectedId: string | null
+  selectedSignal?: SatelliteSignal | null
   onSelect: (id: string) => void
+  onSelectSignal?: (signal: SatelliteSignal) => void
   style: MapStyle
   showHotspots: boolean
   showSpecies: boolean
@@ -51,6 +53,9 @@ function buildHotspotGeoJson(hotspots: HotspotPoint[]) {
     features: hotspots.map((h) => ({
       type: 'Feature' as const,
       properties: {
+        id:
+          h.id ||
+          `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${h.lat.toFixed(4)}:${h.lng.toFixed(4)}`,
         frp: h.frp,
         brightness: h.brightness,
         confidence: h.confidence,
@@ -75,6 +80,7 @@ function buildEonetGeoJson(eonet: EonetPoint[]) {
       properties: {
         id: e.id,
         title: e.title,
+        category: e.category,
         categoryLabel: e.categoryLabel,
         date: e.date,
       },
@@ -177,7 +183,9 @@ export default function MapView({
   eonetPoints,
   speciesPoints,
   selectedId,
+  selectedSignal = null,
   onSelect,
+  onSelectSignal,
   style,
   showHotspots,
   showSpecies,
@@ -194,6 +202,7 @@ export default function MapView({
   const popupRef = useRef<Popup | null>(null)
 
   const onSelectRef = useRef(onSelect)
+  const onSelectSignalRef = useRef(onSelectSignal)
   const paddingRef = useRef(padding)
   const eventsRef = useRef(events)
   const hotspotsRef = useRef(hotspots)
@@ -205,6 +214,7 @@ export default function MapView({
 
   useEffect(() => {
     onSelectRef.current = onSelect
+    onSelectSignalRef.current = onSelectSignal
     paddingRef.current = padding
     eventsRef.current = events
     hotspotsRef.current = hotspots
@@ -345,10 +355,30 @@ export default function MapView({
         const feat = e.features?.[0]
         if (!feat || feat.geometry.type !== 'Point') return
         const [lng, lat] = feat.geometry.coordinates as [number, number]
+        const props = (feat.properties ?? {}) as Record<string, unknown>
+        if (onSelectSignalRef.current) {
+          const frp = Number(props.frp) || 0
+          const extId = typeof props.id === 'string' && props.id ? props.id : `firms:pt:${lat.toFixed(4)}:${lng.toFixed(4)}`
+          const conf = typeof props.confidence === 'string' ? props.confidence : 'n'
+          onSelectSignalRef.current({
+            id: `nasa_firms:${extId}`,
+            source: 'nasa_firms',
+            externalId: extId,
+            title: frp > 0 ? `Hotspot ${frp.toFixed(1)} MW` : 'Hotspot Satelit',
+            categoryLabel: confidenceLabel(conf),
+            lat,
+            lng,
+            date: typeof props.acqDate === 'string' ? props.acqDate : '',
+            confidence: conf,
+            frp,
+            ecosystem: 'tropical_forest',
+          })
+          return
+        }
         popupRef.current?.remove()
         popupRef.current = new Popup({ closeButton: false, maxWidth: '240px', className: 'blam-popup', offset: 10 })
           .setLngLat([lng, lat])
-          .setDOMContent(createHotspotPopupNode((feat.properties ?? {}) as Record<string, unknown>))
+          .setDOMContent(createHotspotPopupNode(props))
           .addTo(map)
       })
 
@@ -356,10 +386,28 @@ export default function MapView({
         const feat = e.features?.[0]
         if (!feat || feat.geometry.type !== 'Point') return
         const [lng, lat] = feat.geometry.coordinates as [number, number]
+        const props = (feat.properties ?? {}) as Record<string, unknown>
+        if (onSelectSignalRef.current) {
+          const extId = typeof props.id === 'string' && props.id ? props.id : `eonet:${lat.toFixed(4)}:${lng.toFixed(4)}`
+          const cat = typeof props.category === 'string' ? props.category.toLowerCase() : ''
+          const ecosystem: Ecosystem = cat === 'floods' ? 'watershed' : 'tropical_forest'
+          onSelectSignalRef.current({
+            id: `nasa_eonet:${extId}`,
+            source: 'nasa_eonet',
+            externalId: extId,
+            title: typeof props.title === 'string' && props.title ? props.title : 'Sinyal EONET',
+            categoryLabel: typeof props.categoryLabel === 'string' && props.categoryLabel ? props.categoryLabel : 'EONET',
+            lat,
+            lng,
+            date: typeof props.date === 'string' ? props.date : '',
+            ecosystem,
+          })
+          return
+        }
         popupRef.current?.remove()
         popupRef.current = new Popup({ closeButton: false, maxWidth: '250px', className: 'blam-popup', offset: 10 })
           .setLngLat([lng, lat])
-          .setDOMContent(createEonetPopupNode((feat.properties ?? {}) as Record<string, unknown>))
+          .setDOMContent(createEonetPopupNode(props))
           .addTo(map)
       })
 
@@ -483,10 +531,15 @@ export default function MapView({
   }, [showHotspots, showSpecies])
 
   useEffect(() => {
-    if (!selectedId) return
+    if (!selectedId || selectedSignal) return
     const ev = eventsRef.current.find((x) => x.id === selectedId)
     if (ev) focusOn(ev.lat, ev.lng, 10.5)
-  }, [selectedId])
+  }, [selectedId, selectedSignal])
+
+  useEffect(() => {
+    if (!selectedSignal) return
+    focusOn(selectedSignal.lat, selectedSignal.lng, 10.5)
+  }, [selectedSignal])
 
   useEffect(() => {
     if (fitAllSignal === 0) return

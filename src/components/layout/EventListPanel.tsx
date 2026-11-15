@@ -1,12 +1,12 @@
-import { Search, X } from 'lucide-react'
+import { Flame, Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { EVENT_STATUS_LABEL, eventPinTone, shortLocation } from '../../lib/constants'
 import { EcoBadge } from '../ui/atoms'
-import type { ConservationEvent } from '../../types'
+import type { ConservationEvent, SatelliteSignal } from '../../types'
 
-type ListTab = 'Disarankan' | 'Terbaru' | 'Dampak'
+type ListTab = 'Disarankan' | 'Terbaru' | 'Dampak' | 'Satelit'
 
-const TABS: ListTab[] = ['Disarankan', 'Terbaru', 'Dampak']
+const TABS: ListTab[] = ['Disarankan', 'Terbaru', 'Dampak', 'Satelit']
 const DOT = { critical: 'bg-critical', progress: 'bg-progress', resolved: 'bg-resolved' } as const
 const RANK = { open: 0, in_progress: 1, resolved: 2, cancelled: 3 } as const
 
@@ -36,28 +36,83 @@ function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListT
   )
 }
 
+function SignalRow({
+  signal,
+  linked,
+  onOpen,
+}: {
+  signal: SatelliteSignal
+  linked: boolean
+  onOpen: () => void
+}) {
+  const sourceLabel = signal.source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'
+  const meta = linked
+    ? `${sourceLabel} · Ada Event`
+    : `${sourceLabel} · ${signal.categoryLabel}${signal.date ? ` · ${signal.date}` : ''}`
+
+  return (
+    <li className="dashed-row">
+      <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 py-3.5 text-left">
+        <span className="grid size-11 shrink-0 place-items-center rounded-[14px] border border-line bg-canvas text-progress">
+          <Flame className="size-5" strokeWidth={2} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold text-ink">{signal.title}</span>
+          <span className="block truncate text-[13px] text-ink-soft">{meta}</span>
+        </span>
+        <span
+          className={`size-2.5 shrink-0 rounded-full ${linked ? 'bg-resolved' : 'bg-progress'}`}
+          aria-label="Sinyal Satelit"
+        />
+      </button>
+    </li>
+  )
+}
+
 export default function EventListPanel({
   events,
+  signals = [],
   query,
   onQueryChange,
   showSearch = true,
   autoFocus = false,
   onOpen,
+  onOpenSignal,
 }: {
   events: ConservationEvent[]
+  signals?: SatelliteSignal[]
   query: string
   onQueryChange: (q: string) => void
   showSearch?: boolean
   autoFocus?: boolean
   onOpen: (id: string) => void
+  onOpenSignal?: (signal: SatelliteSignal) => void
 }) {
   const [tab, setTab] = useState<ListTab>('Disarankan')
+
+  const linkedSet = useMemo(() => {
+    const s = new Set<string>()
+    for (const ev of events) {
+      if (ev.ref_source && ev.ref_external_id) {
+        s.add(`${ev.ref_source}:${ev.ref_external_id}`)
+      }
+    }
+    return s
+  }, [events])
+
+  const filteredSignals = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return signals.filter(
+      (sig) => !q || sig.title.toLowerCase().includes(q) || sig.categoryLabel.toLowerCase().includes(q),
+    )
+  }, [signals, query])
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     const base = events.filter(
       (ev) => !q || ev.title.toLowerCase().includes(q) || ev.location_name.toLowerCase().includes(q),
     )
+    if (tab === 'Satelit') return []
     if (tab === 'Terbaru') {
       return [...base].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at))
     }
@@ -68,6 +123,9 @@ export default function EventListPanel({
       (a, b) => RANK[a.status] - RANK[b.status] || +new Date(b.created_at) - +new Date(a.created_at),
     )
   }, [events, tab, query])
+
+  const shownSignals =
+    tab === 'Satelit' ? filteredSignals : tab === 'Disarankan' && onOpenSignal ? filteredSignals.slice(0, 4) : []
 
   return (
     <div>
@@ -89,7 +147,7 @@ export default function EventListPanel({
         </label>
       )}
 
-      <div role="tablist" className={`flex gap-1 ${showSearch ? 'mt-4' : ''}`}>
+      <div role="tablist" className={`flex flex-wrap gap-1 ${showSearch ? 'mt-4' : ''}`}>
         {TABS.map((t) => (
           <button
             key={t}
@@ -97,7 +155,7 @@ export default function EventListPanel({
             role="tab"
             aria-selected={tab === t}
             onClick={() => setTab(t)}
-            className={`h-11 rounded-full px-4 text-[15px] font-bold transition-colors ${
+            className={`h-11 rounded-full px-3.5 text-[14px] font-bold transition-colors ${
               tab === t ? 'bg-canvas text-ink' : 'text-ink-soft'
             }`}
           >
@@ -106,12 +164,37 @@ export default function EventListPanel({
         ))}
       </div>
 
-      <ul className="mt-2">
-        {rows.map((ev) => (
-          <EventRow key={ev.id} event={ev} tab={tab} onOpen={() => onOpen(ev.id)} />
-        ))}
-      </ul>
-      {rows.length === 0 && <p className="py-10 text-center text-sm font-semibold text-ink-soft">Tidak ada event</p>}
+      {rows.length > 0 && (
+        <ul className="mt-2">
+          {rows.map((ev) => (
+            <EventRow key={ev.id} event={ev} tab={tab} onOpen={() => onOpen(ev.id)} />
+          ))}
+        </ul>
+      )}
+
+      {shownSignals.length > 0 && onOpenSignal && (
+        <div className={rows.length > 0 ? 'mt-4 border-t-[1.5px] border-dashed border-dash pt-3' : 'mt-2'}>
+          {rows.length > 0 && (
+            <p className="mb-1 text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">Sinyal Satelit</p>
+          )}
+          <ul>
+            {shownSignals.map((sig) => (
+              <SignalRow
+                key={sig.id}
+                signal={sig}
+                linked={linkedSet.has(sig.id)}
+                onOpen={() => onOpenSignal(sig)}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {rows.length === 0 && shownSignals.length === 0 && (
+        <p className="py-10 text-center text-sm font-semibold text-ink-soft">
+          {tab === 'Satelit' ? 'Belum ada sinyal satelit' : 'Tidak ada event'}
+        </p>
+      )}
     </div>
   )
 }

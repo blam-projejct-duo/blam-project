@@ -293,6 +293,7 @@ async function fetchGuardedJson(
 }
 
 interface HotspotPoint {
+  id: string
   lat: number
   lng: number
   frp: number
@@ -355,14 +356,17 @@ function parseNasaFirmsCsv(text: string): { header: string; points: HotspotPoint
     const frp = Math.max(0, Number(parts[iFrp]) || 0)
     const brightness = Number(parts[iBri]) || 0
     const confidence = (parts[iConf] ?? 'n').trim().toLowerCase()
+    const acqDate = (parts[iDate] ?? '').trim()
+    const acqTime = (parts[iTime] ?? '').trim()
     points.push({
+      id: `firms:${acqDate || 'nd'}:${acqTime || 'nt'}:${lat.toFixed(4)}:${lng.toFixed(4)}`,
       lat,
       lng,
       frp: Number(frp.toFixed(2)),
       brightness: Number(brightness.toFixed(1)),
       confidence,
-      acqDate: (parts[iDate] ?? '').trim(),
-      acqTime: (parts[iTime] ?? '').trim(),
+      acqDate,
+      acqTime,
       satellite: (parts[iSat] ?? 'N21').trim(),
       daynight: (parts[iDn] ?? 'D').trim(),
     })
@@ -372,23 +376,29 @@ function parseNasaFirmsCsv(text: string): { header: string; points: HotspotPoint
   return { header, points }
 }
 
-function curateHotspotsForMap(rows: HotspotPoint[], centerLat: number, centerLng: number, limit = 260): HotspotPoint[] {
-  const local: HotspotPoint[] = []
-  const cellBest = new Map<string, HotspotPoint>()
+function curateHotspotsForMap(rows: HotspotPoint[], centerLat: number, centerLng: number, limit = 20): HotspotPoint[] {
+  const localBest = new Map<string, HotspotPoint>()
+  const regionalBest = new Map<string, HotspotPoint>()
 
   for (const h of rows) {
+    if (h.confidence !== 'h') continue
+
     const nearLocal = Math.abs(h.lat - centerLat) <= 0.35 && Math.abs(h.lng - centerLng) <= 0.35
     if (nearLocal) {
-      local.push(h)
+      const localKey = `${(Math.round(h.lat * 12) / 12).toFixed(2)},${(Math.round(h.lng * 12) / 12).toFixed(2)}`
+      const cur = localBest.get(localKey)
+      if (!cur || h.frp > cur.frp) localBest.set(localKey, h)
       continue
     }
-    if (h.confidence === 'l' && h.frp < 2) continue
-    const cellKey = `${(Math.round(h.lat * 25) / 25).toFixed(2)},${(Math.round(h.lng * 25) / 25).toFixed(2)}`
-    const cur = cellBest.get(cellKey)
-    if (!cur || h.frp > cur.frp) cellBest.set(cellKey, h)
+
+    const cellKey = `${(Math.round(h.lat * 2.5) / 2.5).toFixed(1)},${(Math.round(h.lng * 2.5) / 2.5).toFixed(1)}`
+    const cur = regionalBest.get(cellKey)
+    if (!cur || h.frp > cur.frp) regionalBest.set(cellKey, h)
   }
 
-  const regional = [...cellBest.values()].sort((a, b) => b.frp - a.frp)
+  const byFrp = (a: HotspotPoint, b: HotspotPoint) => b.frp - a.frp
+  const local = [...localBest.values()].sort(byFrp)
+  const regional = [...regionalBest.values()].sort(byFrp)
   return [...local, ...regional].slice(0, limit)
 }
 
@@ -442,8 +452,9 @@ async function fetchNasaFirmsHotspots(
   const south = Math.max(-90, lat - d).toFixed(3)
   const east = Math.min(180, lng + d).toFixed(3)
   const north = Math.min(90, lat + d).toFixed(3)
-  const res = await fetchNasaFirmsArea(`${west},${south},${east},${north}`, 5)
-  return { ...res, points: res.points.slice(0, 50) }
+  const res = await fetchNasaFirmsArea(`${west},${south},${east},${north}`, 2)
+  const high = res.points.filter((p) => p.confidence === 'h')
+  return { ...res, count: res.state === 'ok' ? high.length : null, points: high.slice(0, 10) }
 }
 
 const EONET_CATEGORY_LABEL: Record<string, string> = {
@@ -690,7 +701,11 @@ async function resolveActiveOrgMembership(
     }
   }
 
-  const picked = requestedOrgId ? verified.find((m) => m.organization_id === requestedOrgId) : verified[0]
+  const picked = requestedOrgId
+    ? verified.find((m) => m.organization_id === requestedOrgId)
+    : requireLead
+      ? (verified.find((m) => m.member_role === 'lead') ?? verified[0])
+      : verified[0]
   if (!picked) {
     return { organizationId: null, error: 'Anda bukan anggota aktif dari organisasi tersebut', status: 403 }
   }
@@ -854,7 +869,7 @@ app.get('/events', async (c) => {
   }
 
   const eventFields = `
-    id, organization_id, created_by, report_id, visibility, title, description,
+    id, organization_id, created_by, report_id, ref_source, ref_external_id, visibility, title, description,
     ecosystem, category, lat, lng, location_name, cover_image_url, status,
     start_at, end_at, max_participants, created_at, updated_at,
     organization:organizations!events_organization_id_fkey(id, name, slug, type, region, is_verified),
@@ -919,6 +934,8 @@ app.post('/events', async (c) => {
   const {
     organizationId,
     reportId,
+    refSource,
+    refExternalId,
     visibility = 'public',
     title,
     description = '',
@@ -933,6 +950,16 @@ app.post('/events', async (c) => {
     endAt,
     maxParticipants,
   } = body as Record<string, unknown>
+
+  const normalizedRefSource = typeof refSource === 'string' && refSource.trim() ? refSource.trim() : null
+  const normalizedRefExternalId =
+    typeof refExternalId === 'string' && refExternalId.trim() ? refExternalId.trim().slice(0, 120) : null
+  if (normalizedRefSource && !['nasa_firms', 'nasa_eonet'].includes(normalizedRefSource)) {
+    return c.json({ error: 'refSource harus nasa_firms atau nasa_eonet' }, 400)
+  }
+  if ((normalizedRefSource && !normalizedRefExternalId) || (!normalizedRefSource && normalizedRefExternalId)) {
+    return c.json({ error: 'refSource dan refExternalId wajib berpasangan' }, 400)
+  }
 
   if (!['public', 'members_only'].includes(String(visibility))) {
     return c.json({ error: 'Visibility harus public atau members_only' }, 400)
@@ -1021,12 +1048,32 @@ app.post('/events', async (c) => {
       ? Math.max(1, Math.round(Number(maxParticipants)))
       : null
 
+  if (normalizedRefSource && normalizedRefExternalId) {
+    const { data: existingRef } = await supa
+      .from('events')
+      .select('id, title')
+      .eq('ref_source', normalizedRefSource)
+      .eq('ref_external_id', normalizedRefExternalId)
+      .neq('status', 'cancelled')
+      .limit(1)
+      .maybeSingle()
+
+    if (existingRef) {
+      return c.json(
+        { error: `Titik satelit ini sudah ditindaklanjuti menjadi Event "${existingRef.title}"` },
+        409,
+      )
+    }
+  }
+
   const { data: created, error: insErr } = await supa
     .from('events')
     .insert({
       organization_id: resolvedOrgId,
       created_by: auth.profile.id,
       report_id: linkedReport?.id ?? null,
+      ref_source: normalizedRefSource,
+      ref_external_id: normalizedRefExternalId,
       visibility,
       title: title.trim().slice(0, 120),
       description: String(description).trim().slice(0, 600) || `Event ${String(category).trim()} di ${locationName.trim()}`,
@@ -1977,6 +2024,43 @@ app.post('/admin/moderate-event', async (c) => {
   return c.json({ ok: true, event: data })
 })
 
+const FALSE_HOTSPOTS_CACHE_KEY = 'moderation:false_hotspots'
+
+app.post('/admin/moderate-hotspot', async (c) => {
+  const { supa, error } = requireDb('ADMIN_MODERATE_HOTSPOT')
+  if (!supa) return c.json({ error }, 503)
+
+  const auth = await resolveAuth(c, supa)
+  if (!auth.profile) return c.json({ error: auth.error }, auth.status ?? 401)
+
+  const roleErr = requireRole(auth.profile, ['admin'], 'ADMIN_MODERATE_HOTSPOT')
+  if (roleErr) return c.json({ error: roleErr }, 403)
+
+  const body = await c.req.json().catch(() => null)
+  const hotspotId = typeof body?.hotspotId === 'string' ? body.hotspotId.trim().slice(0, 120) : ''
+  if (!hotspotId) return c.json({ error: 'hotspotId wajib diisi' }, 400)
+
+  const { data: row } = await supa
+    .from('env_cache')
+    .select('payload_json')
+    .eq('cache_key', FALSE_HOTSPOTS_CACHE_KEY)
+    .maybeSingle()
+
+  const current = Array.isArray(row?.payload_json) ? (row.payload_json as string[]) : []
+  const next = Array.from(new Set([...current, hotspotId])).slice(-500)
+  const nowIso = new Date().toISOString()
+
+  const { error: upsertErr } = await supa.from('env_cache').upsert({
+    cache_key: FALSE_HOTSPOTS_CACHE_KEY,
+    payload_json: next,
+    fetched_at: nowIso,
+    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  })
+
+  if (upsertErr) return c.json({ error: 'Gagal menyimpan moderasi hotspot' }, 500)
+  return c.json({ ok: true, hotspotId })
+})
+
 app.post('/agency/verify-action', async (c) => {
   const { supa, error } = requireDb('AGENCY_STAMP')
   if (!supa) return c.json({ error }, 503)
@@ -2119,7 +2203,7 @@ app.get('/env/layers', async (c) => {
   }
 
   const forceRefresh = c.req.query('refresh') === '1'
-  const firmsCacheKey = 'layers:firms:id:v1'
+  const firmsCacheKey = 'layers:firms:id:v3'
   const eonetCacheKey = 'layers:eonet:id:v1'
   const speciesCacheKey = `layers:species:${lat.toFixed(1)},${lng.toFixed(1)}:v1`
   const { supa } = requireDb('ENV_LAYERS_CACHE')
@@ -2128,15 +2212,23 @@ app.get('/env/layers', async (c) => {
   let cachedHotspots: HotspotPoint[] | null = null
   let cachedEonet: EonetPoint[] | null = null
   let cachedSpecies: SpeciesPoint[] | null = null
+  let falseHotspotIds = new Set<string>()
 
-  if (supa && !forceRefresh) {
+  if (supa) {
+    const keys = forceRefresh
+      ? [FALSE_HOTSPOTS_CACHE_KEY]
+      : [firmsCacheKey, eonetCacheKey, speciesCacheKey, FALSE_HOTSPOTS_CACHE_KEY]
     const { data: cacheRows } = await supa
       .from('env_cache')
-      .select('cache_key, payload_json')
-      .in('cache_key', [firmsCacheKey, eonetCacheKey, speciesCacheKey])
-      .gt('expires_at', nowIso)
+      .select('cache_key, payload_json, expires_at')
+      .in('cache_key', keys)
 
     for (const row of cacheRows ?? []) {
+      if (row.cache_key === FALSE_HOTSPOTS_CACHE_KEY && Array.isArray(row.payload_json)) {
+        falseHotspotIds = new Set(row.payload_json.map(String))
+        continue
+      }
+      if (!row.expires_at || row.expires_at <= nowIso) continue
       if (row.cache_key === firmsCacheKey && Array.isArray(row.payload_json)) {
         cachedHotspots = row.payload_json as HotspotPoint[]
       } else if (row.cache_key === eonetCacheKey && Array.isArray(row.payload_json)) {
@@ -2148,20 +2240,27 @@ app.get('/env/layers', async (c) => {
   }
 
   const [firmsRes, eonetRes, speciesRes] = await Promise.all([
-    cachedHotspots ? Promise.resolve(null) : fetchNasaFirmsArea('95,-11,141,6', 5),
+    cachedHotspots ? Promise.resolve(null) : fetchNasaFirmsArea('95,-11,141,6', 2),
     cachedEonet ? Promise.resolve(null) : fetchNasaEonetReference(),
     cachedSpecies ? Promise.resolve(null) : fetchInatSpeciesObservations(lat, lng, 55),
   ])
 
-  const allHotspots = cachedHotspots ?? firmsRes?.points ?? []
-  const hotspots = curateHotspotsForMap(allHotspots, lat, lng, 260)
+  const normalizedHotspots = (cachedHotspots ?? firmsRes?.points ?? [])
+    .map((h) => ({
+      ...h,
+      id:
+        h.id ||
+        `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${Number(h.lat).toFixed(4)}:${Number(h.lng).toFixed(4)}`,
+    }))
+    .filter((h) => !falseHotspotIds.has(h.id))
+  const hotspots = curateHotspotsForMap(normalizedHotspots, lat, lng, 20)
   const eonet = cachedEonet ?? eonetRes?.points ?? []
   const species = cachedSpecies ?? speciesRes?.species ?? []
 
   if (supa) {
     const expiresAt = new Date(Date.now() + TTL_MS).toISOString()
     if (!cachedHotspots && firmsRes?.state === 'ok') {
-      const curatedGlobal = curateHotspotsForMap(firmsRes.points, lat, lng, 350)
+      const curatedGlobal = curateHotspotsForMap(firmsRes.points, lat, lng, 20)
       await supa.from('env_cache').upsert({
         cache_key: firmsCacheKey,
         payload_json: curatedGlobal,

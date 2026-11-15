@@ -1,4 +1,4 @@
-import { Camera, Check, Link2, Lock, MapPin, QrCode, ShieldCheck } from 'lucide-react'
+import { Calendar, Camera, Check, Link2, Lock, MapPin, QrCode, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { Pill, StatusPill } from '../../components/ui/atoms'
 import { updateEventVisibility } from '../../lib/api'
@@ -29,7 +29,7 @@ function Tile({ value, unit, label }: { value: string; unit?: string; label: str
 }
 
 export default function EventDetail({ event, joined, onJoin, onRefresh }: Props) {
-  const { profile, openAuthModal, isLeadOf } = useAuth()
+  const { profile, openAuthModal, isLeadOf, isActiveMemberOf } = useAuth()
   const [copied, setCopied] = useState(false)
   const [busyJoin, setBusyJoin] = useState(false)
   const [busyVis, setBusyVis] = useState(false)
@@ -46,6 +46,19 @@ export default function EventDetail({ event, joined, onJoin, onRefresh }: Props)
   const beforeImage = event.cover_image_url ?? event.report?.before_image_url ?? null
 
   const canManageVisibility = profile?.role === 'admin' || isLeadOf(event.organization_id)
+  const membersOnlyLocked =
+    event.visibility === 'members_only' &&
+    Boolean(profile) &&
+    profile?.role !== 'admin' &&
+    !isActiveMemberOf(event.organization_id)
+  const scheduleLabel = event.start_at
+    ? new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date(event.start_at))
+    : null
   const canResolve =
     profile &&
     (profile.role === 'volunteer' || profile.role === 'agency' || profile.role === 'admin') &&
@@ -120,6 +133,14 @@ export default function EventDetail({ event, joined, onJoin, onRefresh }: Props)
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {event.organization && <Pill>{event.organization.name}</Pill>}
             <Pill>{event.category}</Pill>
+            {event.ref_source && (
+              <Pill>{event.ref_source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'}</Pill>
+            )}
+            {scheduleLabel && (
+              <Pill>
+                <Calendar className="size-3" /> {scheduleLabel}
+              </Pill>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -220,7 +241,7 @@ export default function EventDetail({ event, joined, onJoin, onRefresh }: Props)
             className={`h-13 w-full text-[15px] ${joined ? 'btn-joined' : 'btn-primary'} disabled:opacity-80`}
           >
             {joined && <Check className="size-5" strokeWidth={2.75} />}
-            {joined ? 'Tergabung' : 'Gabung'} · {quotaText}
+            {joined ? 'Tergabung' : membersOnlyLocked ? 'Khusus Anggota' : 'Gabung'} · {quotaText}
           </button>
         )}
 
