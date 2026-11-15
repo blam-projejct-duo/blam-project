@@ -1,9 +1,7 @@
 import {
   Bell,
   Building2,
-  CalendarPlus,
   Camera,
-  CheckSquare,
   ChevronLeft,
   ChevronRight,
   Leaf,
@@ -21,24 +19,21 @@ import {
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Orb } from '../ui/atoms'
-import { eventPinTone } from '../../lib/constants'
+import { pinTone } from '../../lib/constants'
 import AdminPanel from '../../modules/admin/AdminPanel'
 import AgencyInboxPanel from '../../modules/agency/AgencyInboxPanel'
 import { useAuth } from '../../modules/auth/AuthContext'
-import CreateEventForm from '../../modules/events/CreateEventForm'
-import EventDetail from '../../modules/events/EventDetail'
-import SatelliteSignalDetail from '../../modules/events/SatelliteSignalDetail'
 import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
 import MapView from '../../modules/map/MapView'
 import type { Radar } from '../../modules/map/useRadar'
 import OrgsPanel from '../../modules/organizations/OrgsPanel'
 import ProfilePanel from '../../modules/profile/ProfilePanel'
 import QuickReportFlow from '../../modules/reports/QuickReportFlow'
-import VerificationRadarPanel from '../../modules/reports/VerificationRadarPanel'
-import type { CitizenReport, PinTone, SatelliteSignal } from '../../types'
-import EventListPanel from './EventListPanel'
+import SiteDetail from '../../modules/reports/SiteDetail'
+import type { PinTone } from '../../types'
+import ReportListPanel from './ReportListPanel'
 
-type NavTab = 'Radar' | 'Lapor' | 'Dampak' | 'Org' | 'Verifikasi' | 'Event' | 'Eskalasi' | 'Admin'
+type NavTab = 'Radar' | 'Lapor' | 'Dampak' | 'Org' | 'Eskalasi' | 'Admin'
 type Tab = NavTab | 'Profil'
 
 const RAIL_W = 72
@@ -55,8 +50,6 @@ const NAV_ICON: Record<NavTab, ReactNode> = {
   Lapor: <Camera className="size-5" strokeWidth={2.25} />,
   Dampak: <Sprout className="size-5" strokeWidth={2.25} />,
   Org: <Building2 className="size-5" strokeWidth={2.25} />,
-  Verifikasi: <CheckSquare className="size-5" strokeWidth={2.25} />,
-  Event: <CalendarPlus className="size-5" strokeWidth={2.25} />,
   Eskalasi: <Shield className="size-5" strokeWidth={2.25} />,
   Admin: <ShieldCheck className="size-5" strokeWidth={2.25} />,
 }
@@ -108,49 +101,43 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 }
 
 export default function DesktopShell({ radar }: { radar: Radar }) {
-  const { profile, notifications } = useAuth()
+  const { profile, notifications, openAuthModal } = useAuth()
   const [tab, setTab] = useState<Tab>('Radar')
-  const [view, setView] = useState<'list' | 'detail'>(() => (radar.deepLinkedId ? 'detail' : 'list'))
+  const [view, setView] = useState<'list' | 'detail'>('list')
   const [drawerOpen, setDrawerOpen] = useState(true)
   const [query, setQuery] = useState('')
   const [tones, setTones] = useState<Set<PinTone>>(new Set())
-  const [draftReport, setDraftReport] = useState<CitizenReport | null>(null)
-  const [draftSignal, setDraftSignal] = useState<SatelliteSignal | null>(null)
 
   const unreadCount = notifications.filter((n) => !n.is_read).length
   const initials = profile?.full_name ? profile.full_name.slice(0, 1).toUpperCase() : null
   const selected = radar.selected
   const edge = RAIL_W + (drawerOpen ? DRAWER_W : 0)
-  const canOrganize = Boolean(
-    profile && (profile.role === 'volunteer' || profile.role === 'agency' || profile.role === 'admin'),
-  )
 
   const navTabs = useMemo<NavTab[]>(() => {
     const base: NavTab[] = ['Radar', 'Lapor', 'Dampak', 'Org']
-    if (canOrganize) base.push('Verifikasi', 'Event')
     if (profile?.role === 'agency') base.push('Eskalasi')
     if (profile?.role === 'admin') base.push('Admin')
     return base
-  }, [canOrganize, profile?.role])
+  }, [profile?.role])
 
-  const visibleEvents = useMemo(
-    () => (tones.size === 0 ? radar.events : radar.events.filter((ev) => tones.has(eventPinTone(ev.status)))),
-    [radar.events, tones],
+  const visibleReports = useMemo(
+    () => (tones.size === 0 ? radar.reports : radar.reports.filter((r) => tones.has(pinTone(r.status)))),
+    [radar.reports, tones],
   )
 
   const impactStats = useMemo(() => {
     let wasteKg = 0
     let trees = 0
     let resolved = 0
-    for (const ev of radar.allEvents) {
-      if (ev.status === 'resolved') resolved += 1
-      for (const a of ev.event_actions ?? []) {
+    for (const r of radar.allReports) {
+      if (r.status === 'resolved') resolved += 1
+      for (const a of r.report_actions ?? []) {
         wasteKg += Number(a.waste_kg) || 0
         trees += a.trees_planted || 0
       }
     }
-    return { total: radar.allEvents.length, resolved, wasteKg, trees }
-  }, [radar.allEvents])
+    return { total: radar.allReports.length, resolved, wasteKg, trees }
+  }, [radar.allReports])
 
   const hotspotLabel = radar.showHotspots && radar.layersLoading ? 'Hotspot…' : 'Hotspot'
   const speciesLabel = radar.showSpecies && radar.layersLoading ? 'Spesies…' : 'Spesies'
@@ -160,10 +147,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
       setDrawerOpen(false)
       return
     }
-    if (next === 'Event') {
-      setDraftReport(null)
-      setDraftSignal(null)
-    }
     setTab(next)
     setDrawerOpen(true)
   }
@@ -172,20 +155,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     radar.setSelectedId(id)
     setTab('Radar')
     setView('detail')
-    setDrawerOpen(true)
-  }
-
-  const openSignalDetail = (signal: SatelliteSignal) => {
-    radar.setSelectedSignal(signal)
-    setTab('Radar')
-    setView('detail')
-    setDrawerOpen(true)
-  }
-
-  const startCreateEvent = (report: CitizenReport | null = null, signal: SatelliteSignal | null = null) => {
-    setDraftReport(report)
-    setDraftSignal(signal)
-    setTab('Event')
     setDrawerOpen(true)
   }
 
@@ -219,43 +188,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
       )
     }
 
-    if (view === 'detail' && radar.selectedSignal) {
-      const sig = radar.selectedSignal
-      const linkedEvent =
-        radar.allEvents.find((ev) => ev.ref_source === sig.source && ev.ref_external_id === sig.externalId) ?? null
-      return (
-        <>
-          <header className="flex h-16 shrink-0 items-center gap-3 px-5">
-            <button
-              type="button"
-              onClick={() => {
-                radar.setSelectedSignal(null)
-                setView('list')
-              }}
-              aria-label="Kembali ke daftar"
-              className="grid size-10 place-items-center rounded-full border border-line bg-canvas text-ink hover:bg-muted"
-            >
-              <ChevronLeft className="size-5" />
-            </button>
-          </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
-            <SatelliteSignalDetail
-              key={sig.id}
-              signal={sig}
-              linkedEvent={linkedEvent}
-              onOpenEvent={openDetail}
-              onCreateEvent={(s) => startCreateEvent(null, s)}
-              onModerated={async () => {
-                radar.setSelectedSignal(null)
-                setView('list')
-                await radar.refreshLayers()
-              }}
-            />
-          </div>
-        </>
-      )
-    }
-
     if (view === 'detail' && selected) {
       return (
         <>
@@ -270,9 +202,9 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             </button>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
-            <EventDetail
+            <SiteDetail
               key={selected.id}
-              event={selected}
+              report={selected}
               joined={radar.joinedIds.has(selected.id)}
               onJoin={async () => {
                 await radar.joinAction(selected.id)
@@ -286,32 +218,19 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
 
     return (
       <>
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-5">
+        <header className="flex h-16 shrink-0 items-center justify-between px-5">
           <h2 className="text-lg font-extrabold tracking-tight text-ink">Radar</h2>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-ink-soft">
-              {radar.state === 'loading' ? 'Memuat…' : `${visibleEvents.length} titik`}
-            </span>
-            {canOrganize && (
-              <button
-                type="button"
-                onClick={() => startCreateEvent(null)}
-                className="inline-flex h-8 items-center gap-1 rounded-full bg-cobalt px-3 text-xs font-bold text-white"
-              >
-                <Plus className="size-3.5" /> Event
-              </button>
-            )}
-          </div>
+          <span className="text-sm font-bold text-ink-soft">
+            {radar.state === 'loading' ? 'Memuat…' : `${visibleReports.length} titik`}
+          </span>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
-          <EventListPanel
-            events={visibleEvents}
-            signals={radar.satelliteSignals}
+          <ReportListPanel
+            reports={visibleReports}
             query={query}
             onQueryChange={setQuery}
             showSearch={false}
             onOpen={openDetail}
-            onOpenSignal={openSignalDetail}
           />
         </div>
       </>
@@ -322,14 +241,11 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     <div className="relative h-dvh w-screen overflow-hidden bg-canvas">
       <div className="absolute inset-0">
         <MapView
-          events={visibleEvents}
+          reports={visibleReports}
           hotspots={radar.hotspots}
-          eonetPoints={radar.eonetPoints}
           speciesPoints={radar.speciesPoints}
           selectedId={radar.selectedId}
-          selectedSignal={radar.selectedSignal}
           onSelect={openDetail}
-          onSelectSignal={openSignalDetail}
           style={radar.style}
           showHotspots={radar.showHotspots}
           showSpecies={radar.showSpecies}
@@ -348,7 +264,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         <button
           type="button"
           onClick={() => {
-            radar.setSelectedSignal(null)
             setTab('Radar')
             setView('list')
             setDrawerOpen(true)
@@ -360,7 +275,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           <Leaf className="size-6" strokeWidth={2.25} />
         </button>
 
-        <div className="flex w-full flex-1 flex-col overflow-y-auto">
+        <div className="flex w-full flex-1 flex-col">
           {navTabs.map((label) => (
             <RailItem
               key={label}
@@ -374,11 +289,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           ))}
         </div>
 
-        <RailItem
-          label={profile ? 'Profil' : 'Masuk'}
-          active={tab === 'Profil' && drawerOpen}
-          onClick={() => openTab('Profil')}
-        >
+        <RailItem label="Profil" active={tab === 'Profil' && drawerOpen} onClick={() => openTab('Profil')}>
           <User className="size-5" strokeWidth={2.25} />
         </RailItem>
       </nav>
@@ -396,23 +307,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         {tab === 'Lapor' && (
           <QuickReportFlow
             onClose={() => setTab('Radar')}
-            onOpenVerification={() => openTab('Verifikasi')}
-          />
-        )}
-
-        {tab === 'Event' && (
-          <CreateEventForm
-            key={draftReport?.id ?? draftSignal?.id ?? 'standalone'}
-            initialReport={draftReport}
-            initialSignal={draftSignal}
-            onClose={() => {
-              setDraftReport(null)
-              setDraftSignal(null)
-              setTab('Radar')
-            }}
-            onCreated={async (id) => {
-              setDraftReport(null)
-              setDraftSignal(null)
+            onPublished={async (id) => {
               radar.setFilter('all')
               await radar.refresh()
               openDetail(id)
@@ -420,21 +315,12 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           />
         )}
 
-        {tab === 'Verifikasi' && (
-          <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <VerificationRadarPanel
-              onCreateEvent={(report) => startCreateEvent(report)}
-              onCreateStandaloneEvent={() => startCreateEvent(null)}
-            />
-          </div>
-        )}
-
         {tab === 'Dampak' && (
           <div className="min-h-0 flex-1 overflow-y-auto p-5">
             <h2 className="mb-4 text-xl font-extrabold tracking-tight text-ink">Dampak</h2>
             <div className="grid grid-cols-2 gap-3">
               {[
-                ['Event', impactStats.total],
+                ['Titik', impactStats.total],
                 ['Pulih', impactStats.resolved],
                 ['Sampah (kg)', impactStats.wasteKg],
                 ['Bibit', impactStats.trees],
@@ -456,18 +342,13 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
 
         {tab === 'Eskalasi' && (
           <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <AgencyInboxPanel
-              events={radar.allEvents}
-              onSelectEvent={openDetail}
-              onCreateEventFromReport={(report) => startCreateEvent(report)}
-              onRefresh={radar.refresh}
-            />
+            <AgencyInboxPanel reports={radar.allReports} onSelectReport={openDetail} onRefresh={radar.refresh} />
           </div>
         )}
 
         {tab === 'Admin' && (
           <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <AdminPanel events={radar.allEvents} onRefreshEvents={radar.refresh} />
+            <AdminPanel reports={radar.allReports} onRefreshReports={radar.refresh} />
           </div>
         )}
 
@@ -527,7 +408,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         <Orb
           size={48}
           label={profile ? 'Profil' : 'Masuk'}
-          onClick={() => openTab('Profil')}
+          onClick={() => (profile ? openTab('Profil') : openAuthModal())}
           className="text-sm font-extrabold"
         >
           {initials ?? <User className="size-5 text-ink-soft" />}
@@ -535,7 +416,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         <Orb
           size={48}
           label="Notifikasi"
-          onClick={() => openTab('Profil')}
+          onClick={() => (profile ? openTab('Profil') : openAuthModal())}
           className="relative"
         >
           <Bell className="size-5 text-ink" strokeWidth={2.25} />

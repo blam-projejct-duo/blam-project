@@ -1,31 +1,27 @@
 import { ImagePlus } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { ModalShell } from '../../components/ui/atoms'
-import { resolveEvent } from '../../lib/api'
+import { resolveReport } from '../../lib/api'
 import { compressImage } from '../../lib/imageCompress'
 import type { CompressedImage } from '../../lib/imageCompress'
-import type { ConservationEvent } from '../../types'
+import type { Report } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 
 const field =
   'h-12 w-full rounded-full border border-line bg-canvas px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-cobalt focus:bg-white focus:outline-none'
 
 export default function ResolveActionModal({
-  event,
+  report,
   onClose,
   onResolved,
 }: {
-  event: ConservationEvent
+  report: Report
   onClose: () => void
   onResolved: () => Promise<void>
 }) {
   const { memberships, refreshMe } = useAuth()
   const activeOrgs = memberships.filter((m) => m.status === 'active' && m.organization?.is_verified)
-  const [orgId, setOrgId] = useState(
-    activeOrgs.find((m) => m.organization_id === event.organization_id)?.organization_id ??
-      activeOrgs[0]?.organization_id ??
-      '',
-  )
+  const [orgId, setOrgId] = useState(activeOrgs[0]?.organization_id ?? '')
   const [wasteKg, setWasteKg] = useState('0')
   const [treesPlanted, setTreesPlanted] = useState('0')
   const [notes, setNotes] = useState('')
@@ -46,12 +42,12 @@ export default function ResolveActionModal({
   }
 
   const submit = async () => {
-    if (!photo) return setError('Pilih foto sesudah terlebih dahulu')
-    if (notes.trim().length < 5) return setError('Isi catatan aksi (minimal 5 karakter)')
+    if (!photo) return setError('Pilih foto After terlebih dahulu')
+    if (notes.trim().length < 5) return setError('Isi catatan aksi lapangan (minimal 5 karakter)')
     setBusy(true)
     setError(null)
     try {
-      await resolveEvent(event.id, {
+      await resolveReport(report.id, {
         imageBase64: photo.base64,
         mimeType: photo.mimeType,
         notes: notes.trim(),
@@ -62,16 +58,16 @@ export default function ResolveActionModal({
       await Promise.all([refreshMe(), onResolved()])
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal mengirim bukti sesudah')
+      setError(err instanceof Error ? err.message : 'Gagal mengirim bukti After')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <ModalShell title="Foto After" onClose={onClose}>
+    <ModalShell title="Unggah Foto After" onClose={onClose}>
       <div className="flex flex-col gap-4">
-        <p className="text-sm font-bold text-ink">{event.title}</p>
+        <p className="text-sm font-bold text-ink">{report.title}</p>
 
         {activeOrgs.length > 0 && (
           <select
@@ -116,7 +112,7 @@ export default function ResolveActionModal({
 
         <input
           className={field}
-          placeholder="Catatan aksi"
+          placeholder="Catatan"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           maxLength={400}

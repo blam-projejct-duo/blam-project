@@ -1,13 +1,7 @@
 import { Droplets, TreePine, Waves, X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import {
-  ECOSYSTEM_LABEL,
-  EVENT_STATUS_LABEL,
-  REPORT_STATUS_LABEL,
-  eventPinTone,
-  reportPinTone,
-} from '../../lib/constants'
-import type { Ecosystem, EventStatus, ReportStatus } from '../../types'
+import { ECOSYSTEM_LABEL, STATUS_LABEL, pinTone } from '../../lib/constants'
+import type { Ecosystem, ReportStatus } from '../../types'
 
 const DOT = {
   critical: 'bg-critical',
@@ -15,20 +9,11 @@ const DOT = {
   resolved: 'bg-resolved',
 } as const
 
-export function StatusPill({ status }: { status: EventStatus }) {
+export function StatusPill({ status }: { status: ReportStatus }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-xs font-bold text-ink">
-      <span className={`size-2 rounded-full ${DOT[eventPinTone(status)]}`} />
-      {EVENT_STATUS_LABEL[status]}
-    </span>
-  )
-}
-
-export function ReportStatusPill({ status }: { status: ReportStatus }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-ink">
-      <span className={`size-2 rounded-full ${DOT[reportPinTone(status)]}`} />
-      {REPORT_STATUS_LABEL[status]}
+      <span className={`size-2 rounded-full ${DOT[pinTone(status)]}`} />
+      {STATUS_LABEL[status]}
     </span>
   )
 }

@@ -8,7 +8,6 @@ export type OrgType = 'community' | 'agency'
 export type MemberRole = 'lead' | 'member'
 export type MemberStatus = 'pending' | 'active'
 export type MapStyle = 'terang' | 'gelap' | 'satelit'
-export type RefSource = 'nasa_firms' | 'nasa_eonet'
 
 export interface Profile {
   id: string
@@ -105,8 +104,6 @@ export interface ConservationEvent {
   organization_id: string
   created_by: string | null
   report_id: string | null
-  ref_source?: RefSource | null
-  ref_external_id?: string | null
   visibility: EventVisibility
   title: string
   description: string
@@ -153,7 +150,6 @@ export interface NotificationItem {
 }
 
 export interface HotspotPoint {
-  id?: string
   lat: number
   lng: number
   frp: number
@@ -163,20 +159,6 @@ export interface HotspotPoint {
   acqTime: string
   satellite: string
   daynight: string
-}
-
-export interface SatelliteSignal {
-  id: string
-  source: RefSource
-  externalId: string
-  title: string
-  categoryLabel: string
-  lat: number
-  lng: number
-  date: string
-  confidence?: string
-  frp?: number
-  ecosystem: Ecosystem
 }
 
 export interface EonetPoint {

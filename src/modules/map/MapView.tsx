@@ -2,8 +2,8 @@ import { LngLatBounds, Map as MapLibreMap, Marker, Popup, setWorkerUrl } from 'm
 import type { GeoJSONSource } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { useEffect, useRef } from 'react'
-import { eventPinTone } from '../../lib/constants'
-import type { ConservationEvent, Ecosystem, EonetPoint, HotspotPoint, MapStyle, SatelliteSignal, SpeciesPoint } from '../../types'
+import { pinTone } from '../../lib/constants'
+import type { HotspotPoint, MapStyle, Report, SpeciesPoint } from '../../types'
 import { applyMapStyle, createInitialMapStyle } from './mapStyles'
 
 setWorkerUrl(maplibreWorkerUrl)
@@ -22,14 +22,11 @@ export interface ZoomCommand {
 }
 
 interface Props {
-  events: ConservationEvent[]
+  reports: Report[]
   hotspots: HotspotPoint[]
-  eonetPoints: EonetPoint[]
   speciesPoints: SpeciesPoint[]
   selectedId: string | null
-  selectedSignal?: SatelliteSignal | null
   onSelect: (id: string) => void
-  onSelectSignal?: (signal: SatelliteSignal) => void
   style: MapStyle
   showHotspots: boolean
   showSpecies: boolean
@@ -53,9 +50,6 @@ function buildHotspotGeoJson(hotspots: HotspotPoint[]) {
     features: hotspots.map((h) => ({
       type: 'Feature' as const,
       properties: {
-        id:
-          h.id ||
-          `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${h.lat.toFixed(4)}:${h.lng.toFixed(4)}`,
         frp: h.frp,
         brightness: h.brightness,
         confidence: h.confidence,
@@ -67,26 +61,6 @@ function buildHotspotGeoJson(hotspots: HotspotPoint[]) {
       geometry: {
         type: 'Point' as const,
         coordinates: [h.lng, h.lat],
-      },
-    })),
-  }
-}
-
-function buildEonetGeoJson(eonet: EonetPoint[]) {
-  return {
-    type: 'FeatureCollection' as const,
-    features: eonet.map((e) => ({
-      type: 'Feature' as const,
-      properties: {
-        id: e.id,
-        title: e.title,
-        category: e.category,
-        categoryLabel: e.categoryLabel,
-        date: e.date,
-      },
-      geometry: {
-        type: 'Point' as const,
-        coordinates: [e.lng, e.lat],
       },
     })),
   }
@@ -131,25 +105,7 @@ function createHotspotPopupNode(props: Record<string, unknown>): HTMLDivElement 
   const meta = document.createElement('p')
   meta.className = 'text-[11px] font-semibold text-ink-soft'
   const date = typeof props.acqDate === 'string' && props.acqDate ? props.acqDate : '-'
-  meta.textContent = `NASA FIRMS · ${confidenceLabel(props.confidence)} · ${date}`
-
-  root.append(title, meta)
-  return root
-}
-
-function createEonetPopupNode(props: Record<string, unknown>): HTMLDivElement {
-  const root = document.createElement('div')
-  root.className = 'flex flex-col gap-0.5 text-left'
-
-  const title = document.createElement('p')
-  title.className = 'text-[13px] font-extrabold text-ink'
-  title.textContent = typeof props.title === 'string' && props.title ? props.title : 'Bencana EONET'
-
-  const meta = document.createElement('p')
-  meta.className = 'text-[11px] font-semibold text-ink-soft'
-  const cat = typeof props.categoryLabel === 'string' && props.categoryLabel ? props.categoryLabel : 'EONET'
-  const date = typeof props.date === 'string' && props.date ? props.date : '-'
-  meta.textContent = `NASA EONET · ${cat} · ${date}`
+  meta.textContent = `${confidenceLabel(props.confidence)} · ${date}`
 
   root.append(title, meta)
   return root
@@ -178,14 +134,11 @@ function createSpeciesPopupNode(props: Record<string, unknown>): HTMLDivElement 
 }
 
 export default function MapView({
-  events,
+  reports,
   hotspots,
-  eonetPoints,
   speciesPoints,
   selectedId,
-  selectedSignal = null,
   onSelect,
-  onSelectSignal,
   style,
   showHotspots,
   showSpecies,
@@ -202,11 +155,9 @@ export default function MapView({
   const popupRef = useRef<Popup | null>(null)
 
   const onSelectRef = useRef(onSelect)
-  const onSelectSignalRef = useRef(onSelectSignal)
   const paddingRef = useRef(padding)
-  const eventsRef = useRef(events)
+  const reportsRef = useRef(reports)
   const hotspotsRef = useRef(hotspots)
-  const eonetRef = useRef(eonetPoints)
   const speciesRef = useRef(speciesPoints)
   const styleRef = useRef(style)
   const showHotspotsRef = useRef(showHotspots)
@@ -214,11 +165,9 @@ export default function MapView({
 
   useEffect(() => {
     onSelectRef.current = onSelect
-    onSelectSignalRef.current = onSelectSignal
     paddingRef.current = padding
-    eventsRef.current = events
+    reportsRef.current = reports
     hotspotsRef.current = hotspots
-    eonetRef.current = eonetPoints
     speciesRef.current = speciesPoints
     styleRef.current = style
     showHotspotsRef.current = showHotspots
@@ -296,35 +245,6 @@ export default function MapView({
         },
       })
 
-      map.addSource('blam-eonet', {
-        type: 'geojson',
-        data: buildEonetGeoJson(eonetRef.current),
-      })
-      map.addLayer({
-        id: 'blam-eonet-halo',
-        type: 'circle',
-        source: 'blam-eonet',
-        layout: { visibility: hotspotVis },
-        paint: {
-          'circle-radius': 15,
-          'circle-color': '#F59E0B',
-          'circle-opacity': 0.24,
-        },
-      })
-      map.addLayer({
-        id: 'blam-eonet-core',
-        type: 'circle',
-        source: 'blam-eonet',
-        layout: { visibility: hotspotVis },
-        paint: {
-          'circle-radius': 7,
-          'circle-color': '#F59E0B',
-          'circle-opacity': 0.95,
-          'circle-stroke-color': '#FFFFFF',
-          'circle-stroke-width': 2,
-        },
-      })
-
       map.addSource('blam-species', {
         type: 'geojson',
         data: buildSpeciesGeoJson(speciesRef.current),
@@ -346,7 +266,7 @@ export default function MapView({
       const setPointer = (on: boolean) => {
         map.getCanvas().style.cursor = on ? 'pointer' : ''
       }
-      for (const layerId of ['blam-hotspots-core', 'blam-eonet-core', 'blam-species-circle'] as const) {
+      for (const layerId of ['blam-hotspots-core', 'blam-species-circle'] as const) {
         map.on('mouseenter', layerId, () => setPointer(true))
         map.on('mouseleave', layerId, () => setPointer(false))
       }
@@ -355,59 +275,10 @@ export default function MapView({
         const feat = e.features?.[0]
         if (!feat || feat.geometry.type !== 'Point') return
         const [lng, lat] = feat.geometry.coordinates as [number, number]
-        const props = (feat.properties ?? {}) as Record<string, unknown>
-        if (onSelectSignalRef.current) {
-          const frp = Number(props.frp) || 0
-          const extId = typeof props.id === 'string' && props.id ? props.id : `firms:pt:${lat.toFixed(4)}:${lng.toFixed(4)}`
-          const conf = typeof props.confidence === 'string' ? props.confidence : 'n'
-          onSelectSignalRef.current({
-            id: `nasa_firms:${extId}`,
-            source: 'nasa_firms',
-            externalId: extId,
-            title: frp > 0 ? `Hotspot ${frp.toFixed(1)} MW` : 'Hotspot Satelit',
-            categoryLabel: confidenceLabel(conf),
-            lat,
-            lng,
-            date: typeof props.acqDate === 'string' ? props.acqDate : '',
-            confidence: conf,
-            frp,
-            ecosystem: 'tropical_forest',
-          })
-          return
-        }
         popupRef.current?.remove()
-        popupRef.current = new Popup({ closeButton: false, maxWidth: '240px', className: 'blam-popup', offset: 10 })
+        popupRef.current = new Popup({ closeButton: false, maxWidth: '220px', className: 'blam-popup', offset: 10 })
           .setLngLat([lng, lat])
-          .setDOMContent(createHotspotPopupNode(props))
-          .addTo(map)
-      })
-
-      map.on('click', 'blam-eonet-core', (e) => {
-        const feat = e.features?.[0]
-        if (!feat || feat.geometry.type !== 'Point') return
-        const [lng, lat] = feat.geometry.coordinates as [number, number]
-        const props = (feat.properties ?? {}) as Record<string, unknown>
-        if (onSelectSignalRef.current) {
-          const extId = typeof props.id === 'string' && props.id ? props.id : `eonet:${lat.toFixed(4)}:${lng.toFixed(4)}`
-          const cat = typeof props.category === 'string' ? props.category.toLowerCase() : ''
-          const ecosystem: Ecosystem = cat === 'floods' ? 'watershed' : 'tropical_forest'
-          onSelectSignalRef.current({
-            id: `nasa_eonet:${extId}`,
-            source: 'nasa_eonet',
-            externalId: extId,
-            title: typeof props.title === 'string' && props.title ? props.title : 'Sinyal EONET',
-            categoryLabel: typeof props.categoryLabel === 'string' && props.categoryLabel ? props.categoryLabel : 'EONET',
-            lat,
-            lng,
-            date: typeof props.date === 'string' ? props.date : '',
-            ecosystem,
-          })
-          return
-        }
-        popupRef.current?.remove()
-        popupRef.current = new Popup({ closeButton: false, maxWidth: '250px', className: 'blam-popup', offset: 10 })
-          .setLngLat([lng, lat])
-          .setDOMContent(createEonetPopupNode(props))
+          .setDOMContent(createHotspotPopupNode((feat.properties ?? {}) as Record<string, unknown>))
           .addTo(map)
       })
 
@@ -453,7 +324,7 @@ export default function MapView({
     const map = mapRef.current
     if (!map) return
     const markers = markersRef.current
-    const ids = new Set(events.map((ev) => ev.id))
+    const ids = new Set(reports.map((r) => r.id))
 
     for (const [id, entry] of markers) {
       if (!ids.has(id)) {
@@ -462,39 +333,42 @@ export default function MapView({
       }
     }
 
-    for (const ev of events) {
-      const selected = ev.id === selectedId
-      const tone = eventPinTone(ev.status)
-      const existing = markers.get(ev.id)
+    for (const report of reports) {
+      const selected = report.id === selectedId
+      const tone = pinTone(report.status)
+      const source = report.source ?? 'user'
+      const existing = markers.get(report.id)
 
       if (existing) {
         existing.el.dataset.status = tone
+        existing.el.dataset.source = source
         existing.el.dataset.selected = String(selected)
         existing.wrapper.style.zIndex = selected ? '10' : '1'
-        existing.marker.setLngLat([ev.lng, ev.lat])
+        existing.marker.setLngLat([report.lng, report.lat])
       } else {
         // MapLibre owns the transform of the marker element; visuals live in a child.
         const wrapper = document.createElement('div')
         const el = document.createElement('div')
         el.className = 'pin'
         el.dataset.status = tone
+        el.dataset.source = source
         el.dataset.selected = String(selected)
-        el.title = ev.title
+        el.title = report.title
         el.style.cursor = 'pointer'
         wrapper.style.zIndex = selected ? '10' : '1'
         wrapper.appendChild(el)
         el.addEventListener('click', (e) => {
           e.stopPropagation()
-          onSelectRef.current(ev.id)
+          onSelectRef.current(report.id)
         })
 
         const marker = new Marker({ element: wrapper, anchor: 'center' })
-          .setLngLat([ev.lng, ev.lat])
+          .setLngLat([report.lng, report.lat])
           .addTo(map)
-        markers.set(ev.id, { marker, wrapper, el })
+        markers.set(report.id, { marker, wrapper, el })
       }
     }
-  }, [events, selectedId])
+  }, [reports, selectedId])
 
   useEffect(() => {
     const map = mapRef.current
@@ -502,13 +376,6 @@ export default function MapView({
     const hotspotSrc = map.getSource('blam-hotspots') as GeoJSONSource | undefined
     hotspotSrc?.setData(buildHotspotGeoJson(hotspots))
   }, [hotspots])
-
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !readyRef.current) return
-    const eonetSrc = map.getSource('blam-eonet') as GeoJSONSource | undefined
-    eonetSrc?.setData(buildEonetGeoJson(eonetPoints))
-  }, [eonetPoints])
 
   useEffect(() => {
     const map = mapRef.current
@@ -524,29 +391,22 @@ export default function MapView({
     const speciesVis = showSpecies ? 'visible' : 'none'
     if (map.getLayer('blam-hotspots-halo')) map.setLayoutProperty('blam-hotspots-halo', 'visibility', hotspotVis)
     if (map.getLayer('blam-hotspots-core')) map.setLayoutProperty('blam-hotspots-core', 'visibility', hotspotVis)
-    if (map.getLayer('blam-eonet-halo')) map.setLayoutProperty('blam-eonet-halo', 'visibility', hotspotVis)
-    if (map.getLayer('blam-eonet-core')) map.setLayoutProperty('blam-eonet-core', 'visibility', hotspotVis)
     if (map.getLayer('blam-species-circle')) map.setLayoutProperty('blam-species-circle', 'visibility', speciesVis)
     if (!showHotspots && !showSpecies) popupRef.current?.remove()
   }, [showHotspots, showSpecies])
 
   useEffect(() => {
-    if (!selectedId || selectedSignal) return
-    const ev = eventsRef.current.find((x) => x.id === selectedId)
-    if (ev) focusOn(ev.lat, ev.lng, 10.5)
-  }, [selectedId, selectedSignal])
-
-  useEffect(() => {
-    if (!selectedSignal) return
-    focusOn(selectedSignal.lat, selectedSignal.lng, 10.5)
-  }, [selectedSignal])
+    if (!selectedId) return
+    const r = reportsRef.current.find((x) => x.id === selectedId)
+    if (r) focusOn(r.lat, r.lng, 10.5)
+  }, [selectedId])
 
   useEffect(() => {
     if (fitAllSignal === 0) return
     const map = mapRef.current
-    if (!map || eventsRef.current.length === 0) return
+    if (!map || reportsRef.current.length === 0) return
     const bounds = new LngLatBounds()
-    for (const ev of eventsRef.current) bounds.extend([ev.lng, ev.lat])
+    for (const r of reportsRef.current) bounds.extend([r.lng, r.lat])
     const { bottom, right, left = 0 } = paddingRef.current
     map.fitBounds(bounds, {
       padding: { top: 96, bottom: 48 + bottom, left: 48 + left, right: 48 + right },

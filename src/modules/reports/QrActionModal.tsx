@@ -1,17 +1,17 @@
 import { Check, Copy } from 'lucide-react'
 import { useState } from 'react'
 import { ModalShell } from '../../components/ui/atoms'
-import type { ConservationEvent } from '../../types'
+import type { Report } from '../../types'
 
 export default function QrActionModal({
-  event,
+  report,
   onClose,
 }: {
-  event: ConservationEvent
+  report: Report
   onClose: () => void
 }) {
   const [copied, setCopied] = useState(false)
-  const shareUrl = `${window.location.origin}/?event=${event.id}`
+  const shareUrl = `${window.location.origin}/?titik=${report.id}`
   const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(shareUrl)}`
 
   const copy = async () => {
@@ -27,8 +27,8 @@ export default function QrActionModal({
           <img src={qrImgUrl} alt="QR Aksi" className="size-48 rounded-[16px] bg-white p-2" />
         </div>
         <div>
-          <p className="text-base font-extrabold text-ink">{event.title}</p>
-          <p className="mt-1 text-xs font-medium text-ink-soft">{event.location_name}</p>
+          <p className="text-base font-extrabold text-ink">{report.title}</p>
+          <p className="mt-1 text-xs font-medium text-ink-soft">{report.location_name}</p>
         </div>
         <button type="button" onClick={() => void copy()} className="btn-primary h-12 w-full text-sm">
           {copied ? <Check className="size-4" /> : <Copy className="size-4" />}

@@ -1,64 +1,41 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Ban, Check } from 'lucide-react'
-import { useState } from 'react'
-import { Pill, ReportStatusPill, StatusPill } from '../../components/ui/atoms'
-import {
-  fetchOrgs,
-  fetchReportsQueue,
-  moderateEventAdmin,
-  moderateReportAdmin,
-  verifyOrgAdmin,
-} from '../../lib/api'
-import type { ConservationEvent } from '../../types'
+import { useCallback, useEffect, useState } from 'react'
+import { Pill, StatusPill } from '../../components/ui/atoms'
+import { fetchOrgs, moderateReportAdmin, verifyOrgAdmin } from '../../lib/api'
+import type { Organization, Report } from '../../types'
 
 export default function AdminPanel({
-  events,
-  onRefreshEvents,
+  reports,
+  onRefreshReports,
 }: {
-  events: ConservationEvent[]
-  onRefreshEvents: () => Promise<void>
+  reports: Report[]
+  onRefreshReports: () => Promise<void>
 }) {
-  const queryClient = useQueryClient()
+  const [orgs, setOrgs] = useState<Organization[]>([])
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const orgsQuery = useQuery({
-    queryKey: ['admin-orgs'],
-    queryFn: async () => (await fetchOrgs(true)).filter((o) => !o.is_verified),
-    staleTime: 0,
-  })
+  const loadOrgs = useCallback(async () => {
+    try {
+      const all = await fetchOrgs(true)
+      setOrgs(all.filter((o) => !o.is_verified))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal memuat antrean organisasi')
+    }
+  }, [])
 
-  const reportsQuery = useQuery({
-    queryKey: ['reports-queue', 'admin'],
-    queryFn: () => fetchReportsQueue(false),
-    staleTime: 0,
-  })
-
-  const orgs = orgsQuery.data ?? []
-  const reports = reportsQuery.data ?? []
-  const error =
-    actionError ??
-    (orgsQuery.isError
-      ? orgsQuery.error instanceof Error
-        ? orgsQuery.error.message
-        : 'Gagal memuat antrean organisasi'
-      : reportsQuery.isError
-        ? reportsQuery.error instanceof Error
-          ? reportsQuery.error.message
-          : 'Gagal memuat antrean laporan'
-        : null)
+  useEffect(() => {
+    void loadOrgs()
+  }, [loadOrgs])
 
   const handleOrg = async (orgId: string, approve: boolean) => {
     setBusyId(orgId)
-    setActionError(null)
+    setError(null)
     try {
       await verifyOrgAdmin(orgId, approve)
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['admin-orgs'] }),
-        queryClient.invalidateQueries({ queryKey: ['orgs'] }),
-      ])
+      await loadOrgs()
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Gagal verifikasi organisasi')
+      setError(err instanceof Error ? err.message : 'Gagal verifikasi organisasi')
     } finally {
       setBusyId(null)
     }
@@ -66,25 +43,12 @@ export default function AdminPanel({
 
   const rejectReport = async (reportId: string) => {
     setBusyId(reportId)
-    setActionError(null)
+    setError(null)
     try {
       await moderateReportAdmin(reportId, 'rejected')
-      await queryClient.invalidateQueries({ queryKey: ['reports-queue'] })
+      await onRefreshReports()
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Gagal moderasi laporan')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const cancelEvent = async (eventId: string) => {
-    setBusyId(eventId)
-    setActionError(null)
-    try {
-      await moderateEventAdmin(eventId, 'cancelled')
-      await onRefreshEvents()
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Gagal moderasi event')
+      setError(err instanceof Error ? err.message : 'Gagal moderasi laporan')
     } finally {
       setBusyId(null)
     }
@@ -138,46 +102,20 @@ export default function AdminPanel({
       </section>
 
       <section className="flex flex-col gap-2.5">
-        <p className="text-xs font-extrabold text-ink-soft uppercase">Laporan Warga ({reports.length})</p>
-        {reports.length === 0 ? (
-          <p className="rounded-[20px] border border-line bg-white p-4 text-sm font-semibold text-ink-soft">
-            Kosong
-          </p>
-        ) : (
-          reports.slice(0, 8).map((r) => (
-            <div key={r.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-white p-3.5">
-              <div className="min-w-0">
-                <ReportStatusPill status={r.status} />
-                <p className="mt-1 truncate text-sm font-bold text-ink">{r.title}</p>
-              </div>
-              <button
-                type="button"
-                disabled={busyId === r.id}
-                onClick={() => void rejectReport(r.id)}
-                className="h-8 shrink-0 rounded-full border border-line bg-canvas px-3 text-xs font-bold text-ink-soft"
-              >
-                Tolak
-              </button>
-            </div>
-          ))
-        )}
-      </section>
-
-      <section className="flex flex-col gap-2.5">
-        <p className="text-xs font-extrabold text-ink-soft uppercase">Event Radar ({events.length})</p>
-        {events.slice(0, 8).map((ev) => (
-          <div key={ev.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-white p-3.5">
+        <p className="text-xs font-extrabold text-ink-soft uppercase">Laporan ({reports.length})</p>
+        {reports.slice(0, 8).map((r) => (
+          <div key={r.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-white p-3.5">
             <div className="min-w-0">
-              <StatusPill status={ev.status} />
-              <p className="mt-1 truncate text-sm font-bold text-ink">{ev.title}</p>
+              <StatusPill status={r.status} />
+              <p className="mt-1 truncate text-sm font-bold text-ink">{r.title}</p>
             </div>
             <button
               type="button"
-              disabled={busyId === ev.id}
-              onClick={() => void cancelEvent(ev.id)}
+              disabled={busyId === r.id}
+              onClick={() => void rejectReport(r.id)}
               className="h-8 shrink-0 rounded-full border border-line bg-canvas px-3 text-xs font-bold text-ink-soft"
             >
-              Batalkan
+              Sembunyikan
             </button>
           </div>
         ))}
