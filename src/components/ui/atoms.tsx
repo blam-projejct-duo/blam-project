@@ -3,19 +3,16 @@ import type { ReactNode } from 'react'
 import { ECOSYSTEM_LABEL, STATUS_LABEL, pinTone } from '../../lib/constants'
 import type { Ecosystem, ReportStatus } from '../../types'
 
-const TONE = {
-  critical: { dot: 'bg-critical', text: 'text-[#B91C1C]', bg: 'bg-[#FEE9E7]' },
-  progress: { dot: 'bg-progress', text: 'text-[#B45309]', bg: 'bg-[#FEF3D6]' },
-  resolved: { dot: 'bg-emerald', text: 'text-[#047857]', bg: 'bg-emerald-soft' },
+const DOT = {
+  critical: 'bg-critical',
+  progress: 'bg-progress',
+  resolved: 'bg-resolved',
 } as const
 
 export function StatusPill({ status }: { status: ReportStatus }) {
-  const tone = TONE[pinTone(status)]
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${tone.bg} ${tone.text}`}
-    >
-      <span className={`size-1.5 rounded-full ${tone.dot}`} />
+    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-ink">
+      <span className={`size-2 rounded-full ${DOT[pinTone(status)]}`} />
       {STATUS_LABEL[status]}
     </span>
   )
@@ -40,7 +37,7 @@ export function EcoIcon({
 
 export function EcoBadge({ ecosystem }: { ecosystem: Ecosystem }) {
   return (
-    <span className="grid size-11 shrink-0 place-items-center rounded-[14px] border border-line bg-canvas text-cobalt">
+    <span className="grid size-11 shrink-0 place-items-center rounded-[14px] border border-line bg-canvas text-ink-soft">
       <EcoIcon ecosystem={ecosystem} />
     </span>
   )

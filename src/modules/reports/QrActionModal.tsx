@@ -1,4 +1,4 @@
-import { Check, Copy, QrCode } from 'lucide-react'
+import { Check, Copy } from 'lucide-react'
 import { useState } from 'react'
 import { ModalShell } from '../../components/ui/atoms'
 import type { Report } from '../../types'
@@ -32,11 +32,8 @@ export default function QrActionModal({
         </div>
         <button type="button" onClick={() => void copy()} className="btn-primary h-12 w-full text-sm">
           {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-          {copied ? 'Tautan Tersalin' : 'Salin Tautan Aksi'}
+          {copied ? 'Tersalin' : 'Salin Tautan'}
         </button>
-        <p className="flex items-center gap-1.5 text-xs font-medium text-ink-soft">
-          <QrCode className="size-3.5" /> Pindai untuk membuka titik aksi langsung
-        </p>
       </div>
     </ModalShell>
   )

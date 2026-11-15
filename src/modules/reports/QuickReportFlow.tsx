@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { ArrowLeft, Camera, Check, ImagePlus, LocateFixed, ShieldCheck, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { verifyAndCreateReport } from '../../lib/api'
@@ -19,37 +19,8 @@ const ECOS: { id: Ecosystem; label: string }[] = [
   { id: 'watershed', label: 'Muara' },
 ]
 
-const SEV = {
-  low: { label: 'Ringan', cls: 'bg-emerald-soft text-[#047857]' },
-  medium: { label: 'Sedang', cls: 'bg-[#FEF3D6] text-[#B45309]' },
-  critical: { label: 'Kritis', cls: 'bg-[#FEE9E7] text-[#B91C1C]' },
-} as const
-
 const field =
-  'h-12 w-full rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-cobalt focus:outline-none'
-
-function Confetti() {
-  const reduce = useReducedMotion()
-  if (reduce) return null
-  return (
-    <div className="pointer-events-none absolute inset-x-0 top-24 flex justify-center" aria-hidden>
-      {Array.from({ length: 16 }, (_, i) => {
-        const a = (i / 16) * Math.PI * 2
-        const d = 90 + (i % 3) * 30
-        return (
-          <motion.span
-            key={i}
-            className="absolute size-2 rounded-full"
-            style={{ background: ['#2563EB', '#059669', '#F59E0B', '#10B981'][i % 4] }}
-            initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-            animate={{ x: Math.cos(a) * d, y: Math.sin(a) * d, opacity: 0, scale: 0.4 }}
-            transition={{ duration: 0.9, ease: 'easeOut' }}
-          />
-        )
-      })}
-    </div>
-  )
-}
+  'h-12 w-full rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-ink focus:outline-none'
 
 export default function QuickReportFlow({ onClose, onPublished }: Props) {
   const { profile, openAuthModal, refreshMe } = useAuth()
@@ -161,22 +132,13 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
         </button>
         <div className="flex gap-1.5" aria-label={`Langkah ${step} dari 4`}>
           {[1, 2, 3, 4].map((n) => (
-            <span key={n} className={`h-1.5 rounded-full transition-all ${n === step ? 'w-6 bg-cobalt' : n < step ? 'w-1.5 bg-cobalt' : 'w-1.5 bg-line'}`} />
+            <span key={n} className={`h-1.5 rounded-full transition-all ${n === step ? 'w-6 bg-ink' : n < step ? 'w-1.5 bg-ink' : 'w-1.5 bg-line'}`} />
           ))}
         </div>
         <span className="size-12" />
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
-        {!profile && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-card border border-line bg-white p-4">
-            <p className="text-sm font-semibold text-ink">Masuk untuk mengirim laporan.</p>
-            <button type="button" onClick={openAuthModal} className="btn-primary h-10 shrink-0 px-4 text-xs">
-              Masuk
-            </button>
-          </div>
-        )}
-
         {step === 1 && (
           <section className="flex flex-col gap-4">
             <h2 className="text-2xl font-extrabold tracking-tight">Lokasi</h2>
@@ -217,11 +179,10 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
                 </span>
               )}
             </button>
-            {photo && <p className="num text-center text-xs text-ink-soft">{Math.round(photo.bytes / 1024)} KB · EXIF dihapus</p>}
             <input className={field} placeholder="Catatan kondisi atau aksi" value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
             <label className="flex h-12 items-center justify-between rounded-full border border-line bg-white px-4 text-sm font-bold">
               Lapor anonim
-              <input type="checkbox" checked={anon} onChange={(e) => setAnon(e.target.checked)} className="size-5 accent-[#2563EB]" />
+              <input type="checkbox" checked={anon} onChange={(e) => setAnon(e.target.checked)} className="size-5 accent-ink" />
             </label>
           </section>
         )}
@@ -233,14 +194,14 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
               <div className="relative aspect-[4/3] w-full overflow-hidden rounded-card bg-muted">
                 <img src={photo.previewUrl} alt="" className="size-full object-cover" />
                 {scanning && (
-                  <motion.div className="absolute inset-x-0 top-0 h-1 bg-cobalt" animate={{ y: [0, 250, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }} />
+                  <motion.div className="absolute inset-x-0 top-0 h-1 bg-ink" animate={{ y: [0, 250, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }} />
                 )}
               </div>
             )}
             {scanning && <p className="text-sm font-bold text-ink-soft">Memindai…</p>}
             {result && !result.isValid && (
               <div className="w-full rounded-card border border-line bg-white p-5 text-left">
-                <p className="text-base font-extrabold text-[#B91C1C]">Ditolak</p>
+                <p className="text-base font-extrabold text-ink-soft">Ditolak</p>
                 <p className="mt-1 text-sm text-ink/80">{result.reason}</p>
                 <p className="num mt-2 text-xs text-ink-soft">Skor {result.confidence}%</p>
               </div>
@@ -250,32 +211,32 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
 
         {step === 4 && result && (
           <section className="relative flex flex-col items-center gap-4 pt-6 text-center">
-            <Confetti />
-            <span className="grid size-20 place-items-center rounded-full bg-emerald-soft text-emerald">
+            <span className="grid size-20 place-items-center rounded-full bg-white text-emerald border border-line">
               <Check className="size-10" strokeWidth={3} />
             </span>
             <h2 className="text-2xl font-extrabold tracking-tight">Merci!{result.pointsAwarded ? ` +${result.pointsAwarded}` : ''}</h2>
             <div className="w-full rounded-card border border-line bg-white p-5 text-left">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-sm font-bold text-ink-soft"><ShieldCheck className="size-4 text-cobalt" /> AI</span>
+                <span className="flex items-center gap-1.5 text-sm font-bold text-ink-soft"><ShieldCheck className="size-4" /> AI</span>
                 <span className="num text-2xl text-ink">{result.confidence}%</span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${SEV[result.severity].cls}`}>{SEV[result.severity].label}</span>
                 <span className="text-sm font-semibold">{result.threatCategory}</span>
               </div>
               {result.recommendations.length > 0 && (
-                <ul className="mt-3 space-y-1.5 border-t-[1.5px] border-dashed border-dash pt-3 text-sm text-ink/80">
-                  {result.recommendations.map((r) => (
-                    <li key={r}>• {r}</li>
+                <div className="mt-3 border-t-[1.5px] border-dashed border-dash text-sm text-ink/80">
+                  {result.recommendations.slice(0, 2).map((r) => (
+                    <p key={r} className="dashed-row py-2.5">
+                      {r}
+                    </p>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
           </section>
         )}
 
-        {error && <p role="alert" className="mt-4 rounded-card bg-[#FEE9E7] px-4 py-3 text-sm font-semibold text-[#B91C1C]">{error}</p>}
+        {error && <p role="alert" className="mt-4 rounded-card border border-line bg-white px-4 py-3 text-sm font-semibold text-ink">{error}</p>}
       </div>
 
       <footer className="shrink-0 px-5 pt-2 pb-[calc(env(safe-area-inset-bottom)+20px)]">

@@ -1,4 +1,4 @@
-import { ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowLeft, LogOut } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { ModalShell } from '../../components/ui/atoms'
@@ -9,15 +9,26 @@ import { useAuth } from './AuthContext'
 const field =
   'h-12 w-full rounded-full border border-line bg-canvas px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-cobalt focus:bg-white focus:outline-none'
 
-export default function AuthModal() {
+export default function AuthModal({
+  onExitDemo,
+  onGoLive,
+}: {
+  onExitDemo?: () => void
+  onGoLive?: () => void
+}) {
   const {
+    isDemo,
+    profile,
     authModalOpen,
     closeAuthModal,
     demoAccounts,
+    demoError,
+    refreshDemoAccounts,
     loginDemo,
     loginWithEmail,
     registerWithEmail,
     loginWithGoogle,
+    logout,
   } = useAuth()
 
   const [mode, setMode] = useState<'login' | 'register'>('login')
@@ -58,41 +69,97 @@ export default function AuthModal() {
     }
   }
 
-  return (
-    <ModalShell title="Masuk Blam" onClose={closeAuthModal}>
-      <div className="flex flex-col gap-5">
-        {/* 4 Tombol Demo Juri (diambil langsung dari tabel profiles di Supabase) */}
-        <section className="rounded-[20px] border border-line bg-canvas p-4">
-          <div className="flex items-center gap-2 text-xs font-extrabold tracking-wide text-ink-soft uppercase">
-            <Sparkles className="size-3.5 text-cobalt" />
-            Akun Demo Juri (Database Live)
-          </div>
+  const leaveDemo = async () => {
+    setBusy(true)
+    try {
+      await logout()
+      closeAuthModal()
+      onExitDemo?.()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (isDemo) {
+    return (
+      <ModalShell title="Peran Demo" onClose={closeAuthModal}>
+        <div className="flex flex-col gap-4">
           {demoAccounts.length === 0 ? (
-            <p className="mt-2 text-xs font-medium text-ink-soft">
-              Akun demo belum tersedia (pastikan server & seed Supabase aktif).
-            </p>
+            <div className="flex flex-col items-center gap-3 rounded-[20px] border border-line bg-canvas p-5 text-center">
+              <p className="text-xs font-medium text-ink-soft">{demoError ?? 'Kosong'}</p>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void refreshDemoAccounts()}
+                className="h-10 rounded-full border border-line bg-white px-5 text-xs font-bold text-ink"
+              >
+                Muat Ulang
+              </button>
+            </div>
           ) : (
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {demoAccounts.map((acc) => (
-                <button
-                  key={acc.id}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void pickDemo(acc.id)}
-                  className="flex flex-col items-start rounded-[16px] border border-line bg-white p-3 text-left transition-colors hover:border-cobalt disabled:opacity-60"
-                >
-                  <span className="text-xs font-extrabold text-cobalt">{ROLE_LABEL[acc.role]}</span>
-                  <span className="mt-0.5 truncate text-sm font-bold text-ink">{acc.full_name}</span>
-                  <span className="num mt-0.5 text-[11px] text-ink-soft">{acc.points} poin</span>
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-2.5">
+              {demoAccounts.map((acc) => {
+                const active = profile?.id === acc.id
+                return (
+                  <button
+                    key={acc.id}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void pickDemo(acc.id)}
+                    className={`flex flex-col items-start rounded-[20px] border p-3.5 text-left transition-colors disabled:opacity-60 ${
+                      active ? 'border-ink bg-white' : 'border-line bg-canvas hover:bg-white'
+                    }`}
+                  >
+                    <span className="text-xs font-extrabold text-ink-soft">{ROLE_LABEL[acc.role]}</span>
+                    <span className="mt-1 truncate text-sm font-bold text-ink">{acc.full_name}</span>
+                    <span className="num mt-0.5 text-[11px] text-ink-soft">{acc.points} poin</span>
+                  </button>
+                )
+              })}
             </div>
           )}
-        </section>
 
-        <div className="border-t-[1.5px] border-dashed border-dash" />
+          {(onExitDemo || onGoLive) && (
+            <div className="flex gap-2 border-t-[1.5px] border-dashed border-dash pt-4">
+              {onExitDemo && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void leaveDemo()}
+                  className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-4 text-xs font-bold text-ink hover:bg-canvas"
+                >
+                  <LogOut className="size-3.5" /> Keluar Demo
+                </button>
+              )}
+              {onGoLive && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    closeAuthModal()
+                    onGoLive()
+                  }}
+                  className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full border border-line bg-canvas px-4 text-xs font-bold text-ink hover:bg-muted"
+                >
+                  <ArrowLeft className="size-3.5" /> Website Asli
+                </button>
+              )}
+            </div>
+          )}
 
-        {/* Form Email & Google Auth */}
+          {error && (
+            <p role="alert" className="rounded-card border border-line bg-white px-4 py-3 text-sm font-semibold text-ink">
+              {error}
+            </p>
+          )}
+        </div>
+      </ModalShell>
+    )
+  }
+
+  return (
+    <ModalShell title="Masuk Blam" onClose={closeAuthModal}>
+      <div className="flex flex-col gap-4">
         <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
           <div className="flex gap-1 rounded-full bg-canvas p-1">
             {(['login', 'register'] as const).map((m) => (
@@ -107,7 +174,7 @@ export default function AuthModal() {
                   mode === m ? 'bg-white text-ink' : 'text-ink-soft'
                 }`}
               >
-                {m === 'login' ? 'Masuk Email' : 'Daftar Baru'}
+                {m === 'login' ? 'Masuk' : 'Daftar'}
               </button>
             ))}
           </div>
@@ -144,7 +211,7 @@ export default function AuthModal() {
             disabled={busy || !isSupabaseConfigured}
             className="btn-primary h-12 w-full text-sm disabled:opacity-50"
           >
-            {mode === 'login' ? 'Masuk' : 'Buat Akun Warga'}
+            {mode === 'login' ? 'Masuk' : 'Daftar'}
           </button>
 
           {isSupabaseConfigured && (
@@ -154,14 +221,13 @@ export default function AuthModal() {
               onClick={() => void loginWithGoogle().catch((e) => setError(e instanceof Error ? e.message : 'Gagal OAuth'))}
               className="flex h-12 items-center justify-center gap-2 rounded-full border border-line bg-white text-sm font-bold text-ink hover:bg-canvas disabled:opacity-50"
             >
-              <ShieldCheck className="size-4 text-cobalt" />
-              Lanjut dengan Google
+              Google
             </button>
           )}
         </form>
 
         {error && (
-          <p role="alert" className="rounded-[16px] bg-[#FEE9E7] px-4 py-3 text-sm font-semibold text-[#B91C1C]">
+          <p role="alert" className="rounded-card border border-line bg-white px-4 py-3 text-sm font-semibold text-ink">
             {error}
           </p>
         )}

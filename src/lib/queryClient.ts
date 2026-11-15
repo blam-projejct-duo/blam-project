@@ -3,7 +3,7 @@ import type { QueryKey } from '@tanstack/react-query'
 
 export const CACHE_TTL_MS = 20 * 60 * 1000
 const MAX_PERSIST_MS = 24 * 60 * 60 * 1000
-const STORAGE_KEY = 'blam_query_cache_v2'
+const STORAGE_KEY = 'blam_query_cache_v3'
 const MAX_PULSE_ENTRIES = 30
 
 interface PersistedEntry {

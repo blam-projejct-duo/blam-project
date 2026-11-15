@@ -130,16 +130,8 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const openCount = radar.reports.filter((r) => r.status !== 'resolved').length
   const unreadCount = notifications.filter((n) => !n.is_read).length
 
-  const hotspotLabel = radar.showHotspots
-    ? radar.layersLoading && radar.hotspots.length === 0
-      ? 'Hotspot…'
-      : `Hotspot · ${radar.hotspots.length}`
-    : 'Hotspot'
-  const speciesLabel = radar.showSpecies
-    ? radar.layersLoading && radar.speciesPoints.length === 0
-      ? 'Spesies…'
-      : `Spesies · ${radar.speciesPoints.length}`
-    : 'Spesies'
+  const hotspotLabel = radar.showHotspots && radar.layersLoading ? 'Hotspot…' : 'Hotspot'
+  const speciesLabel = radar.showSpecies && radar.layersLoading ? 'Spesies…' : 'Spesies'
 
   const selected = radar.selected
   const initials = profile?.full_name ? profile.full_name.slice(0, 1).toUpperCase() : '?'
@@ -217,7 +209,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                   onClick={toggle}
                   aria-pressed={on}
                   className={`h-10 flex-1 rounded-full text-[13px] font-bold ${
-                    on ? 'bg-cobalt text-white' : 'bg-muted text-ink'
+                    on ? 'bg-ink text-white' : 'bg-muted text-ink'
                   }`}
                 >
                   {label}
@@ -229,15 +221,15 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               onClick={() => openSheet('orgs', true)}
               className="flex h-10 items-center justify-center gap-2 rounded-full bg-white text-[13px] font-bold text-ink"
             >
-              <Building2 className="size-4 text-cobalt" /> Organisasi &amp; Komunitas
+              <Building2 className="size-4" /> Organisasi
             </button>
             {profile?.role === 'agency' && (
               <button
                 type="button"
                 onClick={() => openSheet('agency', true)}
-                className="flex h-10 items-center justify-center gap-2 rounded-full bg-[#FEE9E7] text-[13px] font-bold text-[#B91C1C]"
+                className="flex h-10 items-center justify-center gap-2 rounded-full bg-white text-[13px] font-bold text-ink"
               >
-                <Shield className="size-4" /> Inbox Eskalasi Instansi
+                <Shield className="size-4" /> Eskalasi
               </button>
             )}
             {profile?.role === 'admin' && (
@@ -246,7 +238,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                 onClick={() => openSheet('admin', true)}
                 className="flex h-10 items-center justify-center gap-2 rounded-full bg-ink text-[13px] font-bold text-white"
               >
-                <Shield className="size-4" /> Panel Super Admin
+                <Shield className="size-4" /> Admin
               </button>
             )}
           </div>
@@ -259,7 +251,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           size={48}
           label="Profil"
           onClick={() => (profile ? openSheet('profile', true) : openAuthModal())}
-          className="text-sm font-extrabold ring-[3px] ring-emerald/45"
+          className="text-sm font-extrabold"
         >
           {initials}
         </Orb>
@@ -267,11 +259,11 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           size={48}
           label="Notifikasi"
           onClick={() => openSheet('profile', true)}
-          className="relative !bg-cobalt !text-white"
+          className="relative"
         >
-          <Bell className="size-5" strokeWidth={2.25} />
+          <Bell className="size-5 text-ink" strokeWidth={2.25} />
           {unreadCount > 0 && (
-            <span className="absolute top-2.5 right-3 size-2.5 rounded-full border-2 border-cobalt bg-critical" />
+            <span className="absolute top-2.5 right-3 size-2.5 rounded-full border-2 border-white bg-cobalt" />
           )}
         </Orb>
       </div>
@@ -286,10 +278,10 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
       >
         <div className="pointer-events-auto flex justify-between px-5 pb-4">
           <Orb size={48} label="Cari lokasi" onClick={() => openSheet('list', false, true)}>
-            <Search className="size-5 text-cobalt" strokeWidth={2.5} />
+            <Search className="size-5 text-ink" strokeWidth={2.5} />
           </Orb>
           <Orb size={48} label="Lokasi saya" onClick={radar.locate}>
-            <LocateFixed className="size-5 text-cobalt" strokeWidth={2.25} />
+            <LocateFixed className="size-5 text-ink" strokeWidth={2.25} />
           </Orb>
         </div>
         <div className="pointer-events-auto flex items-end justify-center gap-7 pb-[calc(env(safe-area-inset-bottom)+20px)]">
@@ -313,7 +305,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             <Orb size={56} label="Aksi" onClick={() => openSheet('list')} className="relative">
               <ListChecks className="size-6 text-ink" strokeWidth={2} />
               {openCount > 0 && (
-                <span className="num absolute -top-1 -right-1 grid size-5 place-items-center rounded-full border-2 border-white bg-critical text-[10px] text-white">
+                <span className="num absolute -top-1 -right-1 grid size-5 place-items-center rounded-full border-2 border-white bg-ink text-[10px] text-white">
                   {openCount}
                 </span>
               )}
@@ -366,15 +358,10 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             {mode === 'list' && (
               <ReportListPanel
                 reports={radar.reports}
-                joinedIds={radar.joinedIds}
                 query={query}
                 onQueryChange={setQuery}
                 autoFocus={focusSearch}
                 onOpen={openDetail}
-                onJoin={(id) => {
-                  if (!profile) openAuthModal()
-                  else void radar.joinAction(id)
-                }}
               />
             )}
 

@@ -35,7 +35,7 @@ export default function MapStyleSwitcher({
             aria-checked={active}
             onClick={() => onChange(o.id)}
             className={`h-9 rounded-full px-3.5 text-[11px] font-bold tracking-wider transition-colors ${
-              active ? 'bg-white text-cobalt' : 'text-ink-soft hover:text-ink'
+              active ? 'bg-white text-ink' : 'text-ink-soft hover:text-ink'
             }`}
           >
             {o.label}

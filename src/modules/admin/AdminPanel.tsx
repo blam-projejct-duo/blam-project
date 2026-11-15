@@ -1,4 +1,4 @@
-import { Ban, Check, ShieldAlert } from 'lucide-react'
+import { Ban, Check } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Pill, StatusPill } from '../../components/ui/atoms'
 import { fetchOrgs, moderateReportAdmin, verifyOrgAdmin } from '../../lib/api'
@@ -56,22 +56,19 @@ export default function AdminPanel({
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-xl font-extrabold tracking-tight text-ink">Panel Super Admin</h2>
-        <p className="text-xs font-medium text-ink-soft">Verifikasi organisasi baru &amp; moderasi laporan</p>
-      </div>
+      <h2 className="text-xl font-extrabold tracking-tight text-ink">Admin</h2>
 
       {error && (
-        <p role="alert" className="rounded-[16px] bg-[#FEE9E7] px-4 py-3 text-xs font-semibold text-[#B91C1C]">
+        <p role="alert" className="rounded-card border border-line bg-white px-4 py-3 text-xs font-semibold text-ink">
           {error}
         </p>
       )}
 
       <section className="flex flex-col gap-2.5">
-        <p className="text-xs font-extrabold text-ink-soft uppercase">Antrean Verifikasi Organisasi ({orgs.length})</p>
+        <p className="text-xs font-extrabold text-ink-soft uppercase">Organisasi ({orgs.length})</p>
         {orgs.length === 0 ? (
           <p className="rounded-[20px] border border-line bg-white p-4 text-sm font-semibold text-ink-soft">
-            Tidak ada pengajuan organisasi baru.
+            Kosong
           </p>
         ) : (
           orgs.map((o) => (
@@ -86,7 +83,7 @@ export default function AdminPanel({
                   type="button"
                   disabled={busyId === o.id}
                   onClick={() => void handleOrg(o.id, true)}
-                  className="inline-flex h-9 items-center gap-1 rounded-full bg-emerald px-3 text-xs font-bold text-white"
+                  className="inline-flex h-9 items-center gap-1 rounded-full bg-ink px-3 text-xs font-bold text-white"
                 >
                   <Check className="size-3.5" /> Setujui
                 </button>
@@ -94,7 +91,7 @@ export default function AdminPanel({
                   type="button"
                   disabled={busyId === o.id}
                   onClick={() => void handleOrg(o.id, false)}
-                  className="inline-flex h-9 items-center gap-1 rounded-full border border-line bg-canvas px-3 text-xs font-bold text-[#B91C1C]"
+                  className="inline-flex h-9 items-center gap-1 rounded-full border border-line bg-canvas px-3 text-xs font-bold text-ink-soft"
                 >
                   <Ban className="size-3.5" /> Tolak
                 </button>
@@ -105,9 +102,7 @@ export default function AdminPanel({
       </section>
 
       <section className="flex flex-col gap-2.5">
-        <p className="flex items-center gap-1.5 text-xs font-extrabold text-ink-soft uppercase">
-          <ShieldAlert className="size-3.5" /> Moderasi Laporan ({reports.length})
-        </p>
+        <p className="text-xs font-extrabold text-ink-soft uppercase">Laporan ({reports.length})</p>
         {reports.slice(0, 8).map((r) => (
           <div key={r.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-white p-3.5">
             <div className="min-w-0">
@@ -118,7 +113,7 @@ export default function AdminPanel({
               type="button"
               disabled={busyId === r.id}
               onClick={() => void rejectReport(r.id)}
-              className="h-8 shrink-0 rounded-full border border-line bg-canvas px-3 text-xs font-bold text-[#B91C1C]"
+              className="h-8 shrink-0 rounded-full border border-line bg-canvas px-3 text-xs font-bold text-ink-soft"
             >
               Sembunyikan
             </button>

@@ -93,17 +93,14 @@ export default function OrgsPanel() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-extrabold tracking-tight text-ink">Organisasi</h2>
-          <p className="text-xs font-medium text-ink-soft">Komunitas &amp; Instansi terverifikasi</p>
-        </div>
+        <h2 className="text-xl font-extrabold tracking-tight text-ink">Organisasi</h2>
         <button
           type="button"
           onClick={() => (profile ? setShowCreate((v) => !v) : openAuthModal())}
           className="btn-primary h-10 px-4 text-xs"
         >
           <Plus className="size-4" />
-          Buat Org
+          Buat
         </button>
       </div>
 
@@ -124,23 +121,23 @@ export default function OrgsPanel() {
               </button>
             ))}
           </div>
-          <input className={field} placeholder="Wilayah (mis. Bengkulu)" value={region} onChange={(e) => setRegion(e.target.value)} />
+          <input className={field} placeholder="Wilayah" value={region} onChange={(e) => setRegion(e.target.value)} />
           <button
             type="button"
             disabled={busyId === 'create'}
             onClick={() => void submitCreate()}
             className="btn-primary h-11 text-xs disabled:opacity-50"
           >
-            Ajukan Pendirian
+            Ajukan
           </button>
         </div>
       )}
 
       {notice && (
-        <p className="rounded-[16px] bg-emerald-soft px-4 py-3 text-xs font-bold text-[#047857]">{notice}</p>
+        <p className="rounded-card border border-line bg-white px-4 py-3 text-xs font-semibold text-ink">{notice}</p>
       )}
       {error && (
-        <p role="alert" className="rounded-[16px] bg-[#FEE9E7] px-4 py-3 text-xs font-semibold text-[#B91C1C]">
+        <p role="alert" className="rounded-card border border-line bg-white px-4 py-3 text-xs font-semibold text-ink">
           {error}
         </p>
       )}
@@ -148,7 +145,7 @@ export default function OrgsPanel() {
       {loading ? (
         <p className="py-8 text-center text-sm font-semibold text-ink-soft">Memuat organisasi…</p>
       ) : orgs.length === 0 ? (
-        <p className="py-8 text-center text-sm font-semibold text-ink-soft">Belum ada organisasi terverifikasi.</p>
+        <p className="py-8 text-center text-sm font-semibold text-ink-soft">Kosong</p>
       ) : (
         <div className="flex flex-col gap-3">
           {orgs.map((org) => {
@@ -175,7 +172,7 @@ export default function OrgsPanel() {
                   </div>
 
                   {myMem ? (
-                    <span className="inline-flex h-9 items-center gap-1 rounded-full bg-emerald-soft px-3 text-xs font-bold text-[#047857]">
+                    <span className="inline-flex h-9 items-center gap-1 rounded-full bg-canvas px-3 text-xs font-bold text-ink">
                       <Check className="size-3.5" />
                       {myMem.status === 'pending' ? 'Menunggu' : myMem.member_role === 'lead' ? 'Ketua' : 'Anggota'}
                     </span>
@@ -184,7 +181,7 @@ export default function OrgsPanel() {
                       type="button"
                       disabled={busyId === org.id}
                       onClick={() => void requestJoin(org.id)}
-                      className="btn-primary h-9 px-4 text-xs disabled:opacity-50"
+                      className="h-9 rounded-full border border-line bg-white px-4 text-xs font-bold text-ink hover:bg-canvas disabled:opacity-50"
                     >
                       Gabung
                     </button>
@@ -208,7 +205,7 @@ export default function OrgsPanel() {
                               type="button"
                               disabled={busyId === `${org.id}:${m.user_id}`}
                               onClick={() => void handleMember(org.id, m.user_id, 'approve')}
-                              className="inline-flex h-8 items-center gap-1 rounded-full bg-emerald px-3 text-xs font-bold text-white"
+                              className="inline-flex h-8 items-center gap-1 rounded-full bg-ink px-3 text-xs font-bold text-white"
                             >
                               <UserCheck className="size-3.5" /> Terima
                             </button>
@@ -218,7 +215,7 @@ export default function OrgsPanel() {
                               type="button"
                               disabled={busyId === `${org.id}:${m.user_id}`}
                               onClick={() => void handleMember(org.id, m.user_id, 'remove')}
-                              className="inline-flex h-8 items-center gap-1 rounded-full border border-line bg-canvas px-3 text-xs font-bold text-[#B91C1C]"
+                              className="inline-flex h-8 items-center gap-1 rounded-full border border-line bg-canvas px-3 text-xs font-bold text-ink-soft"
                             >
                               <UserMinus className="size-3.5" /> Keluarkan
                             </button>

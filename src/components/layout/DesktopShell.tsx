@@ -2,7 +2,6 @@ import {
   Bell,
   Building2,
   Camera,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Leaf,
@@ -20,7 +19,7 @@ import {
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Orb } from '../ui/atoms'
-import { ECOSYSTEM_FILTERS, pinTone } from '../../lib/constants'
+import { pinTone } from '../../lib/constants'
 import AdminPanel from '../../modules/admin/AdminPanel'
 import AgencyInboxPanel from '../../modules/agency/AgencyInboxPanel'
 import { useAuth } from '../../modules/auth/AuthContext'
@@ -31,7 +30,7 @@ import OrgsPanel from '../../modules/organizations/OrgsPanel'
 import ProfilePanel from '../../modules/profile/ProfilePanel'
 import QuickReportFlow from '../../modules/reports/QuickReportFlow'
 import SiteDetail from '../../modules/reports/SiteDetail'
-import type { Ecosystem, PinTone } from '../../types'
+import type { PinTone } from '../../types'
 import ReportListPanel from './ReportListPanel'
 
 type NavTab = 'Radar' | 'Lapor' | 'Dampak' | 'Org' | 'Eskalasi' | 'Admin'
@@ -71,7 +70,7 @@ function RailItem({
   const tone = primary
     ? 'bg-cobalt text-white'
     : active
-      ? 'bg-canvas text-cobalt'
+      ? 'bg-canvas text-ink'
       : 'text-ink-soft group-hover:bg-canvas'
   return (
     <button
@@ -86,25 +85,14 @@ function RailItem({
   )
 }
 
-function Chip({
-  active,
-  onClick,
-  tone = 'ink',
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  tone?: 'ink' | 'cobalt'
-  children: ReactNode
-}) {
-  const on = tone === 'cobalt' ? 'border-cobalt bg-cobalt text-white' : 'border-ink bg-ink text-white'
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
       className={`flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-bold whitespace-nowrap transition-colors ${
-        active ? on : 'border-line bg-white text-ink hover:bg-canvas'
+        active ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink hover:bg-canvas'
       }`}
     >
       {children}
@@ -151,16 +139,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     return { total: radar.allReports.length, resolved, wasteKg, trees }
   }, [radar.allReports])
 
-  const hotspotLabel = radar.showHotspots
-    ? radar.layersLoading && radar.hotspots.length === 0
-      ? 'Hotspot…'
-      : `Hotspot · ${radar.hotspots.length}`
-    : 'Hotspot'
-  const speciesLabel = radar.showSpecies
-    ? radar.layersLoading && radar.speciesPoints.length === 0
-      ? 'Spesies…'
-      : `Spesies · ${radar.speciesPoints.length}`
-    : 'Spesies'
+  const hotspotLabel = radar.showHotspots && radar.layersLoading ? 'Hotspot…' : 'Hotspot'
+  const speciesLabel = radar.showSpecies && radar.layersLoading ? 'Spesies…' : 'Spesies'
 
   const openTab = (next: Tab) => {
     if (next === tab && drawerOpen) {
@@ -193,17 +173,12 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     setDrawerOpen(true)
   }
 
-  const join = (id: string) => {
-    if (!profile) openAuthModal()
-    else void radar.joinAction(id)
-  }
-
   const radarBody = () => {
     if (radar.state === 'error') {
       return (
         <div className="grid h-full place-items-center px-5 text-center">
           <div>
-            <p className="text-base font-extrabold text-[#B91C1C]">Gagal memuat data</p>
+            <p className="text-base font-extrabold text-ink-soft">Gagal memuat data</p>
             <p className="mt-1 text-xs text-ink-soft">{radar.errorMessage}</p>
             <button type="button" onClick={() => void radar.refresh()} className="btn-primary mt-4 h-10 px-5 text-xs">
               Muat Ulang
@@ -225,7 +200,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             >
               <ChevronLeft className="size-5" />
             </button>
-            <h2 className="text-lg font-extrabold tracking-tight text-ink">Detail</h2>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
             <SiteDetail
@@ -246,20 +220,17 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
       <>
         <header className="flex h-16 shrink-0 items-center justify-between px-5">
           <h2 className="text-lg font-extrabold tracking-tight text-ink">Radar</h2>
-          <span className="inline-flex items-center gap-2 text-sm font-bold text-ink-soft">
-            <span className="size-2 rounded-full bg-emerald" />
+          <span className="text-sm font-bold text-ink-soft">
             {radar.state === 'loading' ? 'Memuat…' : `${visibleReports.length} titik`}
           </span>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
           <ReportListPanel
             reports={visibleReports}
-            joinedIds={radar.joinedIds}
             query={query}
             onQueryChange={setQuery}
             showSearch={false}
             onOpen={openDetail}
-            onJoin={join}
           />
         </div>
       </>
@@ -299,9 +270,9 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             radar.fitAll()
           }}
           aria-label="Blam"
-          className="mb-3 grid size-10 place-items-center rounded-full bg-emerald text-white"
+          className="mb-3 grid size-10 place-items-center text-emerald"
         >
-          <Leaf className="size-5" strokeWidth={2.5} />
+          <Leaf className="size-6" strokeWidth={2.25} />
         </button>
 
         <div className="flex w-full flex-1 flex-col">
@@ -403,7 +374,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         className="pointer-events-none absolute top-4 z-[500] flex flex-col gap-3"
       >
         <label className="pointer-events-auto flex h-12 w-[360px] max-w-full items-center gap-2.5 rounded-full border border-line bg-white px-4">
-          <Search className="size-4.5 shrink-0 text-cobalt" strokeWidth={2.5} />
+          <Search className="size-4.5 shrink-0 text-ink-soft" strokeWidth={2.5} />
           <input
             value={query}
             onChange={(e) => onSearch(e.target.value)}
@@ -424,35 +395,12 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               {c.label}
             </Chip>
           ))}
-          <Chip tone="cobalt" active={radar.showHotspots} onClick={radar.toggleHotspots}>
+          <Chip active={radar.showHotspots} onClick={radar.toggleHotspots}>
             {hotspotLabel}
           </Chip>
-          <Chip tone="cobalt" active={radar.showSpecies} onClick={radar.toggleSpecies}>
+          <Chip active={radar.showSpecies} onClick={radar.toggleSpecies}>
             {speciesLabel}
           </Chip>
-          <label className="relative">
-            <span className="sr-only">Ekosistem</span>
-            <select
-              value={radar.filter}
-              onChange={(e) => radar.setFilter(e.target.value as Ecosystem | 'all')}
-              className={`h-9 cursor-pointer appearance-none rounded-full border pr-8 pl-3.5 text-[13px] font-bold outline-none ${
-                radar.filter === 'all'
-                  ? 'border-line bg-white text-ink hover:bg-canvas'
-                  : 'border-ink bg-ink text-white'
-              }`}
-            >
-              {ECOSYSTEM_FILTERS.map((f) => (
-                <option key={f.id} value={f.id} className="bg-white text-ink">
-                  {f.id === 'all' ? 'Semua' : f.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              className={`pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 ${
-                radar.filter === 'all' ? 'text-ink-soft' : 'text-white'
-              }`}
-            />
-          </label>
         </div>
       </div>
 
@@ -461,7 +409,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           size={48}
           label={profile ? 'Profil' : 'Masuk'}
           onClick={() => (profile ? openTab('Profil') : openAuthModal())}
-          className="text-sm font-extrabold ring-[3px] ring-emerald/45"
+          className="text-sm font-extrabold"
         >
           {initials ?? <User className="size-5 text-ink-soft" />}
         </Orb>
@@ -469,11 +417,11 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           size={48}
           label="Notifikasi"
           onClick={() => (profile ? openTab('Profil') : openAuthModal())}
-          className="relative !bg-cobalt !text-white"
+          className="relative"
         >
-          <Bell className="size-5" strokeWidth={2.25} />
+          <Bell className="size-5 text-ink" strokeWidth={2.25} />
           {unreadCount > 0 && (
-            <span className="absolute top-2.5 right-3 size-2.5 rounded-full border-2 border-cobalt bg-critical" />
+            <span className="absolute top-2.5 right-3 size-2.5 rounded-full border-2 border-white bg-cobalt" />
           )}
         </Orb>
       </div>
@@ -486,14 +434,26 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
       />
 
       <div className="absolute right-4 bottom-10 z-[500] flex flex-col gap-2.5">
-        <Orb size={48} label="Perbesar" onClick={() => radar.zoom(1)}>
-          <Plus className="size-5" strokeWidth={2.5} />
-        </Orb>
-        <Orb size={48} label="Perkecil" onClick={() => radar.zoom(-1)}>
-          <Minus className="size-5" strokeWidth={2.5} />
-        </Orb>
+        <div className="overflow-hidden rounded-full border border-line bg-white">
+          <button
+            type="button"
+            aria-label="Perbesar"
+            onClick={() => radar.zoom(1)}
+            className="grid size-12 place-items-center text-ink hover:bg-canvas"
+          >
+            <Plus className="size-5" strokeWidth={2.5} />
+          </button>
+          <button
+            type="button"
+            aria-label="Perkecil"
+            onClick={() => radar.zoom(-1)}
+            className="grid size-12 place-items-center border-t border-line text-ink hover:bg-canvas"
+          >
+            <Minus className="size-5" strokeWidth={2.5} />
+          </button>
+        </div>
         <Orb size={48} label="Lokasi saya" onClick={radar.locate}>
-          <LocateFixed className="size-5 text-cobalt" strokeWidth={2.25} />
+          <LocateFixed className="size-5 text-ink" strokeWidth={2.25} />
         </Orb>
       </div>
     </div>

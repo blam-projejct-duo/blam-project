@@ -11,6 +11,7 @@ import type {
   Report,
   Severity,
 } from '../types'
+import { isDemoPathname } from './route'
 import { supabase } from './supabase'
 
 const DEMO_STORAGE_KEY = 'blam_demo_user_id'
@@ -27,13 +28,15 @@ export function getDemoSessionId(): string | null {
 }
 
 async function getBearerToken(): Promise<string | null> {
+  if (isDemoPathname()) {
+    const demoId = getDemoSessionId()
+    return demoId ? `demo:${demoId}` : null
+  }
   if (supabase) {
     const { data } = await supabase.auth.getSession()
-    const accessToken = data.session?.access_token
-    if (accessToken) return accessToken
+    return data.session?.access_token ?? null
   }
-  const demoId = getDemoSessionId()
-  return demoId ? `demo:${demoId}` : null
+  return null
 }
 
 async function apiFetch<T>(
@@ -78,9 +81,12 @@ export async function markNotificationRead(id: string): Promise<void> {
   await apiFetch(`/notifications/${id}/read`, { method: 'PATCH', requireAuth: true })
 }
 
-export async function fetchReports(includeRejected = false): Promise<Report[]> {
-  const qs = includeRejected ? '?includeRejected=1' : ''
-  const res = await apiFetch<{ reports: Report[] }>(`/reports${qs}`)
+export async function fetchReports(includeRejected = false, forceRefresh = false): Promise<Report[]> {
+  const params = new URLSearchParams()
+  if (includeRejected) params.set('includeRejected', '1')
+  if (forceRefresh) params.set('refresh', '1')
+  const qs = params.toString() ? `?${params.toString()}` : ''
+  const res = await apiFetch<{ reports: Report[] }>(`/reports${qs}`, { cache: 'no-store' })
   return res.reports
 }
 
