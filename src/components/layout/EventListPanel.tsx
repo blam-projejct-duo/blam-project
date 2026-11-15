@@ -1,45 +1,50 @@
 import { Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { pinTone, shortLocation, STATUS_LABEL } from '../../lib/constants'
+import { EVENT_STATUS_LABEL, eventPinTone, shortLocation } from '../../lib/constants'
 import { EcoBadge } from '../ui/atoms'
-import type { Report } from '../../types'
+import type { ConservationEvent } from '../../types'
 
 type ListTab = 'Disarankan' | 'Terbaru' | 'Dampak'
 
 const TABS: ListTab[] = ['Disarankan', 'Terbaru', 'Dampak']
 const DOT = { critical: 'bg-critical', progress: 'bg-progress', resolved: 'bg-resolved' } as const
-const RANK = { escalated: 0, open: 1, in_progress: 2, resolved: 3, rejected: 4 } as const
+const RANK = { open: 0, in_progress: 1, resolved: 2, cancelled: 3 } as const
 
-function ReportRow({ report, tab, onOpen }: { report: Report; tab: ListTab; onOpen: () => void }) {
-  const action = report.report_actions?.[0]
+function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListTab; onOpen: () => void }) {
+  const action = event.event_actions?.[0]
   const meta =
     tab === 'Dampak' && action
       ? `${Number(action.waste_kg)} kg · ${action.trees_planted} bibit`
-      : shortLocation(report.location_name)
+      : event.organization?.name
+        ? `${event.organization.name} · ${shortLocation(event.location_name)}`
+        : shortLocation(event.location_name)
 
   return (
     <li className="dashed-row">
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 py-3.5 text-left">
-        <EcoBadge ecosystem={report.ecosystem} />
+        <EcoBadge ecosystem={event.ecosystem} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold text-ink">{report.title}</span>
+          <span className="block truncate text-[15px] font-semibold text-ink">{event.title}</span>
           <span className="block truncate text-[13px] text-ink-soft">{meta}</span>
         </span>
-        <span className={`size-2.5 shrink-0 rounded-full ${DOT[pinTone(report.status)]}`} aria-label={STATUS_LABEL[report.status]} />
+        <span
+          className={`size-2.5 shrink-0 rounded-full ${DOT[eventPinTone(event.status)]}`}
+          aria-label={EVENT_STATUS_LABEL[event.status]}
+        />
       </button>
     </li>
   )
 }
 
-export default function ReportListPanel({
-  reports,
+export default function EventListPanel({
+  events,
   query,
   onQueryChange,
   showSearch = true,
   autoFocus = false,
   onOpen,
 }: {
-  reports: Report[]
+  events: ConservationEvent[]
   query: string
   onQueryChange: (q: string) => void
   showSearch?: boolean
@@ -50,17 +55,19 @@ export default function ReportListPanel({
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const base = reports.filter(
-      (r) => !q || r.title.toLowerCase().includes(q) || r.location_name.toLowerCase().includes(q),
+    const base = events.filter(
+      (ev) => !q || ev.title.toLowerCase().includes(q) || ev.location_name.toLowerCase().includes(q),
     )
     if (tab === 'Terbaru') {
       return [...base].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at))
     }
     if (tab === 'Dampak') {
-      return base.filter((r) => r.status === 'resolved' && (r.report_actions?.length ?? 0) > 0)
+      return base.filter((ev) => ev.status === 'resolved' && (ev.event_actions?.length ?? 0) > 0)
     }
-    return [...base].sort((a, b) => RANK[a.status] - RANK[b.status] || b.ai_confidence - a.ai_confidence)
-  }, [reports, tab, query])
+    return [...base].sort(
+      (a, b) => RANK[a.status] - RANK[b.status] || +new Date(b.created_at) - +new Date(a.created_at),
+    )
+  }, [events, tab, query])
 
   return (
     <div>
@@ -100,13 +107,11 @@ export default function ReportListPanel({
       </div>
 
       <ul className="mt-2">
-        {rows.map((r) => (
-          <ReportRow key={r.id} report={r} tab={tab}
-            onOpen={() => onOpen(r.id)}
-          />
+        {rows.map((ev) => (
+          <EventRow key={ev.id} event={ev} tab={tab} onOpen={() => onOpen(ev.id)} />
         ))}
       </ul>
-      {rows.length === 0 && <p className="py-10 text-center text-sm font-semibold text-ink-soft">Tidak ada titik</p>}
+      {rows.length === 0 && <p className="py-10 text-center text-sm font-semibold text-ink-soft">Tidak ada event</p>}
     </div>
   )
 }

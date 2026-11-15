@@ -2,17 +2,20 @@ import { LogOut } from 'lucide-react'
 import { DashedRow, Pill } from '../../components/ui/atoms'
 import { ROLE_LABEL } from '../../lib/constants'
 import { useAuth } from '../auth/AuthContext'
+import { AuthPanel } from '../auth/AuthModal'
 
 export default function ProfilePanel() {
   const { isDemo, profile, memberships, notifications, openAuthModal, logout, readNotification } = useAuth()
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-[20px] border border-line bg-white p-6 text-center">
-        <h3 className="text-lg font-extrabold text-ink">{isDemo ? 'Peran Demo' : 'Masuk'}</h3>
-        <button type="button" onClick={openAuthModal} className="btn-primary h-11 w-full text-sm">
-          {isDemo ? 'Pilih Peran' : 'Masuk'}
-        </button>
+      <div className="flex flex-col gap-4">
+        <h2 className="text-xl font-extrabold tracking-tight text-ink">
+          {isDemo ? 'Peran Demo' : 'Masuk'}
+        </h2>
+        <div className="rounded-[20px] border border-line bg-white p-5">
+          <AuthPanel />
+        </div>
       </div>
     )
   }

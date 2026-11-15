@@ -3,7 +3,9 @@ import type { PanInfo } from 'framer-motion'
 import {
   Bell,
   Building2,
+  CalendarPlus,
   Camera,
+  CheckSquare,
   ChevronDown,
   Compass,
   ListChecks,
@@ -19,18 +21,20 @@ import { ECOSYSTEM_FILTERS } from '../../lib/constants'
 import AdminPanel from '../../modules/admin/AdminPanel'
 import AgencyInboxPanel from '../../modules/agency/AgencyInboxPanel'
 import { useAuth } from '../../modules/auth/AuthContext'
+import CreateEventForm from '../../modules/events/CreateEventForm'
+import EventDetail from '../../modules/events/EventDetail'
 import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
 import MapView from '../../modules/map/MapView'
 import type { Radar } from '../../modules/map/useRadar'
 import OrgsPanel from '../../modules/organizations/OrgsPanel'
 import ProfilePanel from '../../modules/profile/ProfilePanel'
 import QuickReportFlow from '../../modules/reports/QuickReportFlow'
-import SiteDetail from '../../modules/reports/SiteDetail'
-import ReportListPanel from './ReportListPanel'
-import type { Ecosystem } from '../../types'
+import VerificationRadarPanel from '../../modules/reports/VerificationRadarPanel'
+import EventListPanel from './EventListPanel'
+import type { CitizenReport, Ecosystem } from '../../types'
 
 type Snap = 'peek' | 'half' | 'full'
-type Mode = 'detail' | 'list' | 'orgs' | 'profile' | 'agency' | 'admin' | null
+type Mode = 'detail' | 'list' | 'orgs' | 'profile' | 'verify' | 'agency' | 'admin' | null
 
 const SPRING = { type: 'spring', stiffness: 350, damping: 30 } as const
 const PEEK_PX = 214
@@ -45,15 +49,17 @@ function DockItem({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export default function MobileBumpShell({ radar }: { radar: Radar }) {
-  const { profile, notifications, openAuthModal } = useAuth()
+  const { profile, notifications } = useAuth()
   const rootRef = useRef<HTMLDivElement>(null)
   const [H, setH] = useState(0)
-  const [mode, setMode] = useState<Mode>(null)
+  const [mode, setMode] = useState<Mode>(() => (radar.deepLinkedId ? 'detail' : null))
   const [snap, setSnap] = useState<Snap>('half')
   const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [focusSearch, setFocusSearch] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
+  const [eventOpen, setEventOpen] = useState(false)
+  const [draftReport, setDraftReport] = useState<CitizenReport | null>(null)
 
   const controls = useDragControls()
   const anim = useAnimationControls()
@@ -108,6 +114,12 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
     setSnap(full || search ? 'full' : 'half')
   }
 
+  const startCreateEvent = (report: CitizenReport | null = null) => {
+    setMenuOpen(false)
+    setDraftReport(report)
+    setEventOpen(true)
+  }
+
   const onDragEnd = (_: unknown, info: PanInfo) => {
     const projected = snapY[snap] + info.offset.y + info.velocity.y * 0.2
     if (projected > snapY.peek + 70) {
@@ -127,8 +139,11 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
 
   const sheetOpen = mode !== null
   const padBottom = !sheetOpen ? 0 : snap === 'peek' ? PEEK_PX : Math.round(H * 0.58)
-  const openCount = radar.reports.filter((r) => r.status !== 'resolved').length
+  const openCount = radar.events.filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled').length
   const unreadCount = notifications.filter((n) => !n.is_read).length
+  const canOrganize = Boolean(
+    profile && (profile.role === 'volunteer' || profile.role === 'agency' || profile.role === 'admin'),
+  )
 
   const hotspotLabel = radar.showHotspots && radar.layersLoading ? 'Hotspot…' : 'Hotspot'
   const speciesLabel = radar.showSpecies && radar.layersLoading ? 'Spesies…' : 'Spesies'
@@ -139,8 +154,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   return (
     <div ref={rootRef} className="relative h-full w-full select-none overflow-hidden bg-canvas">
       <MapView
-        reports={radar.reports}
+        events={radar.events}
         hotspots={radar.hotspots}
+        eonetPoints={radar.eonetPoints}
         speciesPoints={radar.speciesPoints}
         selectedId={radar.selectedId}
         onSelect={openDetail}
@@ -161,7 +177,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           className="glass flex h-12 items-center gap-2 rounded-full px-5 text-sm font-bold whitespace-nowrap"
         >
           <span className="size-2 rounded-full bg-emerald" />
-          {radar.reports.length} titik
+          {radar.events.length} titik
           <ChevronDown
             className={`size-4 text-ink-soft transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`}
           />
@@ -176,7 +192,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             className="absolute inset-0 z-[510] cursor-default"
             onClick={() => setMenuOpen(false)}
           />
-          <div className="glass absolute top-[calc(env(safe-area-inset-top)+76px)] left-1/2 z-[520] flex w-[min(340px,calc(100%-32px))] -translate-x-1/2 flex-col gap-4 rounded-card p-4">
+          <div className="glass absolute top-[calc(env(safe-area-inset-top)+76px)] left-1/2 z-[520] flex w-[min(340px,calc(100%-32px))] -translate-x-1/2 flex-col gap-3 rounded-card p-4">
             <div className="flex flex-wrap gap-2">
               {ECOSYSTEM_FILTERS.map((f) => {
                 const active = radar.filter === f.id
@@ -223,6 +239,24 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             >
               <Building2 className="size-4" /> Organisasi
             </button>
+            {canOrganize && (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => openSheet('verify', true)}
+                  className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-white text-[13px] font-bold text-ink"
+                >
+                  <CheckSquare className="size-4" /> Verifikasi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startCreateEvent(null)}
+                  className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-cobalt text-[13px] font-bold text-white"
+                >
+                  <CalendarPlus className="size-4" /> Buat Event
+                </button>
+              </div>
+            )}
             {profile?.role === 'agency' && (
               <button
                 type="button"
@@ -250,7 +284,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         <Orb
           size={48}
           label="Profil"
-          onClick={() => (profile ? openSheet('profile', true) : openAuthModal())}
+          onClick={() => openSheet('profile', true)}
           className="text-sm font-extrabold"
         >
           {initials}
@@ -344,9 +378,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             className={`min-h-0 flex-1 px-5 pb-32 ${snap === 'full' ? 'overflow-y-auto' : 'overflow-hidden'}`}
           >
             {mode === 'detail' && selected && (
-              <SiteDetail
+              <EventDetail
                 key={selected.id}
-                report={selected}
+                event={selected}
                 joined={radar.joinedIds.has(selected.id)}
                 onJoin={async () => {
                   await radar.joinAction(selected.id)
@@ -356,8 +390,8 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             )}
 
             {mode === 'list' && (
-              <ReportListPanel
-                reports={radar.reports}
+              <EventListPanel
+                events={radar.events}
                 query={query}
                 onQueryChange={setQuery}
                 autoFocus={focusSearch}
@@ -367,15 +401,22 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
 
             {mode === 'orgs' && <OrgsPanel />}
             {mode === 'profile' && <ProfilePanel />}
+            {mode === 'verify' && (
+              <VerificationRadarPanel
+                onCreateEvent={(report) => startCreateEvent(report)}
+                onCreateStandaloneEvent={() => startCreateEvent(null)}
+              />
+            )}
             {mode === 'agency' && (
               <AgencyInboxPanel
-                reports={radar.allReports}
-                onSelectReport={openDetail}
+                events={radar.allEvents}
+                onSelectEvent={openDetail}
+                onCreateEventFromReport={(report) => startCreateEvent(report)}
                 onRefresh={radar.refresh}
               />
             )}
             {mode === 'admin' && (
-              <AdminPanel reports={radar.allReports} onRefreshReports={radar.refresh} />
+              <AdminPanel events={radar.allEvents} onRefreshEvents={radar.refresh} />
             )}
           </div>
         </motion.div>
@@ -397,12 +438,29 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         <div className="absolute inset-0 z-[800] bg-canvas">
           <QuickReportFlow
             onClose={() => setReportOpen(false)}
-            onPublished={async (id) => {
+            onOpenVerification={() => {
               setReportOpen(false)
+              openSheet('verify', true)
+            }}
+          />
+        </div>
+      )}
+
+      {eventOpen && (
+        <div className="absolute inset-0 z-[800] bg-canvas">
+          <CreateEventForm
+            key={draftReport?.id ?? 'standalone'}
+            initialReport={draftReport}
+            onClose={() => {
+              setDraftReport(null)
+              setEventOpen(false)
+            }}
+            onCreated={async (id) => {
+              setDraftReport(null)
+              setEventOpen(false)
               radar.setFilter('all')
               await radar.refresh()
-              radar.setSelectedId(id)
-              setMode('detail')
+              openDetail(id)
             }}
           />
         </div>

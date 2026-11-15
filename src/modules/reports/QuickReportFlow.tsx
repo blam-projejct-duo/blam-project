@@ -1,6 +1,8 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Camera, Check, ImagePlus, LocateFixed, ShieldCheck, X } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { ReportStatusPill } from '../../components/ui/atoms'
 import { verifyAndCreateReport } from '../../lib/api'
 import type { VerifyReportResult } from '../../lib/api'
 import { compressImage, haversineDistanceKm } from '../../lib/imageCompress'
@@ -10,7 +12,8 @@ import { useAuth } from '../auth/AuthContext'
 
 interface Props {
   onClose: () => void
-  onPublished: (reportId: string) => void
+  onSubmitted?: () => void
+  onOpenVerification?: () => void
 }
 
 const ECOS: { id: Ecosystem; label: string }[] = [
@@ -22,7 +25,8 @@ const ECOS: { id: Ecosystem; label: string }[] = [
 const field =
   'h-12 w-full rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-ink focus:outline-none'
 
-export default function QuickReportFlow({ onClose, onPublished }: Props) {
+export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerification }: Props) {
+  const queryClient = useQueryClient()
   const { profile, openAuthModal, refreshMe } = useAuth()
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [eco, setEco] = useState<Ecosystem>('coastal_mangrove')
@@ -42,6 +46,7 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
   const lngN = Number(lng)
   const coordsOk = lat !== '' && lng !== '' && Number.isFinite(latN) && Number.isFinite(lngN) && Math.abs(latN) <= 90 && Math.abs(lngN) <= 180
   const step1Ok = place.trim().length > 2 && coordsOk
+  const canVerify = profile && (profile.role === 'volunteer' || profile.role === 'agency' || profile.role === 'admin')
 
   const useGps = () => {
     if (!navigator.geolocation) return setError('GPS tidak tersedia di perangkat ini')
@@ -102,7 +107,11 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
       })
       setResult(r)
       if (r.isValid && r.saved) {
-        await refreshMe()
+        await Promise.all([
+          refreshMe(),
+          queryClient.invalidateQueries({ queryKey: ['reports-queue'] }),
+        ])
+        onSubmitted?.()
         setStep(4)
       }
     } catch (e) {
@@ -211,14 +220,17 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
 
         {step === 4 && result && (
           <section className="relative flex flex-col items-center gap-4 pt-6 text-center">
-            <span className="grid size-20 place-items-center rounded-full bg-white text-emerald border border-line">
+            <span className="grid size-20 place-items-center rounded-full border border-line bg-white text-emerald">
               <Check className="size-10" strokeWidth={3} />
             </span>
             <h2 className="text-2xl font-extrabold tracking-tight">Merci!{result.pointsAwarded ? ` +${result.pointsAwarded}` : ''}</h2>
             <div className="w-full rounded-card border border-line bg-white p-5 text-left">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-sm font-bold text-ink-soft"><ShieldCheck className="size-4" /> AI</span>
-                <span className="num text-2xl text-ink">{result.confidence}%</span>
+              <div className="flex items-center justify-between gap-2">
+                <ReportStatusPill status={result.status ?? 'pending_verification'} />
+                <span className="flex items-center gap-1.5 text-sm font-bold text-ink-soft">
+                  <ShieldCheck className="size-4" />
+                  <span className="num text-lg text-ink">{result.confidence}%</span>
+                </span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="text-sm font-semibold">{result.threatCategory}</span>
@@ -254,7 +266,13 @@ export default function QuickReportFlow({ onClose, onPublished }: Props) {
           </button>
         )}
         {step === 4 && result?.reportId && (
-          <button type="button" onClick={() => onPublished(result.reportId!)} className="btn-primary h-13 w-full text-[15px]">Lihat di peta</button>
+          <button
+            type="button"
+            onClick={() => (canVerify && onOpenVerification ? onOpenVerification() : onClose())}
+            className="btn-primary h-13 w-full text-[15px]"
+          >
+            {canVerify && onOpenVerification ? 'Buka Verifikasi' : 'Selesai'}
+          </button>
         )}
       </footer>
     </div>

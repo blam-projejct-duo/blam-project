@@ -3,7 +3,7 @@ import type { QueryKey } from '@tanstack/react-query'
 
 export const CACHE_TTL_MS = 20 * 60 * 1000
 const MAX_PERSIST_MS = 24 * 60 * 60 * 1000
-const STORAGE_KEY = 'blam_query_cache_v3'
+const STORAGE_KEY = 'blam_query_cache_v4'
 const MAX_PULSE_ENTRIES = 30
 
 interface PersistedEntry {
@@ -18,7 +18,7 @@ interface PersistedStore {
 
 function shouldPersistKey(key: QueryKey): boolean {
   const head = key[0]
-  return head === 'reports' || head === 'orgs' || head === 'pulse' || head === 'layers'
+  return head === 'events' || head === 'orgs' || head === 'pulse' || head === 'layers'
 }
 
 export const queryClient = new QueryClient({

@@ -1,25 +1,39 @@
+import { useQuery } from '@tanstack/react-query'
+import { CalendarPlus } from 'lucide-react'
 import { useState } from 'react'
-import { StatusPill } from '../../components/ui/atoms'
-import { verifyActionAgency } from '../../lib/api'
-import type { Report } from '../../types'
+import { ReportStatusPill } from '../../components/ui/atoms'
+import { fetchReportsQueue, verifyActionAgency } from '../../lib/api'
+import type { CitizenReport, ConservationEvent } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 
 export default function AgencyInboxPanel({
-  reports,
-  onSelectReport,
+  events,
+  onSelectEvent,
+  onCreateEventFromReport,
   onRefresh,
 }: {
-  reports: Report[]
-  onSelectReport: (id: string) => void
+  events: ConservationEvent[]
+  onSelectEvent: (id: string) => void
+  onCreateEventFromReport: (report: CitizenReport) => void
   onRefresh: () => Promise<void>
 }) {
-  const { notifications } = useAuth()
+  const { profile, notifications } = useAuth()
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const escalated = reports.filter((r) => r.status === 'escalated' || r.ai_severity === 'critical')
-  const pendingStamp = reports.filter((r) =>
-    r.report_actions?.some((a) => !a.verified_by_agency),
+  const canReadQueue = profile?.role === 'agency' || profile?.role === 'admin'
+  const queueQuery = useQuery({
+    queryKey: ['reports-queue', profile?.id],
+    queryFn: () => fetchReportsQueue(false),
+    enabled: canReadQueue,
+    staleTime: 0,
+  })
+
+  const escalated = (queueQuery.data ?? []).filter(
+    (r) => r.status === 'escalated' || r.ai_severity === 'critical',
+  )
+  const pendingStamp = events.filter((ev) =>
+    ev.event_actions?.some((a) => !a.verified_by_agency),
   )
   const agencyNotifs = notifications.filter((n) => n.target_role === 'agency')
 
@@ -68,19 +82,23 @@ export default function AgencyInboxPanel({
           </p>
         ) : (
           escalated.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => onSelectReport(r.id)}
-              className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-white p-4 text-left hover:bg-canvas"
-            >
+            <div key={r.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-white p-4">
               <div className="min-w-0">
-                <StatusPill status={r.status} />
-                <p className="mt-2 truncate text-sm font-extrabold text-ink">{r.title}</p>
+                <div className="flex items-center gap-2">
+                  <ReportStatusPill status={r.status} />
+                  <span className="num text-xs text-ink-soft">AI {r.ai_confidence}%</span>
+                </div>
+                <p className="mt-1.5 truncate text-sm font-extrabold text-ink">{r.title}</p>
                 <p className="mt-0.5 truncate text-xs text-ink-soft">{r.location_name}</p>
               </div>
-              <span className="num shrink-0 text-sm text-ink-soft">AI {r.ai_confidence}%</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => onCreateEventFromReport(r)}
+                className="btn-primary h-9 shrink-0 px-3.5 text-xs"
+              >
+                <CalendarPlus className="size-3.5" /> Event
+              </button>
+            </div>
           ))
         )}
       </section>
@@ -88,15 +106,19 @@ export default function AgencyInboxPanel({
       {pendingStamp.length > 0 && (
         <section className="flex flex-col gap-2.5">
           <p className="text-xs font-extrabold text-ink-soft uppercase">Menunggu Sah</p>
-          {pendingStamp.map((r) => {
-            const action = r.report_actions?.find((a) => !a.verified_by_agency)
+          {pendingStamp.map((ev) => {
+            const action = ev.event_actions?.find((a) => !a.verified_by_agency)
             if (!action) return null
             return (
               <div key={action.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-white p-4">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-extrabold text-ink">{r.title}</p>
+                <button
+                  type="button"
+                  onClick={() => onSelectEvent(ev.id)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <p className="truncate text-sm font-extrabold text-ink">{ev.title}</p>
                   <p className="mt-0.5 truncate text-xs text-ink-soft">{action.notes}</p>
-                </div>
+                </button>
                 <button
                   type="button"
                   disabled={busyId === action.id}

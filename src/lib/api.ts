@@ -1,14 +1,17 @@
 import type {
-  ActionVisibility,
+  CitizenReport,
+  ConservationEvent,
   Ecosystem,
   EnvLayers,
   EnvPulse,
+  EventStatus,
+  EventVisibility,
   NotificationItem,
   Organization,
   OrganizationMember,
   OrgType,
   Profile,
-  Report,
+  ReportStatus,
   Severity,
 } from '../types'
 import { isDemoPathname } from './route'
@@ -81,12 +84,95 @@ export async function markNotificationRead(id: string): Promise<void> {
   await apiFetch(`/notifications/${id}/read`, { method: 'PATCH', requireAuth: true })
 }
 
-export async function fetchReports(includeRejected = false, forceRefresh = false): Promise<Report[]> {
+export async function fetchEvents(includeCancelled = false, forceRefresh = false): Promise<ConservationEvent[]> {
   const params = new URLSearchParams()
-  if (includeRejected) params.set('includeRejected', '1')
+  if (includeCancelled) params.set('includeCancelled', '1')
   if (forceRefresh) params.set('refresh', '1')
   const qs = params.toString() ? `?${params.toString()}` : ''
-  const res = await apiFetch<{ reports: Report[] }>(`/reports${qs}`, { cache: 'no-store' })
+  const res = await apiFetch<{ events: ConservationEvent[] }>(`/events${qs}`, { cache: 'no-store' })
+  return res.events
+}
+
+export interface CreateEventInput {
+  organizationId?: string
+  reportId?: string
+  visibility: EventVisibility
+  title: string
+  description?: string
+  ecosystem: Ecosystem
+  category: string
+  lat: number
+  lng: number
+  locationName: string
+  coverImageBase64?: string
+  coverMimeType?: 'image/jpeg' | 'image/png' | 'image/webp'
+  startAt?: string
+  endAt?: string
+  maxParticipants?: number
+}
+
+export async function createEvent(input: CreateEventInput): Promise<{
+  ok: boolean
+  event: { id: string; title: string; status: EventStatus }
+}> {
+  return apiFetch('/events', {
+    method: 'POST',
+    requireAuth: true,
+    body: JSON.stringify(input),
+  })
+}
+
+export async function updateEventVisibility(eventId: string, visibility: EventVisibility): Promise<void> {
+  await apiFetch(`/events/${eventId}/visibility`, {
+    method: 'PATCH',
+    requireAuth: true,
+    body: JSON.stringify({ visibility }),
+  })
+}
+
+export async function joinEvent(
+  eventId: string,
+): Promise<{ ok: boolean; alreadyJoined: boolean; status: string; pointsAwarded: number }> {
+  return apiFetch(`/events/${eventId}/join`, {
+    method: 'POST',
+    requireAuth: true,
+  })
+}
+
+export interface ResolveEventInput {
+  imageBase64: string
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp'
+  notes: string
+  wasteKg: number
+  treesPlanted: number
+  organizationId?: string
+}
+
+export async function resolveEvent(
+  eventId: string,
+  input: ResolveEventInput,
+): Promise<{
+  ok: boolean
+  actionId: string
+  afterImageUrl: string
+  recoveryScore: number
+  comparisonSummary: string
+  verifiedByAgency: boolean
+  pointsAwarded: number
+}> {
+  return apiFetch(`/events/${eventId}/resolve`, {
+    method: 'POST',
+    requireAuth: true,
+    body: JSON.stringify(input),
+  })
+}
+
+export async function fetchReportsQueue(includeRejected = false): Promise<CitizenReport[]> {
+  const qs = includeRejected ? '?includeRejected=1' : ''
+  const res = await apiFetch<{ reports: CitizenReport[] }>(`/reports/queue${qs}`, {
+    requireAuth: true,
+    cache: 'no-store',
+  })
   return res.reports
 }
 
@@ -113,7 +199,7 @@ export interface VerifyReportResult {
   reason: string
   recommendations: string[]
   saved: boolean
-  status?: string
+  status?: ReportStatus
   reportId?: string
   imageUrl?: string
   pointsAwarded?: number
@@ -127,52 +213,15 @@ export async function verifyAndCreateReport(input: VerifyReportInput): Promise<V
   })
 }
 
-export async function updateReportVisibility(
+export async function verifyCitizenReport(
   reportId: string,
-  organizationId: string,
-  actionVisibility: ActionVisibility,
+  status: 'verified' | 'rejected',
+  organizationId?: string,
 ): Promise<void> {
-  await apiFetch(`/reports/${reportId}/visibility`, {
+  await apiFetch(`/reports/${reportId}/verify`, {
     method: 'PATCH',
     requireAuth: true,
-    body: JSON.stringify({ organizationId, actionVisibility }),
-  })
-}
-
-export async function joinReportAction(
-  reportId: string,
-): Promise<{ ok: boolean; alreadyJoined: boolean; status: string; pointsAwarded: number }> {
-  return apiFetch(`/reports/${reportId}/join`, {
-    method: 'POST',
-    requireAuth: true,
-  })
-}
-
-export interface ResolveReportInput {
-  imageBase64: string
-  mimeType: 'image/jpeg' | 'image/png' | 'image/webp'
-  notes: string
-  wasteKg: number
-  treesPlanted: number
-  organizationId?: string
-}
-
-export async function resolveReport(
-  reportId: string,
-  input: ResolveReportInput,
-): Promise<{
-  ok: boolean
-  actionId: string
-  afterImageUrl: string
-  recoveryScore: number
-  comparisonSummary: string
-  verifiedByAgency: boolean
-  pointsAwarded: number
-}> {
-  return apiFetch(`/reports/${reportId}/resolve`, {
-    method: 'POST',
-    requireAuth: true,
-    body: JSON.stringify(input),
+    body: JSON.stringify({ status, organizationId }),
   })
 }
 
@@ -221,14 +270,19 @@ export async function verifyOrgAdmin(organizationId: string, approve: boolean): 
   })
 }
 
-export async function moderateReportAdmin(
-  reportId: string,
-  status: 'rejected' | 'open' | 'escalated',
-): Promise<void> {
+export async function moderateReportAdmin(reportId: string, status: ReportStatus): Promise<void> {
   await apiFetch('/admin/moderate-report', {
     method: 'POST',
     requireAuth: true,
     body: JSON.stringify({ reportId, status }),
+  })
+}
+
+export async function moderateEventAdmin(eventId: string, status: 'cancelled' | 'open'): Promise<void> {
+  await apiFetch('/admin/moderate-event', {
+    method: 'POST',
+    requireAuth: true,
+    body: JSON.stringify({ eventId, status }),
   })
 }
 
@@ -252,6 +306,7 @@ export async function fetchEnvLayers(lat: number, lng: number, signal?: AbortSig
     lat,
     lng,
     hotspots: data.hotspots.length,
+    eonet: data.eonet.length,
     species: data.species.length,
     cached: data.cached,
     sources: data.sources,
