@@ -1,10 +1,35 @@
-import { Ban, CalendarPlus, ExternalLink, Flame, MapPin, ShieldAlert } from 'lucide-react'
+import {
+  Ban,
+  CalendarPlus,
+  ExternalLink,
+  Flame,
+  MapPin,
+  ShieldAlert,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Pill } from '../../components/ui/atoms'
 import { moderateHotspotAdmin } from '../../lib/api'
-import type { ConservationEvent, SatelliteSignal } from '../../types'
+import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import { usePulse } from '../map/usePulse'
+
+const KIND_DOT_CLASS: Record<HazardKind, string> = {
+  wildfire: 'bg-critical',
+  volcano: 'bg-purple-600',
+  flood: 'bg-cobalt',
+  storm: 'bg-cyan-600',
+  suspected: 'bg-progress',
+  other: 'bg-progress',
+}
+
+const KIND_TEXT_CLASS: Record<HazardKind, string> = {
+  wildfire: 'text-critical',
+  volcano: 'text-purple-600',
+  flood: 'text-cobalt',
+  storm: 'text-cyan-600',
+  suspected: 'text-progress',
+  other: 'text-progress',
+}
 
 interface Props {
   signal: SatelliteSignal
@@ -51,7 +76,9 @@ export default function SatelliteSignalDetail({
     setBusyModerate(true)
     setError(null)
     try {
-      await moderateHotspotAdmin(signal.externalId)
+      // satu kawasan bisa berisi banyak titik api: moderasi semua anggotanya
+      const ids = (signal.memberIds?.length ? signal.memberIds : [signal.externalId]).slice(0, 50)
+      await Promise.all(ids.map((id) => moderateHotspotAdmin(id)))
       await onModerated()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal memoderasi hotspot')
@@ -60,12 +87,14 @@ export default function SatelliteSignalDetail({
     }
   }
 
+  const kind = signal.kind ?? 'suspected'
+
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-ink-soft">
           <span className="inline-flex items-center gap-1.5 text-ink">
-            <span className="size-2 rounded-full bg-progress" />
+            <span className={`size-2 rounded-full ${KIND_DOT_CLASS[kind]}`} />
             Sinyal Satelit
           </span>
           {isAgency && !linkedEvent && (
@@ -89,12 +118,29 @@ export default function SatelliteSignalDetail({
 
         <div className="flex flex-wrap items-center gap-1.5">
           <Pill>
-            <Flame className="size-3.5 text-progress" />
+            <Flame className={`size-3.5 ${KIND_TEXT_CLASS[kind]}`} />
             {signal.source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'}
           </Pill>
           <Pill>{signal.categoryLabel}</Pill>
         </div>
       </header>
+
+      {signal.reason && (
+        <section className="rounded-card border border-line bg-canvas p-4">
+          <h3 className="text-xs font-extrabold tracking-wide text-ink-soft uppercase">Detail Radar</h3>
+          <p className="mt-1.5 text-sm leading-relaxed font-medium text-ink">{signal.reason}</p>
+          {(signal.kind === 'wildfire' || signal.kind === 'suspected') && (signal.pointCount ?? 0) > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <Tile
+                value={String(signal.pointCount)}
+                label={signal.kind === 'suspected' ? 'Titik panas' : 'Titik api'}
+              />
+              <Tile value={String(Math.round(signal.totalFrp ?? 0))} unit="MW" label="Total daya" />
+              <Tile value={`±${signal.radiusKm ?? 1}`} unit="km" label="Sebaran" />
+            </div>
+          )}
+        </section>
+      )}
 
       <div className={`grid grid-cols-2 gap-2.5 ${pulseStatus === 'loading' ? 'animate-pulse' : ''}`}>
         <Tile value={fmt(pulse?.aqi)} label="Udara" />
@@ -104,7 +150,11 @@ export default function SatelliteSignalDetail({
           label="Gelombang"
         />
         <Tile value={fmt(pulse?.hotspots)} label="Hotspot" />
-        <Tile value={fmt(pulse?.species)} label="Spesies" />
+        <Tile
+          value={fmt(pulse?.windKmh)}
+          unit={typeof pulse?.windKmh === 'number' ? 'km/j' : undefined}
+          label="Angin"
+        />
       </div>
 
       {error && (
@@ -125,7 +175,9 @@ export default function SatelliteSignalDetail({
           </button>
         ) : !canOrganize ? (
           <div className="rounded-card border border-line bg-canvas px-4 py-3.5 text-center text-sm font-bold text-ink-soft">
-            Belum ada event organisasi
+            {signal.kind === 'suspected'
+              ? 'Menunggu verifikasi langsung relawan di lapangan'
+              : 'Belum ada event organisasi'}
           </div>
         ) : (
           <>
@@ -135,7 +187,9 @@ export default function SatelliteSignalDetail({
               className="btn-primary h-13 w-full text-[15px]"
             >
               <CalendarPlus className="size-4" />
-              Adakan Event di Titik Ini
+              {signal.kind === 'suspected'
+                ? 'Bantu Verifikasi Langsung di Titik Ini'
+                : 'Adakan Event di Titik Ini'}
             </button>
             {isAdmin && signal.source === 'nasa_firms' && (
               <button
@@ -154,4 +208,3 @@ export default function SatelliteSignalDetail({
     </div>
   )
 }
-

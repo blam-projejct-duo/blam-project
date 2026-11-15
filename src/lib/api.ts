@@ -311,6 +311,8 @@ export async function fetchPulse(lat: number, lng: number, signal?: AbortSignal)
   return data
 }
 
+
+
 export async function fetchEnvLayers(lat: number, lng: number, signal?: AbortSignal): Promise<EnvLayers> {
   const data = await apiFetch<EnvLayers>(`/env/layers?lat=${lat}&lng=${lng}`, { signal })
   console.info('[Blam:EnvLayers]', {
@@ -324,3 +326,5 @@ export async function fetchEnvLayers(lat: number, lng: number, signal?: AbortSig
   })
   return data
 }
+
+

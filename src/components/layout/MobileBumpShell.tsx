@@ -18,7 +18,7 @@ import {
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Orb } from '../../components/ui/atoms'
-import { ECOSYSTEM_FILTERS } from '../../lib/constants'
+import { ECOSYSTEM_FILTERS, mapEventTone } from '../../lib/constants'
 import AdminPanel from '../../modules/admin/AdminPanel'
 import AgencyInboxPanel from '../../modules/agency/AgencyInboxPanel'
 import { useAuth } from '../../modules/auth/AuthContext'
@@ -33,7 +33,7 @@ import ProfilePanel from '../../modules/profile/ProfilePanel'
 import QuickReportFlow from '../../modules/reports/QuickReportFlow'
 import VerificationRadarPanel from '../../modules/reports/VerificationRadarPanel'
 import EventListPanel from './EventListPanel'
-import type { CitizenReport, Ecosystem, SatelliteSignal } from '../../types'
+import type { CitizenReport, Ecosystem, PinTone, SatelliteSignal } from '../../types'
 
 type Snap = 'peek' | 'half' | 'full'
 type Mode = 'detail' | 'signal' | 'list' | 'orgs' | 'profile' | 'verify' | 'agency' | 'admin' | null
@@ -58,6 +58,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const [snap, setSnap] = useState<Snap>('half')
   const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [tones, setTones] = useState<Set<PinTone>>(() => new Set(['critical']))
   const [focusSearch, setFocusSearch] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [eventOpen, setEventOpen] = useState(false)
@@ -156,8 +157,42 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
     profile && (profile.role === 'volunteer' || profile.role === 'agency' || profile.role === 'admin'),
   )
 
-  const hotspotLabel = radar.showHotspots && radar.layersLoading ? 'Hotspot…' : 'Hotspot'
-  const speciesLabel = radar.showSpecies && radar.layersLoading ? 'Spesies…' : 'Spesies'
+  const toggleTone = (tone: PinTone) =>
+    setTones((prev) => {
+      const next = new Set(prev)
+      if (next.has(tone)) next.delete(tone)
+      else next.add(tone)
+      return next
+    })
+
+  const visibleEvents = useMemo(
+    () =>
+      radar.events.filter(
+        (ev) =>
+          ev.status !== 'resolved' &&
+          ev.status !== 'cancelled' &&
+          (tones.size === 0 || tones.has(mapEventTone(ev))),
+      ),
+    [radar.events, tones],
+  )
+
+  const visibleHazards = useMemo(
+    () =>
+      tones.size === 0
+        ? radar.hazards
+        : radar.hazards.filter((h) => tones.has(h.severity === 'high' ? 'critical' : 'progress')),
+    [radar.hazards, tones],
+  )
+
+  const visibleSignals = useMemo(
+    () =>
+      tones.size === 0
+        ? radar.satelliteSignals
+        : radar.satelliteSignals.filter((s) =>
+            tones.has(s.kind === 'wildfire' || s.kind === 'volcano' || s.kind === 'flood' ? 'critical' : 'progress'),
+          ),
+    [radar.satelliteSignals, tones],
+  )
 
   const selected = radar.selected
   const initials = profile?.full_name ? profile.full_name.slice(0, 1).toUpperCase() : null
@@ -165,17 +200,13 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   return (
     <div ref={rootRef} className="relative h-full w-full select-none overflow-hidden bg-canvas">
       <MapView
-        events={radar.events}
-        hotspots={radar.hotspots}
-        eonetPoints={radar.eonetPoints}
-        speciesPoints={radar.speciesPoints}
+        events={visibleEvents}
+        hazards={visibleHazards}
         selectedId={radar.selectedId}
         selectedSignal={radar.selectedSignal}
         onSelect={openDetail}
         onSelectSignal={openSignalDetail}
         style={radar.style}
-        showHotspots={radar.showHotspots}
-        showSpecies={radar.showSpecies}
         padding={{ bottom: padBottom, right: 0 }}
         fitAllSignal={radar.fitAllSignal}
         locateSignal={radar.locateSignal}
@@ -189,8 +220,8 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           aria-expanded={menuOpen}
           className="glass flex h-12 items-center gap-2 rounded-full px-5 text-sm font-bold whitespace-nowrap"
         >
-          <span className="size-2 rounded-full bg-emerald" />
-          {radar.events.length} titik
+          <span className="size-2 rounded-full bg-critical" />
+          {visibleEvents.length + visibleHazards.length} titik
           <ChevronDown
             className={`size-4 text-ink-soft transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`}
           />
@@ -215,9 +246,8 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                     type="button"
                     onClick={() => radar.setFilter(f.id as Ecosystem | 'all')}
                     aria-pressed={active}
-                    className={`h-10 rounded-full px-4 text-[13px] font-bold ${
-                      active ? 'bg-ink text-white' : 'bg-muted text-ink'
-                    }`}
+                    className={`h-10 rounded-full px-4 text-[13px] font-bold ${active ? 'bg-ink text-white' : 'bg-muted text-ink'
+                      }`}
                   >
                     {f.label}
                   </button>
@@ -228,22 +258,24 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             <div className="flex gap-2">
               {(
                 [
-                  ['hotspot', hotspotLabel, radar.showHotspots, radar.toggleHotspots],
-                  ['species', speciesLabel, radar.showSpecies, radar.toggleSpecies],
+                  ['critical', 'Kritis', 'bg-critical'],
+                  ['progress', 'Masih Dugaan', 'bg-progress'],
                 ] as const
-              ).map(([key, label, on, toggle]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={toggle}
-                  aria-pressed={on}
-                  className={`h-10 flex-1 rounded-full text-[13px] font-bold ${
-                    on ? 'bg-ink text-white' : 'bg-muted text-ink'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+              ).map(([tone, label, dot]) => {
+                const on = tones.has(tone)
+                return (
+                  <button
+                    key={tone}
+                    type="button"
+                    onClick={() => toggleTone(tone)}
+                    aria-pressed={on}
+                    className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-full text-[13px] font-bold ${on ? 'bg-ink text-white' : 'bg-muted text-ink'}`}
+                  >
+                    <span className={`size-2 rounded-full ${dot}`} />
+                    {label}
+                  </button>
+                )
+              })}
             </div>
             <button
               type="button"
@@ -425,8 +457,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
 
             {mode === 'list' && (
               <EventListPanel
-                events={radar.events}
-                signals={radar.satelliteSignals}
+                events={visibleEvents}
+                impactEvents={radar.events}
+                signals={visibleSignals}
                 query={query}
                 onQueryChange={setQuery}
                 autoFocus={focusSearch}

@@ -376,22 +376,48 @@ function parseNasaFirmsCsv(text: string): { header: string; points: HotspotPoint
   return { header, points }
 }
 
-function curateHotspotsForMap(rows: HotspotPoint[], centerLat: number, centerLng: number, limit = 20): HotspotPoint[] {
+function isStaticNonWildfireAnomaly(lat: number, lng: number): boolean {
+  // 1. TPA Jatibarang Semarang (-7.0051, 110.3505)
+  if (Math.abs(lat - (-7.0051)) <= 0.035 && Math.abs(lng - 110.3505) <= 0.035) return true
+  // 2. TPA Bantar Gebang Bekasi (-6.347, 106.994)
+  if (Math.abs(lat - (-6.347)) <= 0.03 && Math.abs(lng - 106.994) <= 0.03) return true
+  // 3. TPA Sarimukti Bandung Barat (-6.812, 107.368)
+  if (Math.abs(lat - (-6.812)) <= 0.03 && Math.abs(lng - 107.368) <= 0.03) return true
+  // 4. TPA Suwung Denpasar Bali (-8.718, 115.221)
+  if (Math.abs(lat - (-8.718)) <= 0.03 && Math.abs(lng - 115.221) <= 0.03) return true
+  // 5. TPA Benowo Surabaya (-7.22, 112.61) & TPA Piyungan Yogyakarta (-7.85, 110.43)
+  if (Math.abs(lat - (-7.22)) <= 0.03 && Math.abs(lng - 112.61) <= 0.03) return true
+  if (Math.abs(lat - (-7.85)) <= 0.03 && Math.abs(lng - 110.43) <= 0.03) return true
+  // 6. Kilang Migas & Flare gas (Balongan, Cilacap, Balikpapan, Bojonegoro)
+  if (Math.abs(lat - (-6.368)) <= 0.035 && Math.abs(lng - 108.384) <= 0.035) return true
+  if (Math.abs(lat - (-7.702)) <= 0.035 && Math.abs(lng - 109.02) <= 0.035) return true
+  if (Math.abs(lat - (-1.248)) <= 0.035 && Math.abs(lng - 116.835) <= 0.035) return true
+  if (Math.abs(lat - (-7.165)) <= 0.035 && Math.abs(lng - 111.758) <= 0.035) return true
+  // 7. Smelter Industri (Morowali, Cilegon)
+  if (Math.abs(lat - (-2.827)) <= 0.04 && Math.abs(lng - 122.158) <= 0.04) return true
+  if (Math.abs(lat - (-6.012)) <= 0.04 && Math.abs(lng - 105.998) <= 0.04) return true
+  return false
+}
+
+function curateHotspotsForMap(rows: HotspotPoint[], centerLat: number, centerLng: number, limit = 80): HotspotPoint[] {
   const localBest = new Map<string, HotspotPoint>()
   const regionalBest = new Map<string, HotspotPoint>()
 
   for (const h of rows) {
-    if (h.confidence !== 'h') continue
+    if (h.confidence === 'l') continue
+    if (h.confidence !== 'h' && (h.frp ?? 0) < 2) continue
+    // Filter out confirmed non-wildfire static anomalies (TPA sampah, flare gas, smelter)
+    if (isStaticNonWildfireAnomaly(h.lat, h.lng)) continue
 
-    const nearLocal = Math.abs(h.lat - centerLat) <= 0.35 && Math.abs(h.lng - centerLng) <= 0.35
+    const nearLocal = Math.abs(h.lat - centerLat) <= 2.5 && Math.abs(h.lng - centerLng) <= 2.5
     if (nearLocal) {
-      const localKey = `${(Math.round(h.lat * 12) / 12).toFixed(2)},${(Math.round(h.lng * 12) / 12).toFixed(2)}`
+      const localKey = `${(Math.round(h.lat * 8) / 8).toFixed(2)},${(Math.round(h.lng * 8) / 8).toFixed(2)}`
       const cur = localBest.get(localKey)
       if (!cur || h.frp > cur.frp) localBest.set(localKey, h)
       continue
     }
 
-    const cellKey = `${(Math.round(h.lat * 2.5) / 2.5).toFixed(1)},${(Math.round(h.lng * 2.5) / 2.5).toFixed(1)}`
+    const cellKey = `${(Math.round(h.lat * 1.5) / 1.5).toFixed(1)},${(Math.round(h.lng * 1.5) / 1.5).toFixed(1)}`
     const cur = regionalBest.get(cellKey)
     if (!cur || h.frp > cur.frp) regionalBest.set(cellKey, h)
   }
@@ -2203,7 +2229,7 @@ app.get('/env/layers', async (c) => {
   }
 
   const forceRefresh = c.req.query('refresh') === '1'
-  const firmsCacheKey = 'layers:firms:id:v3'
+  const firmsCacheKey = 'layers:firms:id:v5'
   const eonetCacheKey = 'layers:eonet:id:v1'
   const speciesCacheKey = `layers:species:${lat.toFixed(1)},${lng.toFixed(1)}:v1`
   const { supa } = requireDb('ENV_LAYERS_CACHE')
@@ -2253,17 +2279,29 @@ app.get('/env/layers', async (c) => {
         `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${Number(h.lat).toFixed(4)}:${Number(h.lng).toFixed(4)}`,
     }))
     .filter((h) => !falseHotspotIds.has(h.id))
-  const hotspots = curateHotspotsForMap(normalizedHotspots, lat, lng, 20)
+  const hotspots = curateHotspotsForMap(normalizedHotspots, lat, lng, 80)
   const eonet = cachedEonet ?? eonetRes?.points ?? []
   const species = cachedSpecies ?? speciesRes?.species ?? []
 
   if (supa) {
     const expiresAt = new Date(Date.now() + TTL_MS).toISOString()
     if (!cachedHotspots && firmsRes?.state === 'ok') {
-      const curatedGlobal = curateHotspotsForMap(firmsRes.points, lat, lng, 20)
+      const credibleHotspots = firmsRes.points
+        .filter(
+          (h) =>
+            h.confidence !== 'l' &&
+            (h.confidence === 'h' || (h.frp ?? 0) >= 2) &&
+            !isStaticNonWildfireAnomaly(h.lat, h.lng),
+        )
+        .map((h) => ({
+          ...h,
+          id:
+            h.id ||
+            `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${Number(h.lat).toFixed(4)}:${Number(h.lng).toFixed(4)}`,
+        }))
       await supa.from('env_cache').upsert({
         cache_key: firmsCacheKey,
-        payload_json: curatedGlobal,
+        payload_json: credibleHotspots,
         fetched_at: nowIso,
         expires_at: expiresAt,
       })

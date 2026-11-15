@@ -1,8 +1,8 @@
 import { Flame, Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { EVENT_STATUS_LABEL, eventPinTone, shortLocation } from '../../lib/constants'
+import { EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
 import { EcoBadge } from '../ui/atoms'
-import type { ConservationEvent, SatelliteSignal } from '../../types'
+import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 
 type ListTab = 'Disarankan' | 'Terbaru' | 'Dampak' | 'Satelit'
 
@@ -28,12 +28,30 @@ function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListT
           <span className="block truncate text-[13px] text-ink-soft">{meta}</span>
         </span>
         <span
-          className={`size-2.5 shrink-0 rounded-full ${DOT[eventPinTone(event.status)]}`}
+          className={`size-2.5 shrink-0 rounded-full ${DOT[mapEventTone(event)]}`}
           aria-label={EVENT_STATUS_LABEL[event.status]}
         />
       </button>
     </li>
   )
+}
+
+const SIGNAL_TEXT_COLOR: Record<HazardKind, string> = {
+  wildfire: 'text-critical',
+  volcano: 'text-purple-600',
+  flood: 'text-cobalt',
+  storm: 'text-cyan-600',
+  suspected: 'text-progress',
+  other: 'text-progress',
+}
+
+const SIGNAL_DOT_COLOR: Record<HazardKind, string> = {
+  wildfire: 'bg-critical',
+  volcano: 'bg-purple-600',
+  flood: 'bg-cobalt',
+  storm: 'bg-cyan-600',
+  suspected: 'bg-progress',
+  other: 'bg-progress',
 }
 
 function SignalRow({
@@ -49,11 +67,14 @@ function SignalRow({
   const meta = linked
     ? `${sourceLabel} · Ada Event`
     : `${sourceLabel} · ${signal.categoryLabel}${signal.date ? ` · ${signal.date}` : ''}`
+  const kind = signal.kind ?? 'suspected'
 
   return (
     <li className="dashed-row">
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 py-3.5 text-left">
-        <span className="grid size-11 shrink-0 place-items-center rounded-[14px] border border-line bg-canvas text-progress">
+        <span
+          className={`grid size-11 shrink-0 place-items-center rounded-[14px] border border-line bg-canvas ${SIGNAL_TEXT_COLOR[kind]}`}
+        >
           <Flame className="size-5" strokeWidth={2} />
         </span>
         <span className="min-w-0 flex-1">
@@ -61,7 +82,7 @@ function SignalRow({
           <span className="block truncate text-[13px] text-ink-soft">{meta}</span>
         </span>
         <span
-          className={`size-2.5 shrink-0 rounded-full ${linked ? 'bg-resolved' : 'bg-progress'}`}
+          className={`size-2.5 shrink-0 rounded-full ${linked ? 'bg-resolved' : SIGNAL_DOT_COLOR[kind]}`}
           aria-label="Sinyal Satelit"
         />
       </button>
@@ -71,6 +92,7 @@ function SignalRow({
 
 export default function EventListPanel({
   events,
+  impactEvents,
   signals = [],
   query,
   onQueryChange,
@@ -80,6 +102,7 @@ export default function EventListPanel({
   onOpenSignal,
 }: {
   events: ConservationEvent[]
+  impactEvents?: ConservationEvent[]
   signals?: SatelliteSignal[]
   query: string
   onQueryChange: (q: string) => void
@@ -109,20 +132,21 @@ export default function EventListPanel({
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const base = events.filter(
-      (ev) => !q || ev.title.toLowerCase().includes(q) || ev.location_name.toLowerCase().includes(q),
-    )
+    const matches = (ev: ConservationEvent) =>
+      !q || ev.title.toLowerCase().includes(q) || ev.location_name.toLowerCase().includes(q)
+    const base = events.filter(matches)
     if (tab === 'Satelit') return []
     if (tab === 'Terbaru') {
       return [...base].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at))
     }
     if (tab === 'Dampak') {
-      return base.filter((ev) => ev.status === 'resolved' && (ev.event_actions?.length ?? 0) > 0)
+      const source = (impactEvents ?? events).filter(matches)
+      return source.filter((ev) => ev.status === 'resolved' && (ev.event_actions?.length ?? 0) > 0)
     }
     return [...base].sort(
       (a, b) => RANK[a.status] - RANK[b.status] || +new Date(b.created_at) - +new Date(a.created_at),
     )
-  }, [events, tab, query])
+  }, [events, impactEvents, tab, query])
 
   const shownSignals =
     tab === 'Satelit' ? filteredSignals : tab === 'Disarankan' && onOpenSignal ? filteredSignals.slice(0, 4) : []

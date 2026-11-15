@@ -9,6 +9,7 @@ export type MemberRole = 'lead' | 'member'
 export type MemberStatus = 'pending' | 'active'
 export type MapStyle = 'terang' | 'gelap' | 'satelit'
 export type RefSource = 'nasa_firms' | 'nasa_eonet'
+export type HazardKind = 'wildfire' | 'suspected' | 'volcano' | 'flood' | 'storm' | 'other'
 
 export interface Profile {
   id: string
@@ -177,6 +178,13 @@ export interface SatelliteSignal {
   confidence?: string
   frp?: number
   ecosystem: Ecosystem
+  kind?: HazardKind
+  reason?: string
+  pointCount?: number
+  totalFrp?: number
+  radiusKm?: number
+  memberIds?: string[]
+  credible?: boolean
 }
 
 export interface EonetPoint {

@@ -2,8 +2,10 @@ import { LngLatBounds, Map as MapLibreMap, Marker, Popup, setWorkerUrl } from 'm
 import type { GeoJSONSource } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { useEffect, useRef } from 'react'
-import { eventPinTone } from '../../lib/constants'
-import type { ConservationEvent, Ecosystem, EonetPoint, HotspotPoint, MapStyle, SatelliteSignal, SpeciesPoint } from '../../types'
+import { mapEventTone } from '../../lib/constants'
+import type { ConservationEvent, MapStyle, SatelliteSignal } from '../../types'
+import { hazardToSignal, severityRank } from './hotspotCluster'
+import type { HazardPoint } from './hotspotCluster'
 import { applyMapStyle, createInitialMapStyle } from './mapStyles'
 
 setWorkerUrl(maplibreWorkerUrl)
@@ -23,16 +25,13 @@ export interface ZoomCommand {
 
 interface Props {
   events: ConservationEvent[]
-  hotspots: HotspotPoint[]
-  eonetPoints: EonetPoint[]
-  speciesPoints: SpeciesPoint[]
+  /** kawasan radar (karhutla, gunung berapi, banjir, dugaan) */
+  hazards: HazardPoint[]
   selectedId: string | null
   selectedSignal?: SatelliteSignal | null
   onSelect: (id: string) => void
   onSelectSignal?: (signal: SatelliteSignal) => void
   style: MapStyle
-  showHotspots: boolean
-  showSpecies: boolean
   padding: MapPadding
   fitAllSignal: number
   locateSignal: number
@@ -47,22 +46,33 @@ interface MarkerEntry {
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-function buildHotspotGeoJson(hotspots: HotspotPoint[]) {
+const HAZARD_COLOR = [
+  'match',
+  ['get', 'kind'],
+  'wildfire',
+  '#EF4444',
+  'suspected',
+  '#F59E0B',
+  'volcano',
+  '#7C3AED',
+  'flood',
+  '#2563EB',
+  'storm',
+  '#0891B2',
+  '#F59E0B',
+] as never
+
+function buildHazardGeoJson(list: HazardPoint[]) {
   return {
     type: 'FeatureCollection' as const,
-    features: hotspots.map((h) => ({
+    features: list.map((h) => ({
       type: 'Feature' as const,
       properties: {
-        id:
-          h.id ||
-          `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${h.lat.toFixed(4)}:${h.lng.toFixed(4)}`,
-        frp: h.frp,
-        brightness: h.brightness,
-        confidence: h.confidence,
-        acqDate: h.acqDate,
-        acqTime: h.acqTime,
-        satellite: h.satellite,
-        daynight: h.daynight,
+        id: h.id,
+        kind: h.kind,
+        kindLabel: h.kindLabel,
+        sev: severityRank(h.severity),
+        n: h.pointCount,
       },
       geometry: {
         type: 'Point' as const,
@@ -72,106 +82,18 @@ function buildHotspotGeoJson(hotspots: HotspotPoint[]) {
   }
 }
 
-function buildEonetGeoJson(eonet: EonetPoint[]) {
-  return {
-    type: 'FeatureCollection' as const,
-    features: eonet.map((e) => ({
-      type: 'Feature' as const,
-      properties: {
-        id: e.id,
-        title: e.title,
-        category: e.category,
-        categoryLabel: e.categoryLabel,
-        date: e.date,
-      },
-      geometry: {
-        type: 'Point' as const,
-        coordinates: [e.lng, e.lat],
-      },
-    })),
-  }
-}
-
-function buildSpeciesGeoJson(species: SpeciesPoint[]) {
-  return {
-    type: 'FeatureCollection' as const,
-    features: species.map((s) => ({
-      type: 'Feature' as const,
-      properties: {
-        id: s.id,
-        name: s.name,
-        commonName: s.commonName ?? '',
-        group: s.group,
-        threatened: s.threatened,
-        observedOn: s.observedOn ?? '',
-      },
-      geometry: {
-        type: 'Point' as const,
-        coordinates: [s.lng, s.lat],
-      },
-    })),
-  }
-}
-
-function confidenceLabel(code: unknown): string {
-  if (code === 'h') return 'Tinggi'
-  if (code === 'l') return 'Rendah'
-  return 'Sedang'
-}
-
-function createHotspotPopupNode(props: Record<string, unknown>): HTMLDivElement {
+function createHazardPopupNode(h: HazardPoint): HTMLDivElement {
   const root = document.createElement('div')
   root.className = 'flex flex-col gap-0.5 text-left'
 
   const title = document.createElement('p')
   title.className = 'text-[13px] font-extrabold text-ink'
-  const frp = Number(props.frp)
-  title.textContent = Number.isFinite(frp) && frp > 0 ? `Hotspot ${frp.toFixed(1)} MW` : 'Hotspot Satelit'
+  title.textContent = h.title
 
   const meta = document.createElement('p')
   meta.className = 'text-[11px] font-semibold text-ink-soft'
-  const date = typeof props.acqDate === 'string' && props.acqDate ? props.acqDate : '-'
-  meta.textContent = `NASA FIRMS · ${confidenceLabel(props.confidence)} · ${date}`
-
-  root.append(title, meta)
-  return root
-}
-
-function createEonetPopupNode(props: Record<string, unknown>): HTMLDivElement {
-  const root = document.createElement('div')
-  root.className = 'flex flex-col gap-0.5 text-left'
-
-  const title = document.createElement('p')
-  title.className = 'text-[13px] font-extrabold text-ink'
-  title.textContent = typeof props.title === 'string' && props.title ? props.title : 'Bencana EONET'
-
-  const meta = document.createElement('p')
-  meta.className = 'text-[11px] font-semibold text-ink-soft'
-  const cat = typeof props.categoryLabel === 'string' && props.categoryLabel ? props.categoryLabel : 'EONET'
-  const date = typeof props.date === 'string' && props.date ? props.date : '-'
-  meta.textContent = `NASA EONET · ${cat} · ${date}`
-
-  root.append(title, meta)
-  return root
-}
-
-function createSpeciesPopupNode(props: Record<string, unknown>): HTMLDivElement {
-  const root = document.createElement('div')
-  root.className = 'flex flex-col gap-0.5 text-left'
-
-  const commonName = typeof props.commonName === 'string' ? props.commonName.trim() : ''
-  const latinName = typeof props.name === 'string' ? props.name.trim() : 'Spesies'
-  const group = typeof props.group === 'string' && props.group ? props.group : 'iNaturalist'
-  const threatened = props.threatened === true || props.threatened === 'true'
-
-  const title = document.createElement('p')
-  title.className = 'text-[13px] font-extrabold text-ink'
-  title.textContent = commonName || latinName
-
-  const meta = document.createElement('p')
-  meta.className = 'text-[11px] font-semibold text-ink-soft'
-  const baseLabel = commonName ? `${latinName} · ${group}` : group
-  meta.textContent = threatened ? `${baseLabel} · Terancam` : baseLabel
+  const src = h.source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'
+  meta.textContent = `${h.kindLabel} · ${src} · ${h.date || '-'}`
 
   root.append(title, meta)
   return root
@@ -179,16 +101,12 @@ function createSpeciesPopupNode(props: Record<string, unknown>): HTMLDivElement 
 
 export default function MapView({
   events,
-  hotspots,
-  eonetPoints,
-  speciesPoints,
+  hazards,
   selectedId,
   selectedSignal = null,
   onSelect,
   onSelectSignal,
   style,
-  showHotspots,
-  showSpecies,
   padding,
   fitAllSignal,
   locateSignal,
@@ -205,24 +123,16 @@ export default function MapView({
   const onSelectSignalRef = useRef(onSelectSignal)
   const paddingRef = useRef(padding)
   const eventsRef = useRef(events)
-  const hotspotsRef = useRef(hotspots)
-  const eonetRef = useRef(eonetPoints)
-  const speciesRef = useRef(speciesPoints)
+  const hazardsRef = useRef(hazards)
   const styleRef = useRef(style)
-  const showHotspotsRef = useRef(showHotspots)
-  const showSpeciesRef = useRef(showSpecies)
 
   useEffect(() => {
     onSelectRef.current = onSelect
     onSelectSignalRef.current = onSelectSignal
     paddingRef.current = padding
     eventsRef.current = events
-    hotspotsRef.current = hotspots
-    eonetRef.current = eonetPoints
-    speciesRef.current = speciesPoints
+    hazardsRef.current = hazards
     styleRef.current = style
-    showHotspotsRef.current = showHotspots
-    showSpeciesRef.current = showSpecies
   })
 
   const focusOn = (lat: number, lng: number, zoom: number, animate = true) => {
@@ -264,162 +174,140 @@ export default function MapView({
 
     map.once('load', () => {
       readyRef.current = true
-      const hotspotVis = showHotspotsRef.current ? 'visible' : 'none'
-      const speciesVis = showSpeciesRef.current ? 'visible' : 'none'
 
-      map.addSource('blam-hotspots', {
+      // Kawasan radar: digabung otomatis saat zoom-out, terpecah saat zoom-in
+      map.addSource('blam-hazards', {
         type: 'geojson',
-        data: buildHotspotGeoJson(hotspotsRef.current),
+        data: buildHazardGeoJson(hazardsRef.current),
+        cluster: true,
+        clusterRadius: 48,
+        clusterMaxZoom: 8,
+        clusterProperties: {
+          sev: ['max', ['get', 'sev']],
+          hasWildfire: ['max', ['case', ['==', ['get', 'kind'], 'wildfire'], 1, 0]],
+          hasVolcano: ['max', ['case', ['==', ['get', 'kind'], 'volcano'], 1, 0]],
+        },
       })
       map.addLayer({
-        id: 'blam-hotspots-halo',
+        id: 'blam-hazards-cluster',
         type: 'circle',
-        source: 'blam-hotspots',
-        layout: { visibility: hotspotVis },
+        source: 'blam-hazards',
+        filter: ['has', 'point_count'],
         paint: {
-          'circle-radius': ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 1], 0, 12, 10, 16, 50, 22],
-          'circle-color': '#EF4444',
+          'circle-radius': ['step', ['get', 'point_count'], 15, 4, 19, 10, 24],
+          'circle-color': [
+            'case',
+            ['==', ['get', 'hasWildfire'], 1],
+            '#DC2626',
+            ['==', ['get', 'hasVolcano'], 1],
+            '#7C3AED',
+            ['>=', ['get', 'sev'], 3],
+            '#2563EB',
+            '#F59E0B',
+          ],
+          'circle-opacity': 0.92,
+          'circle-stroke-color': '#FFFFFF',
+          'circle-stroke-width': 2,
+        },
+      })
+      map.addLayer({
+        id: 'blam-hazards-cluster-count',
+        type: 'symbol',
+        source: 'blam-hazards',
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': ['Noto Sans Bold'],
+          'text-size': 13,
+          'text-allow-overlap': true,
+        },
+        paint: { 'text-color': '#FFFFFF' },
+      })
+      map.addLayer({
+        id: 'blam-hazards-halo',
+        type: 'circle',
+        source: 'blam-hazards',
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['get', 'sev'], 1, 12, 3, 22],
+          'circle-color': HAZARD_COLOR,
           'circle-opacity': 0.22,
         },
       })
       map.addLayer({
-        id: 'blam-hotspots-core',
+        id: 'blam-hazards-core',
         type: 'circle',
-        source: 'blam-hotspots',
-        layout: { visibility: hotspotVis },
+        source: 'blam-hazards',
+        filter: ['!', ['has', 'point_count']],
         paint: {
-          'circle-radius': ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 1], 0, 5, 10, 7.5, 50, 11],
-          'circle-color': '#EF4444',
-          'circle-opacity': 0.92,
-          'circle-stroke-color': '#FFFFFF',
-          'circle-stroke-width': 1.5,
-        },
-      })
-
-      map.addSource('blam-eonet', {
-        type: 'geojson',
-        data: buildEonetGeoJson(eonetRef.current),
-      })
-      map.addLayer({
-        id: 'blam-eonet-halo',
-        type: 'circle',
-        source: 'blam-eonet',
-        layout: { visibility: hotspotVis },
-        paint: {
-          'circle-radius': 15,
-          'circle-color': '#F59E0B',
-          'circle-opacity': 0.24,
-        },
-      })
-      map.addLayer({
-        id: 'blam-eonet-core',
-        type: 'circle',
-        source: 'blam-eonet',
-        layout: { visibility: hotspotVis },
-        paint: {
-          'circle-radius': 7,
-          'circle-color': '#F59E0B',
+          'circle-radius': ['interpolate', ['linear'], ['get', 'sev'], 1, 5, 3, 9],
+          'circle-color': HAZARD_COLOR,
           'circle-opacity': 0.95,
           'circle-stroke-color': '#FFFFFF',
           'circle-stroke-width': 2,
         },
       })
-
-      map.addSource('blam-species', {
-        type: 'geojson',
-        data: buildSpeciesGeoJson(speciesRef.current),
-      })
       map.addLayer({
-        id: 'blam-species-circle',
-        type: 'circle',
-        source: 'blam-species',
-        layout: { visibility: speciesVis },
+        id: 'blam-hazards-label',
+        type: 'symbol',
+        source: 'blam-hazards',
+        minzoom: 5,
+        filter: ['!', ['has', 'point_count']],
+        layout: {
+          'text-field': ['get', 'kindLabel'],
+          'text-font': ['Noto Sans Bold'],
+          'text-size': 11,
+          'text-offset': [0, 1.7],
+          'text-anchor': 'top',
+        },
         paint: {
-          'circle-radius': 6,
-          'circle-color': '#10B981',
-          'circle-opacity': 0.85,
-          'circle-stroke-color': ['case', ['boolean', ['get', 'threatened'], false], '#F59E0B', '#059669'],
-          'circle-stroke-width': 2,
+          'text-color': '#111827',
+          'text-halo-color': '#FFFFFF',
+          'text-halo-width': 1.5,
         },
       })
 
       const setPointer = (on: boolean) => {
         map.getCanvas().style.cursor = on ? 'pointer' : ''
       }
-      for (const layerId of ['blam-hotspots-core', 'blam-eonet-core', 'blam-species-circle'] as const) {
+      for (const layerId of ['blam-hazards-cluster', 'blam-hazards-core'] as const) {
         map.on('mouseenter', layerId, () => setPointer(true))
         map.on('mouseleave', layerId, () => setPointer(false))
       }
 
-      map.on('click', 'blam-hotspots-core', (e) => {
-        const feat = e.features?.[0]
-        if (!feat || feat.geometry.type !== 'Point') return
-        const [lng, lat] = feat.geometry.coordinates as [number, number]
-        const props = (feat.properties ?? {}) as Record<string, unknown>
+      const openHazard = (id: unknown) => {
+        const hz = hazardsRef.current.find((x) => x.id === id)
+        if (!hz) return
         if (onSelectSignalRef.current) {
-          const frp = Number(props.frp) || 0
-          const extId = typeof props.id === 'string' && props.id ? props.id : `firms:pt:${lat.toFixed(4)}:${lng.toFixed(4)}`
-          const conf = typeof props.confidence === 'string' ? props.confidence : 'n'
-          onSelectSignalRef.current({
-            id: `nasa_firms:${extId}`,
-            source: 'nasa_firms',
-            externalId: extId,
-            title: frp > 0 ? `Hotspot ${frp.toFixed(1)} MW` : 'Hotspot Satelit',
-            categoryLabel: confidenceLabel(conf),
-            lat,
-            lng,
-            date: typeof props.acqDate === 'string' ? props.acqDate : '',
-            confidence: conf,
-            frp,
-            ecosystem: 'tropical_forest',
-          })
-          return
-        }
-        popupRef.current?.remove()
-        popupRef.current = new Popup({ closeButton: false, maxWidth: '240px', className: 'blam-popup', offset: 10 })
-          .setLngLat([lng, lat])
-          .setDOMContent(createHotspotPopupNode(props))
-          .addTo(map)
-      })
-
-      map.on('click', 'blam-eonet-core', (e) => {
-        const feat = e.features?.[0]
-        if (!feat || feat.geometry.type !== 'Point') return
-        const [lng, lat] = feat.geometry.coordinates as [number, number]
-        const props = (feat.properties ?? {}) as Record<string, unknown>
-        if (onSelectSignalRef.current) {
-          const extId = typeof props.id === 'string' && props.id ? props.id : `eonet:${lat.toFixed(4)}:${lng.toFixed(4)}`
-          const cat = typeof props.category === 'string' ? props.category.toLowerCase() : ''
-          const ecosystem: Ecosystem = cat === 'floods' ? 'watershed' : 'tropical_forest'
-          onSelectSignalRef.current({
-            id: `nasa_eonet:${extId}`,
-            source: 'nasa_eonet',
-            externalId: extId,
-            title: typeof props.title === 'string' && props.title ? props.title : 'Sinyal EONET',
-            categoryLabel: typeof props.categoryLabel === 'string' && props.categoryLabel ? props.categoryLabel : 'EONET',
-            lat,
-            lng,
-            date: typeof props.date === 'string' ? props.date : '',
-            ecosystem,
-          })
+          onSelectSignalRef.current(hazardToSignal(hz))
           return
         }
         popupRef.current?.remove()
         popupRef.current = new Popup({ closeButton: false, maxWidth: '250px', className: 'blam-popup', offset: 10 })
-          .setLngLat([lng, lat])
-          .setDOMContent(createEonetPopupNode(props))
+          .setLngLat([hz.lng, hz.lat])
+          .setDOMContent(createHazardPopupNode(hz))
           .addTo(map)
-      })
+      }
 
-      map.on('click', 'blam-species-circle', (e) => {
+      map.on('click', 'blam-hazards-core', (e) => openHazard(e.features?.[0]?.properties?.id))
+
+      map.on('click', 'blam-hazards-cluster', (e) => {
         const feat = e.features?.[0]
         if (!feat || feat.geometry.type !== 'Point') return
+        const clusterId = Number(feat.properties?.cluster_id)
+        const src = map.getSource('blam-hazards') as GeoJSONSource | undefined
+        if (!src || !Number.isFinite(clusterId)) return
         const [lng, lat] = feat.geometry.coordinates as [number, number]
-        popupRef.current?.remove()
-        popupRef.current = new Popup({ closeButton: false, maxWidth: '240px', className: 'blam-popup', offset: 10 })
-          .setLngLat([lng, lat])
-          .setDOMContent(createSpeciesPopupNode((feat.properties ?? {}) as Record<string, unknown>))
-          .addTo(map)
+        void src
+          .getClusterExpansionZoom(clusterId)
+          .then((zoom) => {
+            map.easeTo({
+              center: [lng, lat],
+              zoom: Math.min(zoom + 0.3, 12),
+              duration: reducedMotion() ? 0 : 600,
+            })
+          })
+          .catch(() => undefined)
       })
 
       applyMapStyle(map, styleRef.current)
@@ -464,7 +352,7 @@ export default function MapView({
 
     for (const ev of events) {
       const selected = ev.id === selectedId
-      const tone = eventPinTone(ev.status)
+      const tone = mapEventTone(ev)
       const existing = markers.get(ev.id)
 
       if (existing) {
@@ -499,36 +387,9 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current
     if (!map || !readyRef.current) return
-    const hotspotSrc = map.getSource('blam-hotspots') as GeoJSONSource | undefined
-    hotspotSrc?.setData(buildHotspotGeoJson(hotspots))
-  }, [hotspots])
-
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !readyRef.current) return
-    const eonetSrc = map.getSource('blam-eonet') as GeoJSONSource | undefined
-    eonetSrc?.setData(buildEonetGeoJson(eonetPoints))
-  }, [eonetPoints])
-
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !readyRef.current) return
-    const speciesSrc = map.getSource('blam-species') as GeoJSONSource | undefined
-    speciesSrc?.setData(buildSpeciesGeoJson(speciesPoints))
-  }, [speciesPoints])
-
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !readyRef.current) return
-    const hotspotVis = showHotspots ? 'visible' : 'none'
-    const speciesVis = showSpecies ? 'visible' : 'none'
-    if (map.getLayer('blam-hotspots-halo')) map.setLayoutProperty('blam-hotspots-halo', 'visibility', hotspotVis)
-    if (map.getLayer('blam-hotspots-core')) map.setLayoutProperty('blam-hotspots-core', 'visibility', hotspotVis)
-    if (map.getLayer('blam-eonet-halo')) map.setLayoutProperty('blam-eonet-halo', 'visibility', hotspotVis)
-    if (map.getLayer('blam-eonet-core')) map.setLayoutProperty('blam-eonet-core', 'visibility', hotspotVis)
-    if (map.getLayer('blam-species-circle')) map.setLayoutProperty('blam-species-circle', 'visibility', speciesVis)
-    if (!showHotspots && !showSpecies) popupRef.current?.remove()
-  }, [showHotspots, showSpecies])
+    const src = map.getSource('blam-hazards') as GeoJSONSource | undefined
+    src?.setData(buildHazardGeoJson(hazards))
+  }, [hazards])
 
   useEffect(() => {
     if (!selectedId || selectedSignal) return
@@ -538,7 +399,7 @@ export default function MapView({
 
   useEffect(() => {
     if (!selectedSignal) return
-    focusOn(selectedSignal.lat, selectedSignal.lng, 10.5)
+    focusOn(selectedSignal.lat, selectedSignal.lng, 9.5)
   }, [selectedSignal])
 
   useEffect(() => {

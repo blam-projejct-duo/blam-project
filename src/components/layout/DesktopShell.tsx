@@ -21,7 +21,7 @@ import {
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Orb } from '../ui/atoms'
-import { eventPinTone } from '../../lib/constants'
+import { mapEventTone } from '../../lib/constants'
 import AdminPanel from '../../modules/admin/AdminPanel'
 import AgencyInboxPanel from '../../modules/agency/AgencyInboxPanel'
 import { useAuth } from '../../modules/auth/AuthContext'
@@ -46,8 +46,7 @@ const DRAWER_W = 392
 
 const TONE_CHIPS: { tone: PinTone; label: string; dot: string }[] = [
   { tone: 'critical', label: 'Kritis', dot: 'bg-critical' },
-  { tone: 'progress', label: 'Ditangani', dot: 'bg-progress' },
-  { tone: 'resolved', label: 'Pulih', dot: 'bg-resolved' },
+  { tone: 'progress', label: 'Masih Dugaan', dot: 'bg-progress' },
 ]
 
 const NAV_ICON: Record<NavTab, ReactNode> = {
@@ -98,9 +97,8 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-bold whitespace-nowrap transition-colors ${
-        active ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink hover:bg-canvas'
-      }`}
+      className={`flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-bold whitespace-nowrap transition-colors ${active ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink hover:bg-canvas'
+        }`}
     >
       {children}
     </button>
@@ -113,7 +111,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const [view, setView] = useState<'list' | 'detail'>(() => (radar.deepLinkedId ? 'detail' : 'list'))
   const [drawerOpen, setDrawerOpen] = useState(true)
   const [query, setQuery] = useState('')
-  const [tones, setTones] = useState<Set<PinTone>>(new Set())
+  const [tones, setTones] = useState<Set<PinTone>>(() => new Set(['critical']))
   const [draftReport, setDraftReport] = useState<CitizenReport | null>(null)
   const [draftSignal, setDraftSignal] = useState<SatelliteSignal | null>(null)
 
@@ -134,8 +132,32 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   }, [canOrganize, profile?.role])
 
   const visibleEvents = useMemo(
-    () => (tones.size === 0 ? radar.events : radar.events.filter((ev) => tones.has(eventPinTone(ev.status)))),
+    () =>
+      radar.events.filter(
+        (ev) =>
+          ev.status !== 'resolved' &&
+          ev.status !== 'cancelled' &&
+          (tones.size === 0 || tones.has(mapEventTone(ev))),
+      ),
     [radar.events, tones],
+  )
+
+  const visibleHazards = useMemo(
+    () =>
+      tones.size === 0
+        ? radar.hazards
+        : radar.hazards.filter((h) => tones.has(h.severity === 'high' ? 'critical' : 'progress')),
+    [radar.hazards, tones],
+  )
+
+  const visibleSignals = useMemo(
+    () =>
+      tones.size === 0
+        ? radar.satelliteSignals
+        : radar.satelliteSignals.filter((s) =>
+            tones.has(s.kind === 'wildfire' || s.kind === 'volcano' || s.kind === 'flood' ? 'critical' : 'progress'),
+          ),
+    [radar.satelliteSignals, tones],
   )
 
   const impactStats = useMemo(() => {
@@ -151,9 +173,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     }
     return { total: radar.allEvents.length, resolved, wasteKg, trees }
   }, [radar.allEvents])
-
-  const hotspotLabel = radar.showHotspots && radar.layersLoading ? 'Hotspot…' : 'Hotspot'
-  const speciesLabel = radar.showSpecies && radar.layersLoading ? 'Spesies…' : 'Spesies'
 
   const openTab = (next: Tab) => {
     if (next === tab && drawerOpen) {
@@ -306,7 +325,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
           <EventListPanel
             events={visibleEvents}
-            signals={radar.satelliteSignals}
+            impactEvents={radar.events}
+            signals={visibleSignals}
             query={query}
             onQueryChange={setQuery}
             showSearch={false}
@@ -323,16 +343,12 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
       <div className="absolute inset-0">
         <MapView
           events={visibleEvents}
-          hotspots={radar.hotspots}
-          eonetPoints={radar.eonetPoints}
-          speciesPoints={radar.speciesPoints}
+          hazards={visibleHazards}
           selectedId={radar.selectedId}
           selectedSignal={radar.selectedSignal}
           onSelect={openDetail}
           onSelectSignal={openSignalDetail}
           style={radar.style}
-          showHotspots={radar.showHotspots}
-          showSpecies={radar.showSpecies}
           padding={{ bottom: 0, right: 0, left: edge }}
           fitAllSignal={radar.fitAllSignal}
           locateSignal={radar.locateSignal}
@@ -387,9 +403,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         aria-label="Panel"
         inert={!drawerOpen}
         style={{ left: RAIL_W, width: DRAWER_W }}
-        className={`absolute inset-y-0 z-[600] flex flex-col border-r border-line transition-transform duration-300 ease-[var(--ease-spring)] ${
-          tab === 'Radar' ? 'bg-white' : 'bg-canvas'
-        } ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`absolute inset-y-0 z-[600] flex flex-col border-r border-line transition-transform duration-300 ease-[var(--ease-spring)] ${tab === 'Radar' ? 'bg-white' : 'bg-canvas'
+          } ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         {tab === 'Radar' && radarBody()}
 
@@ -514,12 +529,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               {c.label}
             </Chip>
           ))}
-          <Chip active={radar.showHotspots} onClick={radar.toggleHotspots}>
-            {hotspotLabel}
-          </Chip>
-          <Chip active={radar.showSpecies} onClick={radar.toggleSpecies}>
-            {speciesLabel}
-          </Chip>
         </div>
       </div>
 

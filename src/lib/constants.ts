@@ -1,4 +1,4 @@
-import type { Ecosystem, EventStatus, PinTone, ReportStatus, UserRole } from '../types'
+import type { ConservationEvent, Ecosystem, EventStatus, PinTone, ReportStatus, UserRole } from '../types'
 
 export const EVENT_STATUS_LABEL: Record<EventStatus, string> = {
   open: 'Terbuka',
@@ -38,6 +38,12 @@ export function eventPinTone(status: EventStatus): PinTone {
   if (status === 'resolved') return 'resolved'
   if (status === 'in_progress') return 'progress'
   return 'critical'
+}
+
+export function mapEventTone(ev: Pick<ConservationEvent, 'status' | 'category' | 'title'>): PinTone {
+  const text = `${ev.category ?? ''} ${ev.title ?? ''}`.toLowerCase()
+  if (text.includes('tanam') || text.includes('reboisasi')) return 'resolved'
+  return eventPinTone(ev.status)
 }
 
 export function reportPinTone(status: ReportStatus): PinTone {
