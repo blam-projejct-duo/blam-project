@@ -791,6 +791,71 @@ app.get('/debug/env', (c) => {
 // ============================================================================
 // 2. AUTH & DEMO ACCOUNTS
 // ============================================================================
+app.post('/auth/register', async (c) => {
+  const { supa, error } = requireDb('AUTH_REGISTER')
+  if (!supa) return c.json({ error }, 503)
+
+  const ip = (c.req.header('x-forwarded-for') ?? 'local').split(',')[0].trim()
+  if (isRateLimited(`register:${ip}`, 10)) {
+    return c.json({ error: 'Terlalu banyak percobaan. Coba lagi beberapa menit.' }, 429)
+  }
+
+  const body = await c.req.json().catch(() => null)
+  if (!body || typeof body !== 'object') {
+    return c.json({ error: 'Payload JSON tidak valid' }, 400)
+  }
+
+  const { email, password, fullName } = body as Record<string, unknown>
+  const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    return c.json({ error: 'Format email tidak valid' }, 400)
+  }
+  if (typeof password !== 'string' || password.length < 6) {
+    return c.json({ error: 'Kata sandi minimal 6 karakter' }, 400)
+  }
+  const cleanName = typeof fullName === 'string' ? fullName.trim().slice(0, 80) : ''
+  if (cleanName.length < 2) {
+    return c.json({ error: 'Nama lengkap minimal 2 karakter' }, 400)
+  }
+
+  const { data: created, error: createErr } = await supa.auth.admin.createUser({
+    email: cleanEmail,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: cleanName },
+  })
+
+  if (createErr || !created?.user) {
+    const msg = (createErr?.message ?? '').toLowerCase()
+    if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
+      return c.json({ error: 'Email ini sudah terdaftar. Silakan masuk.' }, 409)
+    }
+    log('error', 'AUTH_REGISTER', 'Gagal membuat akun pengguna baru', { error: createErr?.message })
+    return c.json(
+      { error: 'Gagal mendaftarkan akun baru. Silakan coba lagi.' },
+      createErr?.status === 422 ? 400 : 500,
+    )
+  }
+
+  const { error: profErr } = await supa.from('profiles').upsert(
+    {
+      id: created.user.id,
+      email: cleanEmail,
+      full_name: cleanName,
+      role: 'citizen',
+    },
+    { onConflict: 'id' },
+  )
+  if (profErr) {
+    log('error', 'AUTH_REGISTER', 'Gagal menyiapkan profil citizen setelah registrasi', {
+      userId: created.user.id,
+      error: profErr.message,
+    })
+  }
+
+  return c.json({ ok: true, userId: created.user.id }, 201)
+})
+
 app.get('/auth/demo-accounts', async (c) => {
   const { supa, error } = requireDb('AUTH_DEMO_LIST')
   if (!supa) return c.json({ error }, 503)

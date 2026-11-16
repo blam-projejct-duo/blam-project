@@ -1,8 +1,29 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { fetchDemoAccounts, fetchMe, getDemoSessionId, markNotificationRead, setDemoSessionId } from '../../lib/api'
+import {
+  fetchDemoAccounts,
+  fetchMe,
+  getDemoSessionId,
+  markNotificationRead,
+  registerAccount,
+  setDemoSessionId,
+} from '../../lib/api'
 import { isSupabaseConfigured, supabase } from '../../lib/supabase'
 import type { NotificationItem, OrganizationMember, Profile } from '../../types'
+
+function translateAuthError(message: string): string {
+  const m = message.toLowerCase()
+  if (m.includes('invalid login credentials')) return 'Email atau kata sandi salah'
+  if (m.includes('email not confirmed')) return 'Email belum dikonfirmasi'
+  if (m.includes('already registered') || m.includes('already exists')) {
+    return 'Email ini sudah terdaftar. Silakan masuk.'
+  }
+  if (m.includes('password should be at least')) return 'Kata sandi minimal 6 karakter'
+  if (m.includes('rate limit') || m.includes('too many')) {
+    return 'Terlalu banyak percobaan. Coba beberapa menit lagi.'
+  }
+  return message || 'Autentikasi gagal'
+}
 
 interface AuthContextValue {
   isDemo: boolean
@@ -152,7 +173,7 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
         throw new Error('Supabase Auth belum dikonfigurasi di .env')
       }
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw new Error(error.message)
+      if (error) throw new Error(translateAuthError(error.message))
       await refreshMe()
       setAuthModalOpen(false)
     },
@@ -164,12 +185,9 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
       if (!isSupabaseConfigured || !supabase) {
         throw new Error('Supabase Auth belum dikonfigurasi di .env')
       }
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { full_name: fullName } },
-      })
-      if (error) throw new Error(error.message)
+      await registerAccount({ email, password, fullName })
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw new Error(translateAuthError(error.message))
       await refreshMe()
       setAuthModalOpen(false)
     },
@@ -184,7 +202,7 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
       provider: 'google',
       options: { redirectTo: window.location.origin },
     })
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(translateAuthError(error.message))
   }, [])
 
   const logout = useCallback(async () => {

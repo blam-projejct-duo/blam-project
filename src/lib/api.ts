@@ -73,6 +73,17 @@ export async function fetchDemoAccounts(): Promise<Profile[]> {
   return res.accounts
 }
 
+export async function registerAccount(input: {
+  email: string
+  password: string
+  fullName: string
+}): Promise<{ ok: boolean; userId: string }> {
+  return apiFetch<{ ok: boolean; userId: string }>('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
 export async function fetchMe(): Promise<{
   profile: Profile
   memberships: OrganizationMember[]

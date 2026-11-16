@@ -36,17 +36,19 @@ export default function ProfilePanel() {
         </div>
 
         <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={openAuthModal}
-            className="h-10 flex-1 rounded-full border border-line bg-canvas text-xs font-bold text-ink"
-          >
-            {isDemo ? 'Ganti Peran' : 'Ganti Akun'}
-          </button>
+          {isDemo && (
+            <button
+              type="button"
+              onClick={openAuthModal}
+              className="h-10 flex-1 rounded-full border border-line bg-canvas text-xs font-bold text-ink"
+            >
+              Ganti Peran
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void logout()}
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-4 text-xs font-bold text-ink-soft"
+            className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-4 text-xs font-bold text-ink-soft ${isDemo ? '' : 'flex-1'}`}
           >
             <LogOut className="size-3.5" /> Keluar
           </button>

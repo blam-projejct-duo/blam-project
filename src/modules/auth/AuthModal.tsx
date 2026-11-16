@@ -41,12 +41,18 @@ export function AuthPanel({
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
+    const cleanEmail = email.trim().toLowerCase()
+    const cleanName = fullName.trim()
+    if (mode === 'register' && cleanName.length < 2) {
+      setError('Nama lengkap minimal 2 karakter')
+      return
+    }
     setBusy(true)
     try {
       if (mode === 'login') {
-        await loginWithEmail(email.trim(), password)
+        await loginWithEmail(cleanEmail, password)
       } else {
-        await registerWithEmail(email.trim(), password, fullName.trim() || 'Warga Blam')
+        await registerWithEmail(cleanEmail, password, cleanName)
       }
       onDone?.()
     } catch (err) {
@@ -208,18 +214,22 @@ export function AuthPanel({
           disabled={busy || !isSupabaseConfigured}
           className="btn-primary h-12 w-full text-sm disabled:opacity-50"
         >
-          {mode === 'login' ? 'Masuk' : 'Daftar'}
+          {busy ? 'Memproses…' : mode === 'login' ? 'Masuk' : 'Daftar'}
         </button>
 
-        {isSupabaseConfigured && (
+        {isSupabaseConfigured ? (
           <button
             type="button"
             disabled={busy}
             onClick={() => void loginWithGoogle().catch((e) => setError(e instanceof Error ? e.message : 'Gagal OAuth'))}
             className="flex h-12 items-center justify-center gap-2 rounded-full border border-line bg-white text-sm font-bold text-ink hover:bg-canvas disabled:opacity-50"
           >
-            Google
+            Masuk dengan Google
           </button>
+        ) : (
+          <p className="text-center text-xs font-medium text-ink-soft">
+            Konfigurasi Supabase Auth di .env belum tersedia.
+          </p>
         )}
       </form>
 
