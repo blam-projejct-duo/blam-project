@@ -49,11 +49,11 @@ export interface HazardSet {
 
 export const KIND_LABEL: Record<HazardKind, string> = {
     wildfire: 'Karhutla',
-    suspected: 'Masih Dugaan',
+    suspected: 'Titik Panas',
     volcano: 'Gunung Berapi',
     flood: 'Banjir',
     storm: 'Badai',
-    other: 'Bencana Lain',
+    other: 'Bencana Alam',
 }
 
 export function hotspotKey(h: HotspotPoint): string {
@@ -210,21 +210,22 @@ function buildFireArea(group: HotspotPoint[]): HazardPoint | null {
     const reason =
         kind === 'wildfire'
             ? ruleHuge || total >= 100
-                ? 'Kebakaran hutan dan lahan masif terpantau satelit dengan radiasi energi tinggi.'
-                : `Kluster ${count} titik api aktif terdeteksi satelit dalam sebaran ±${radiusKm} km.`
-            : 'Anomali radiasi panas terdeteksi satelit. Masih dugaan dan memerlukan verifikasi langsung relawan di lapangan.'
+                ? 'Satelit NASA mendeteksi titik api karhutla berskala besar di kawasan hutan yang berpotensi meluas.'
+                : `Satelit NASA mendeteksi kumpulan ${count} titik api aktif di kawasan hutan dalam radius ±${radiusKm} km.`
+            : 'Satelit menangkap suhu permukaan yang sangat panas di lokasi ini. Perlu pengecekan relawan di lapangan.'
 
-    // Karhutla terkonfirmasi selalu masuk Kritis (merah); dugaan masuk sedang (kuning)
     const severity: HazardPoint['severity'] = kind === 'wildfire' ? 'high' : 'medium'
 
     const title =
         kind === 'wildfire'
             ? count > 1
-                ? `Karhutla · ${count} titik api`
-                : `Karhutla · ${Math.round(peakFrp)} MW`
+                ? `Karhutla Aktif · ${count} Titik Api`
+                : peakFrp > 80
+                    ? 'Karhutla · Panas Ekstrem'
+                    : 'Karhutla · Panas Tinggi'
             : count > 1
-                ? `Dugaan Anomali Panas · ${count} titik`
-                : `Dugaan Anomali Panas · ${Math.round(peakFrp)} MW`
+                ? `Titik Panas Satelit · ${count} Titik`
+                : 'Titik Panas Satelit'
 
     const externalId = hotspotKey(peak)
     return {
@@ -260,11 +261,11 @@ function kindFromCategory(category: string): HazardKind {
 
 const EONET_REASON: Record<HazardKind, string> = {
     volcano: 'Aktivitas vulkanik aktif terpantau oleh sistem satelit NASA EONET.',
-    flood: 'Genangan banjir terpantau oleh sistem satelit NASA EONET.',
-    wildfire: 'Kebakaran hutan dan lahan berskala besar tercatat oleh sistem satelit NASA EONET.',
-    suspected: 'Anomali panas terpantau satelit, perlu verifikasi langsung di lapangan.',
-    storm: 'Sistem badai dan cuaca ekstrem terpantau aktif oleh NASA EONET.',
-    other: 'Peristiwa alam terpantau oleh sistem satelit NASA EONET.',
+    flood: 'Kejadian banjir terpantau aktif oleh sistem satelit NASA EONET.',
+    wildfire: 'Kebakaran hutan berskala besar terpantau aktif oleh sistem satelit NASA EONET.',
+    suspected: 'Satelit menangkap suhu permukaan yang sangat panas di lokasi ini. Perlu pengecekan relawan di lapangan.',
+    storm: 'Sistem badai dan cuaca ekstrem terpantau aktif oleh sistem satelit NASA EONET.',
+    other: 'Peristiwa alam terpantau aktif oleh sistem satelit NASA EONET.',
 }
 
 const SEVERITY_RANK: Record<HazardPoint['severity'], number> = { high: 3, medium: 2, low: 1 }

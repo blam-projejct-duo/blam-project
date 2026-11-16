@@ -4,7 +4,7 @@ import { Pill, StatusPill } from '../../components/ui/atoms'
 import { updateEventVisibility } from '../../lib/api'
 import type { ConservationEvent } from '../../types'
 import { useAuth } from '../auth/AuthContext'
-import { usePulse } from '../map/usePulse'
+import { formatPulseTiles, usePulse } from '../map/usePulse'
 import BeforeAfterSlider from './BeforeAfterSlider'
 import QrActionModal from './QrActionModal'
 import ResolveActionModal from './ResolveActionModal'
@@ -19,9 +19,9 @@ interface Props {
 function Tile({ value, unit, label }: { value: string; unit?: string; label: string }) {
   return (
     <div className="rounded-tile bg-canvas p-3.5">
-      <p className="num text-[22px] leading-none text-ink">
-        {value}
-        {unit && <span className="ml-1 text-sm font-bold text-ink-soft">{unit}</span>}
+      <p className="num flex flex-wrap items-baseline gap-x-1 text-[16px] leading-snug text-ink">
+        <span>{value}</span>
+        {unit && <span className="text-xs font-bold text-ink-soft">{unit}</span>}
       </p>
       <p className="mt-1.5 text-xs font-medium text-ink-soft">{label}</p>
     </div>
@@ -105,9 +105,7 @@ export default function EventDetail({ event, joined, onJoin, onRefresh }: Props)
     }
   }
 
-  const fmt = (v: number | null | undefined, digits = 0) =>
-    typeof v === 'number' && Number.isFinite(v) ? (digits > 0 ? v.toFixed(digits) : String(v)) : '—'
-
+  const pulseTiles = formatPulseTiles(pulse)
   const score = latestAction?.ai_recovery_score ?? event.report?.ai_confidence ?? null
   const recommendations = event.report?.ai_recommendations ?? []
   const photoClass = 'relative aspect-[16/10] @md:aspect-[2/1] overflow-hidden rounded-card bg-muted'
@@ -187,14 +185,9 @@ export default function EventDetail({ event, joined, onJoin, onRefresh }: Props)
       )}
 
       <div className={`grid grid-cols-2 gap-2.5 ${pulseStatus === 'loading' ? 'animate-pulse' : ''}`}>
-        <Tile value={fmt(pulse?.aqi)} label="Udara" />
-        <Tile
-          value={fmt(pulse?.waveM, 1)}
-          unit={typeof pulse?.waveM === 'number' ? 'm' : undefined}
-          label="Gelombang"
-        />
-        <Tile value={fmt(pulse?.hotspots)} label="Hotspot" />
-        <Tile value={fmt(pulse?.species)} label="Spesies" />
+        {pulseTiles.map((tile) => (
+          <Tile key={tile.label} value={tile.value} unit={tile.unit} label={tile.label} />
+        ))}
       </div>
 
       <p className="text-sm leading-relaxed text-ink/80">

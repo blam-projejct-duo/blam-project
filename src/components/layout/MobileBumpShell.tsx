@@ -259,7 +259,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               {(
                 [
                   ['critical', 'Kritis', 'bg-critical'],
-                  ['progress', 'Masih Dugaan', 'bg-progress'],
+                  ['progress', 'Titik Panas', 'bg-progress'],
                 ] as const
               ).map(([tone, label, dot]) => {
                 const on = tones.has(tone)

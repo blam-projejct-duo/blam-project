@@ -46,7 +46,7 @@ const DRAWER_W = 392
 
 const TONE_CHIPS: { tone: PinTone; label: string; dot: string }[] = [
   { tone: 'critical', label: 'Kritis', dot: 'bg-critical' },
-  { tone: 'progress', label: 'Masih Dugaan', dot: 'bg-progress' },
+  { tone: 'progress', label: 'Titik Panas', dot: 'bg-progress' },
 ]
 
 const NAV_ICON: Record<NavTab, ReactNode> = {

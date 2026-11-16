@@ -25,7 +25,7 @@ export interface ZoomCommand {
 
 interface Props {
   events: ConservationEvent[]
-  /** kawasan radar (karhutla, gunung berapi, banjir, dugaan) */
+  /** kawasan radar (karhutla, gunung berapi, banjir, titik panas) */
   hazards: HazardPoint[]
   selectedId: string | null
   selectedSignal?: SatelliteSignal | null

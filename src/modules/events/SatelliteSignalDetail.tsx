@@ -11,7 +11,7 @@ import { Pill } from '../../components/ui/atoms'
 import { moderateHotspotAdmin } from '../../lib/api'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
-import { usePulse } from '../map/usePulse'
+import { formatPulseTiles, usePulse } from '../map/usePulse'
 
 const KIND_DOT_CLASS: Record<HazardKind, string> = {
   wildfire: 'bg-critical',
@@ -42,13 +42,20 @@ interface Props {
 function Tile({ value, unit, label }: { value: string; unit?: string; label: string }) {
   return (
     <div className="rounded-tile bg-canvas p-3.5">
-      <p className="num text-[22px] leading-none text-ink">
-        {value}
-        {unit && <span className="ml-1 text-sm font-bold text-ink-soft">{unit}</span>}
+      <p className="num flex flex-wrap items-baseline gap-x-1 text-[16px] leading-snug text-ink">
+        <span>{value}</span>
+        {unit && <span className="text-xs font-bold text-ink-soft">{unit}</span>}
       </p>
       <p className="mt-1.5 text-xs font-medium text-ink-soft">{label}</p>
     </div>
   )
+}
+
+function formatHeatScale(totalFrp?: number, frp?: number): string {
+  const value = typeof totalFrp === 'number' && totalFrp > 0 ? totalFrp : (frp ?? 0)
+  if (value > 80) return 'Ekstrem'
+  if (value >= 25) return 'Tinggi'
+  return 'Sedang'
 }
 
 export default function SatelliteSignalDetail({
@@ -69,9 +76,6 @@ export default function SatelliteSignalDetail({
   const isAgency = profile?.role === 'agency'
   const isAdmin = profile?.role === 'admin'
 
-  const fmt = (v: number | null | undefined, digits = 0) =>
-    typeof v === 'number' && Number.isFinite(v) ? (digits > 0 ? v.toFixed(digits) : String(v)) : '—'
-
   const dismissFalseHotspot = async () => {
     setBusyModerate(true)
     setError(null)
@@ -81,13 +85,14 @@ export default function SatelliteSignalDetail({
       await Promise.all(ids.map((id) => moderateHotspotAdmin(id)))
       await onModerated()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memoderasi hotspot')
+      setError(err instanceof Error ? err.message : 'Gagal memoderasi sinyal')
     } finally {
       setBusyModerate(false)
     }
   }
 
   const kind = signal.kind ?? 'suspected'
+  const pulseTiles = formatPulseTiles(pulse)
 
   return (
     <div className="flex flex-col gap-5">
@@ -133,28 +138,19 @@ export default function SatelliteSignalDetail({
             <div className="mt-3 grid grid-cols-3 gap-2">
               <Tile
                 value={String(signal.pointCount)}
-                label={signal.kind === 'suspected' ? 'Titik panas' : 'Titik api'}
+                label={signal.kind === 'suspected' ? 'Titik Panas' : 'Titik Api'}
               />
-              <Tile value={String(Math.round(signal.totalFrp ?? 0))} unit="MW" label="Total daya" />
-              <Tile value={`±${signal.radiusKm ?? 1}`} unit="km" label="Sebaran" />
+              <Tile value={formatHeatScale(signal.totalFrp, signal.frp)} label="Skala Panas" />
+              <Tile value={`±${signal.radiusKm ?? 1}`} unit="km" label="Radius Area" />
             </div>
           )}
         </section>
       )}
 
       <div className={`grid grid-cols-2 gap-2.5 ${pulseStatus === 'loading' ? 'animate-pulse' : ''}`}>
-        <Tile value={fmt(pulse?.aqi)} label="Udara" />
-        <Tile
-          value={fmt(pulse?.waveM, 1)}
-          unit={typeof pulse?.waveM === 'number' ? 'm' : undefined}
-          label="Gelombang"
-        />
-        <Tile value={fmt(pulse?.hotspots)} label="Hotspot" />
-        <Tile
-          value={fmt(pulse?.windKmh)}
-          unit={typeof pulse?.windKmh === 'number' ? 'km/j' : undefined}
-          label="Angin"
-        />
+        {pulseTiles.map((tile) => (
+          <Tile key={tile.label} value={tile.value} unit={tile.unit} label={tile.label} />
+        ))}
       </div>
 
       {error && (
@@ -199,7 +195,7 @@ export default function SatelliteSignalDetail({
                 className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border border-line bg-white text-xs font-bold text-ink-soft hover:text-ink disabled:opacity-50"
               >
                 <Ban className="size-3.5" />
-                Tandai False Hotspot
+                Tandai Sinyal Palsu
               </button>
             )}
           </>
