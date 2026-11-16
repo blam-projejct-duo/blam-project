@@ -1,5 +1,5 @@
 import { Flame, Search, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
 import { EcoBadge } from '../ui/atoms'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
@@ -112,6 +112,15 @@ export default function EventListPanel({
   onOpenSignal?: (signal: SatelliteSignal) => void
 }) {
   const [tab, setTab] = useState<ListTab>('Disarankan')
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!autoFocus) return
+    const timer = window.setTimeout(() => {
+      searchRef.current?.focus({ preventScroll: true })
+    }, 260)
+    return () => window.clearTimeout(timer)
+  }, [autoFocus])
 
   const linkedSet = useMemo(() => {
     const s = new Set<string>()
@@ -157,9 +166,9 @@ export default function EventListPanel({
         <label className="flex h-12 items-center gap-2.5 rounded-full bg-canvas px-4">
           <Search className="size-4.5 shrink-0 text-ink-soft" />
           <input
+            ref={searchRef}
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            autoFocus={autoFocus}
             placeholder="Cari lokasi"
             className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-soft"
           />

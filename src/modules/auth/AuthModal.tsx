@@ -111,9 +111,8 @@ export function AuthPanel({
                   type="button"
                   disabled={busy}
                   onClick={() => void pickDemo(acc.id)}
-                  className={`flex flex-col items-start rounded-[20px] border p-3.5 text-left transition-colors disabled:opacity-60 ${
-                    active ? 'border-ink bg-white' : 'border-line bg-canvas hover:bg-white'
-                  }`}
+                  className={`flex flex-col items-start rounded-[20px] border p-3.5 text-left transition-colors disabled:opacity-60 ${active ? 'border-ink bg-white' : 'border-line bg-canvas hover:bg-white'
+                    }`}
                 >
                   <span className="text-xs font-extrabold text-ink-soft">{ROLE_LABEL[acc.role]}</span>
                   <span className="mt-1 truncate text-sm font-bold text-ink">{acc.full_name}</span>
@@ -173,9 +172,8 @@ export function AuthPanel({
                 setMode(m)
                 setError(null)
               }}
-              className={`h-10 flex-1 rounded-full text-sm font-bold transition-colors ${
-                mode === m ? 'bg-white text-ink' : 'text-ink-soft'
-              }`}
+              className={`h-10 flex-1 rounded-full text-sm font-bold transition-colors ${mode === m ? 'bg-white text-ink' : 'text-ink-soft'
+                }`}
             >
               {m === 'login' ? 'Masuk' : 'Daftar'}
             </button>

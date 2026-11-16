@@ -15,7 +15,7 @@ import {
   User,
   X,
 } from 'lucide-react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Orb } from '../../components/ui/atoms'
 import { ECOSYSTEM_FILTERS, mapEventTone } from '../../lib/constants'
@@ -84,7 +84,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
       full: 0,
       half: sheetH - Math.round(H * 0.58),
       peek: sheetH - PEEK_PX,
-      closed: sheetH + 24,
+      closed: H + 48,
     }),
     [H, sheetH],
   )
@@ -92,17 +92,27 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
 
   useEffect(() => {
     if (H === 0) return
-    void anim.start({ y: snapY[targetKey] }, SPRING)
+    void anim.start({ y: snapY[targetKey], opacity: targetKey === 'closed' ? 0 : 1 }, SPRING)
   }, [anim, snapY, targetKey, H])
+
+  const closeSheet = useCallback(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+    setFocusSearch(false)
+    setMode(null)
+    if (rootRef.current) rootRef.current.scrollTop = 0
+    window.scrollTo(0, 0)
+  }, [])
 
   useEffect(() => {
     if (mode === null) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMode(null)
+      if (e.key === 'Escape') closeSheet()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [mode])
+  }, [mode, closeSheet])
 
   const openDetail = (id: string) => {
     radar.setSelectedId(id)
@@ -135,14 +145,14 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const onDragEnd = (_: unknown, info: PanInfo) => {
     const projected = snapY[snap] + info.offset.y + info.velocity.y * 0.2
     if (projected > snapY.peek + 70) {
-      setMode(null)
+      closeSheet()
       return
     }
     const next = (['full', 'half', 'peek'] as const).reduce((best, k) =>
       Math.abs(snapY[k] - projected) < Math.abs(snapY[best] - projected) ? k : best,
     )
     setSnap(next)
-    void anim.start({ y: snapY[next] }, SPRING)
+    void anim.start({ y: snapY[next], opacity: 1 }, SPRING)
   }
 
   const cycleSnap = () => {
@@ -198,7 +208,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const initials = profile?.full_name ? profile.full_name.slice(0, 1).toUpperCase() : null
 
   return (
-    <div ref={rootRef} className="relative h-full w-full select-none overflow-hidden bg-canvas">
+    <div ref={rootRef} className="relative h-full w-full select-none overflow-clip bg-canvas">
       <MapView
         events={visibleEvents}
         hazards={visibleHazards}
@@ -355,7 +365,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         inert={sheetOpen}
         className="pointer-events-none absolute inset-x-0 bottom-0 z-[500]"
       >
-        <div className="pointer-events-auto flex justify-between px-5 pb-4">
+        <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex justify-between px-5 pb-4`}>
           <Orb size={48} label="Cari lokasi" onClick={() => openSheet('list', false, true)}>
             <Search className="size-5 text-ink" strokeWidth={2.5} />
           </Orb>
@@ -363,7 +373,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             <LocateFixed className="size-5 text-ink" strokeWidth={2.25} />
           </Orb>
         </div>
-        <div className="pointer-events-auto flex items-end justify-center gap-7 pb-[calc(env(safe-area-inset-bottom)+20px)]">
+        <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex items-end justify-center gap-7 pb-[calc(env(safe-area-inset-bottom)+20px)]`}>
           <DockItem label="Jelajah">
             <Orb size={56} label="Jelajah" onClick={radar.fitAll}>
               <Compass className="size-6 text-ink" strokeWidth={2} />
@@ -396,7 +406,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
       {/* Bottom Sheet */}
       {H > 0 && (
         <motion.div
-          initial={{ y: snapY.closed }}
+          initial={{ y: snapY.closed, opacity: 0 }}
           animate={anim}
           drag="y"
           dragControls={controls}
@@ -406,9 +416,10 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           dragMomentum={false}
           onDragEnd={onDragEnd}
           inert={!sheetOpen}
+          aria-hidden={!sheetOpen}
           role="dialog"
           aria-label="Panel informasi"
-          className="absolute inset-x-0 bottom-0 z-[600] flex flex-col rounded-t-sheet border-t border-line/80 bg-white"
+          className={`absolute inset-x-0 bottom-0 z-[600] flex flex-col rounded-t-sheet border-t border-line/80 bg-white ${sheetOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
           style={{ height: sheetH }}
         >
           <div
@@ -496,9 +507,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         animate={{ y: sheetOpen ? 0 : 100, opacity: sheetOpen ? 1 : 0 }}
         transition={SPRING}
         inert={!sheetOpen}
-        className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+20px)] z-[700] flex justify-center"
+        className={`absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+20px)] z-[700] flex justify-center ${sheetOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
       >
-        <Orb size={56} label="Tutup" onClick={() => setMode(null)}>
+        <Orb size={56} label="Tutup" onClick={closeSheet}>
           <X className="size-6 text-ink-soft" strokeWidth={3} />
         </Orb>
       </motion.div>

@@ -209,7 +209,7 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
     if (isDemo) {
       setDemoSessionId(null)
     } else if (supabase) {
-      await supabase.auth.signOut().catch(() => {})
+      await supabase.auth.signOut().catch(() => { })
     }
     setProfile(null)
     setMemberships([])
