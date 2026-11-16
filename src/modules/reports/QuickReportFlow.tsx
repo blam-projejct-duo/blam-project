@@ -27,7 +27,7 @@ const field =
 
 export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerification }: Props) {
   const queryClient = useQueryClient()
-  const { profile, openAuthModal, refreshMe } = useAuth()
+  const { profile, refreshMe } = useAuth()
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [eco, setEco] = useState<Ecosystem>('coastal_mangrove')
   const [place, setPlace] = useState('')
@@ -82,10 +82,6 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
 
   const scan = async () => {
     if (!photo) return
-    if (!profile) {
-      openAuthModal()
-      return
-    }
     setStep(3)
     setResult(null)
     setError(null)
@@ -103,12 +99,12 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
         lat: latN,
         lng: lngN,
         locationMismatch,
-        isAnonymous: anon,
+        isAnonymous: profile ? anon : true,
       })
       setResult(r)
       if (r.isValid && r.saved) {
         await Promise.all([
-          refreshMe(),
+          profile ? refreshMe() : Promise.resolve(),
           queryClient.invalidateQueries({ queryKey: ['reports-queue'] }),
         ])
         onSubmitted?.()
@@ -191,7 +187,13 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
             <input className={field} placeholder="Catatan kondisi atau aksi" value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
             <label className="flex h-12 items-center justify-between rounded-full border border-line bg-white px-4 text-sm font-bold">
               Lapor anonim
-              <input type="checkbox" checked={anon} onChange={(e) => setAnon(e.target.checked)} className="size-5 accent-ink" />
+              <input
+                type="checkbox"
+                checked={!profile || anon}
+                disabled={!profile}
+                onChange={(e) => setAnon(e.target.checked)}
+                className="size-5 accent-ink disabled:opacity-60"
+              />
             </label>
           </section>
         )}

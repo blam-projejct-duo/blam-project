@@ -1480,11 +1480,16 @@ app.post('/reports/verify-and-create', async (c) => {
   const { supa, error } = requireDb('REPORT_CREATE')
   if (!supa) return c.json({ error }, 503)
 
-  const auth = await resolveAuth(c, supa)
-  if (!auth.profile) return c.json({ error: auth.error }, auth.status ?? 401)
+  const hasAuthHeader = Boolean(c.req.header('authorization')?.trim())
+  let authProfile: AuthProfile | null = null
+  if (hasAuthHeader) {
+    const auth = await resolveAuth(c, supa)
+    if (!auth.profile) return c.json({ error: auth.error }, auth.status ?? 401)
+    authProfile = auth.profile
+  }
 
   const ip = (c.req.header('x-forwarded-for') ?? 'local').split(',')[0].trim()
-  if (isRateLimited(`report:${ip}:${auth.profile.id}`, 10)) {
+  if (isRateLimited(`report:${ip}:${authProfile?.id ?? 'guest'}`, authProfile ? 10 : 5)) {
     return c.json({ error: 'Terlalu banyak percobaan. Coba lagi beberapa menit.' }, 429)
   }
 
@@ -1589,7 +1594,7 @@ Aturan:
 
   // Laporan warga masuk Radar Verifikasi terlebih dahulu (tidak langsung ke peta event publik)
   const initialStatus = verdict.severity === 'critical' ? 'escalated' : 'pending_verification'
-  const anon = isAnonymous === true
+  const anon = authProfile ? isAnonymous === true : true
   const reportTitle =
     typeof title === 'string' && title.trim().length > 2
       ? title.trim().slice(0, 120)
@@ -1598,7 +1603,7 @@ Aturan:
   const ins = await supa
     .from('reports')
     .insert({
-      reporter_id: auth.profile.id,
+      reporter_id: authProfile?.id ?? null,
       title: reportTitle,
       description: String(description).trim() || verdict.summary || verdict.threatCategory,
       ecosystem,
@@ -1625,11 +1630,13 @@ Aturan:
   }
 
   let pointsAwarded = 0
-  const { error: ptErr } = await supa
-    .from('profiles')
-    .update({ points: auth.profile.points + POINTS.REPORT })
-    .eq('id', auth.profile.id)
-  if (!ptErr) pointsAwarded = POINTS.REPORT
+  if (authProfile) {
+    const { error: ptErr } = await supa
+      .from('profiles')
+      .update({ points: authProfile.points + POINTS.REPORT })
+      .eq('id', authProfile.id)
+    if (!ptErr) pointsAwarded = POINTS.REPORT
+  }
 
   if (initialStatus === 'escalated') {
     await supa.from('notifications').insert({
@@ -1639,9 +1646,9 @@ Aturan:
       detail: `${verdict.threatCategory} di ${locationName.trim()} (AI ${verdict.confidence}%) masuk Radar Verifikasi.`,
       is_read: false,
     })
-  } else {
+  } else if (authProfile) {
     await supa.from('notifications').insert({
-      user_id: auth.profile.id,
+      user_id: authProfile.id,
       report_id: ins.data.id,
       title: `Laporan Masuk Antrean (${verdict.confidence}%)`,
       detail: `${reportTitle} diteruskan ke Radar Verifikasi Relawan & Komunitas.`,

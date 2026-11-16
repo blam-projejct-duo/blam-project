@@ -211,7 +211,7 @@ export interface VerifyReportResult {
 export async function verifyAndCreateReport(input: VerifyReportInput): Promise<VerifyReportResult> {
   return apiFetch<VerifyReportResult>('/reports/verify-and-create', {
     method: 'POST',
-    requireAuth: true,
+    requireAuth: false,
     body: JSON.stringify(input),
   })
 }
