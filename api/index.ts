@@ -399,38 +399,42 @@ function isStaticNonWildfireAnomaly(lat: number, lng: number): boolean {
   return false
 }
 
-function curateHotspotsForMap(rows: HotspotPoint[], centerLat: number, centerLng: number, limit = 80): HotspotPoint[] {
+function curateHotspotsForMap(rows: HotspotPoint[], centerLat: number, centerLng: number, limit = 320): HotspotPoint[] {
   const localBest = new Map<string, HotspotPoint>()
   const regionalBest = new Map<string, HotspotPoint>()
+  const confRank = (c: string) => (c === 'h' ? 2 : c === 'n' ? 1 : 0)
+  const isBetter = (next: HotspotPoint, cur: HotspotPoint) =>
+    confRank(next.confidence) > confRank(cur.confidence) ||
+    (confRank(next.confidence) === confRank(cur.confidence) && next.frp > cur.frp)
 
   for (const h of rows) {
     if (h.confidence === 'l') continue
-    if (h.confidence !== 'h' && (h.frp ?? 0) < 2) continue
-    // Filter out confirmed non-wildfire static anomalies (TPA sampah, flare gas, smelter)
     if (isStaticNonWildfireAnomaly(h.lat, h.lng)) continue
 
-    const nearLocal = Math.abs(h.lat - centerLat) <= 2.5 && Math.abs(h.lng - centerLng) <= 2.5
+    const nearLocal = Math.abs(h.lat - centerLat) <= 3.5 && Math.abs(h.lng - centerLng) <= 3.5
     if (nearLocal) {
-      const localKey = `${(Math.round(h.lat * 8) / 8).toFixed(2)},${(Math.round(h.lng * 8) / 8).toFixed(2)}`
+      const localKey = `${(Math.round(h.lat * 250) / 250).toFixed(3)},${(Math.round(h.lng * 250) / 250).toFixed(3)}`
       const cur = localBest.get(localKey)
-      if (!cur || h.frp > cur.frp) localBest.set(localKey, h)
+      if (!cur || isBetter(h, cur)) localBest.set(localKey, h)
       continue
     }
 
-    const cellKey = `${(Math.round(h.lat * 1.5) / 1.5).toFixed(1)},${(Math.round(h.lng * 1.5) / 1.5).toFixed(1)}`
+    const cellKey = `${(Math.round(h.lat * 2) / 2).toFixed(1)},${(Math.round(h.lng * 2) / 2).toFixed(1)}`
     const cur = regionalBest.get(cellKey)
-    if (!cur || h.frp > cur.frp) regionalBest.set(cellKey, h)
+    if (!cur || isBetter(h, cur)) regionalBest.set(cellKey, h)
   }
 
-  const byFrp = (a: HotspotPoint, b: HotspotPoint) => b.frp - a.frp
-  const local = [...localBest.values()].sort(byFrp)
-  const regional = [...regionalBest.values()].sort(byFrp)
+  const byPriority = (a: HotspotPoint, b: HotspotPoint) =>
+    confRank(b.confidence) - confRank(a.confidence) || b.frp - a.frp
+  const local = [...localBest.values()].sort(byPriority)
+  const regional = [...regionalBest.values()].sort(byPriority)
   return [...local, ...regional].slice(0, limit)
 }
 
 async function fetchNasaFirmsArea(
   bbox: string,
   days = 5,
+  source = 'VIIRS_NOAA21_NRT',
 ): Promise<{ count: number | null; points: HotspotPoint[]; state: SourceState; reason?: string }> {
   const key = env('NASA_FIRMS_MAP_KEY')
   if (!key) {
@@ -439,7 +443,7 @@ async function fetchNasaFirmsArea(
   }
 
   // NASA FIRMS Area API: /api/area/csv/[MAP_KEY]/[SOURCE]/[west,south,east,north]/[DAY_RANGE(1..5)]
-  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(key)}/VIIRS_NOAA21_NRT/${bbox}/${days}`
+  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(key)}/${encodeURIComponent(source)}/${bbox}/${days}`
 
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
@@ -2236,7 +2240,7 @@ app.get('/env/layers', async (c) => {
   }
 
   const forceRefresh = c.req.query('refresh') === '1'
-  const firmsCacheKey = 'layers:firms:id:v5'
+  const firmsCacheKey = 'layers:firms:id:v7'
   const eonetCacheKey = 'layers:eonet:id:v1'
   const speciesCacheKey = `layers:species:${lat.toFixed(1)},${lng.toFixed(1)}:v1`
   const { supa } = requireDb('ENV_LAYERS_CACHE')
@@ -2273,7 +2277,27 @@ app.get('/env/layers', async (c) => {
   }
 
   const [firmsRes, eonetRes, speciesRes] = await Promise.all([
-    cachedHotspots ? Promise.resolve(null) : fetchNasaFirmsArea('95,-11,141,6', 2),
+    cachedHotspots
+      ? Promise.resolve(null)
+      : Promise.all([
+          fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_NOAA21_NRT'),
+          fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_NOAA20_NRT'),
+          fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_SNPP_NRT'),
+        ]).then((results) => {
+          const okResults = results.filter((r) => r.state === 'ok')
+          if (okResults.length === 0) {
+            return results.find((r) => r.state !== 'error') ?? results[0]
+          }
+          const merged = new Map<string, HotspotPoint>()
+          for (const res of okResults) {
+            for (const p of res.points) {
+              const key = `${p.acqDate || 'nd'}:${p.acqTime || 'nt'}:${Number(p.lat).toFixed(4)}:${Number(p.lng).toFixed(4)}`
+              const prev = merged.get(key)
+              if (!prev || p.frp > prev.frp) merged.set(key, p)
+            }
+          }
+          return { count: merged.size, points: [...merged.values()], state: 'ok' as SourceState }
+        }),
     cachedEonet ? Promise.resolve(null) : fetchNasaEonetReference(),
     cachedSpecies ? Promise.resolve(null) : fetchInatSpeciesObservations(lat, lng, 55),
   ])
@@ -2286,7 +2310,7 @@ app.get('/env/layers', async (c) => {
         `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${Number(h.lat).toFixed(4)}:${Number(h.lng).toFixed(4)}`,
     }))
     .filter((h) => !falseHotspotIds.has(h.id))
-  const hotspots = curateHotspotsForMap(normalizedHotspots, lat, lng, 80)
+  const hotspots = curateHotspotsForMap(normalizedHotspots, lat, lng, 320)
   const eonet = cachedEonet ?? eonetRes?.points ?? []
   const species = cachedSpecies ?? speciesRes?.species ?? []
 
@@ -2294,12 +2318,7 @@ app.get('/env/layers', async (c) => {
     const expiresAt = new Date(Date.now() + TTL_MS).toISOString()
     if (!cachedHotspots && firmsRes?.state === 'ok') {
       const credibleHotspots = firmsRes.points
-        .filter(
-          (h) =>
-            h.confidence !== 'l' &&
-            (h.confidence === 'h' || (h.frp ?? 0) >= 2) &&
-            !isStaticNonWildfireAnomaly(h.lat, h.lng),
-        )
+        .filter((h) => h.confidence !== 'l' && !isStaticNonWildfireAnomaly(h.lat, h.lng))
         .map((h) => ({
           ...h,
           id:

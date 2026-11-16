@@ -25,7 +25,10 @@ const ANCHORS: ReadonlyArray<readonly [number, number]> = [
     [-1.0, 116.5], // Kalimantan Timur & Selatan
     [-1.5, 120.5], // Sulawesi
     [-3.0, 128.0], // Maluku
-    [-4.0, 138.5], // Papua
+    [-7.8, 139.8], // Papua Selatan (Merauke / Boven Digoel)
+    [-3.5, 134.5], // Papua Tengah / Papua Barat (Mimika / Nabire)
+    [-1.2, 132.5], // Papua Barat Daya (Sorong / Teluk Bintuni)
+    [-4.0, 138.5], // Papua Pegunungan
 ]
 
 const EMPTY: HazardSet = { credible: [], weak: [] }

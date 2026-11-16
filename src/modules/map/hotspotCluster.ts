@@ -204,7 +204,9 @@ function buildFireArea(group: HotspotPoint[]): HazardPoint | null {
         return null
     }
 
-    const confirmedWildfire = isTropicalForestZone(lat, lng) && (ruleCluster || ruleHuge)
+    const confirmedWildfire =
+        isTropicalForestZone(lat, lng) &&
+        (ruleCluster || ruleHuge || (peakConf === 'h' && peakFrp >= FIRE_STRONG_FRP))
     const kind: HazardKind = confirmedWildfire ? 'wildfire' : 'suspected'
 
     const reason =
