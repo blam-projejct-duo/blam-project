@@ -1,5 +1,8 @@
-import type { Map as MapLibreMap, StyleSpecification } from 'maplibre-gl'
-import type { MapStyle } from '../../types'
+import type { LayerSpecification, Map as MapLibreMap, SourceSpecification, StyleSpecification } from 'maplibre-gl'
+import { mapEventTone } from '../../lib/constants'
+import type { ConservationEvent, MapStyle } from '../../types'
+import { severityRank } from './hotspotCluster'
+import type { HazardPoint } from './hotspotCluster'
 
 interface ThemePalette {
   background: string
@@ -97,58 +100,86 @@ const TEXT_FIELD_EXPR = [
   ['coalesce', ['get', 'name_en'], ['get', 'name']],
 ]
 
-export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecification {
-  const palette = PALETTES[initialStyle === 'gelap' ? 'gelap' : 'terang']
-  const vecVis = initialStyle === 'satelit' ? 'none' : 'visible'
-  const satVis = initialStyle === 'satelit' ? 'visible' : 'none'
+const HAZARD_COLOR = [
+  'match',
+  ['get', 'kind'],
+  'wildfire',
+  '#EF4444',
+  'suspected',
+  '#F59E0B',
+  'volcano',
+  '#7C3AED',
+  'flood',
+  '#2563EB',
+  'storm',
+  '#0891B2',
+  '#F59E0B',
+] as never
 
+const EVENT_COLOR = [
+  'match',
+  ['get', 'tone'],
+  'critical',
+  '#ef4444',
+  'progress',
+  '#f59e0b',
+  'resolved',
+  '#10b981',
+  '#ef4444',
+] as never
+
+const OPENMAPTILES_SOURCE: SourceSpecification = {
+  type: 'vector',
+  url: 'https://tiles.openfreemap.org/planet',
+  attribution: '&copy; OpenFreeMap &copy; OpenStreetMap',
+}
+
+export function buildHazardGeoJson(list: HazardPoint[]) {
   return {
-    version: 8,
-    glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
-    sources: {
-      openmaptiles: {
-        type: 'vector',
-        url: 'https://tiles.openfreemap.org/planet',
-        attribution: '&copy; OpenFreeMap &copy; OpenStreetMap',
+    type: 'FeatureCollection' as const,
+    features: list.map((h) => ({
+      type: 'Feature' as const,
+      properties: {
+        id: h.id,
+        kind: h.kind,
+        kindLabel: h.kindLabel,
+        sev: severityRank(h.severity),
+        n: h.pointCount,
       },
-      'esri-satelit': {
-        type: 'raster',
-        tiles: [
-          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        ],
-        tileSize: 256,
-        maxzoom: 18,
-        attribution: 'Tiles &copy; Esri',
+      geometry: {
+        type: 'Point' as const,
+        coordinates: [h.lng, h.lat],
       },
-      'esri-satelit-labels': {
-        type: 'raster',
-        tiles: [
-          'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-        ],
-        tileSize: 256,
-        maxzoom: 18,
+    })),
+  }
+}
+
+export function buildEventGeoJson(list: ConservationEvent[], selectedId: string | null) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: list.map((ev) => ({
+      type: 'Feature' as const,
+      properties: {
+        id: ev.id,
+        tone: mapEventTone(ev),
+        selected: ev.id === selectedId ? 1 : 0,
+        title: ev.title,
       },
-    },
-    layers: [
+      geometry: {
+        type: 'Point' as const,
+        coordinates: [ev.lng, ev.lat],
+      },
+    })),
+  }
+}
+
+function createVectorLayers(palette: ThemePalette, vecVis: 'visible' | 'none'): LayerSpecification[] {
+  return [
       {
         id: 'background',
         type: 'background',
         layout: { visibility: vecVis },
         paint: { 'background-color': palette.background },
-      },
-      {
-        id: 'satelit-imagery',
-        type: 'raster',
-        source: 'esri-satelit',
-        layout: { visibility: satVis },
-        paint: { 'raster-fade-duration': 120 },
-      },
-      {
-        id: 'satelit-labels',
-        type: 'raster',
-        source: 'esri-satelit-labels',
-        layout: { visibility: satVis },
-        paint: { 'raster-fade-duration': 120 },
       },
       {
         id: 'park',
@@ -472,7 +503,191 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
           'text-halo-width': 1.6,
         },
       },
-    ],
+  ]
+}
+
+function createOverlayLayers(): LayerSpecification[] {
+  return [
+    {
+      id: 'blam-hazards-cluster',
+      type: 'circle',
+      source: 'blam-hazards',
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-radius': ['step', ['get', 'point_count'], 15, 4, 19, 10, 24],
+        'circle-color': [
+          'case',
+          ['==', ['get', 'hasWildfire'], 1],
+          '#DC2626',
+          ['==', ['get', 'hasVolcano'], 1],
+          '#7C3AED',
+          ['>=', ['get', 'sev'], 3],
+          '#2563EB',
+          '#F59E0B',
+        ],
+        'circle-opacity': 0.92,
+        'circle-stroke-color': '#FFFFFF',
+        'circle-stroke-width': 2,
+      },
+    },
+    {
+      id: 'blam-hazards-cluster-count',
+      type: 'symbol',
+      source: 'blam-hazards',
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': ['get', 'point_count_abbreviated'],
+        'text-font': ['Noto Sans Bold'],
+        'text-size': 13,
+        'text-allow-overlap': true,
+      },
+      paint: { 'text-color': '#FFFFFF' },
+    },
+    {
+      id: 'blam-hazards-halo',
+      type: 'circle',
+      source: 'blam-hazards',
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['get', 'sev'], 1, 12, 3, 22],
+        'circle-color': HAZARD_COLOR,
+        'circle-opacity': 0.22,
+      },
+    },
+    {
+      id: 'blam-hazards-core',
+      type: 'circle',
+      source: 'blam-hazards',
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['get', 'sev'], 1, 5, 3, 9],
+        'circle-color': HAZARD_COLOR,
+        'circle-opacity': 0.95,
+        'circle-stroke-color': '#FFFFFF',
+        'circle-stroke-width': 2,
+      },
+    },
+    {
+      id: 'blam-hazards-label',
+      type: 'symbol',
+      source: 'blam-hazards',
+      minzoom: 5,
+      filter: ['!', ['has', 'point_count']],
+      layout: {
+        'text-field': ['get', 'kindLabel'],
+        'text-font': ['Noto Sans Bold'],
+        'text-size': 11,
+        'text-offset': [0, 1.7],
+        'text-anchor': 'top',
+      },
+      paint: {
+        'text-color': '#111827',
+        'text-halo-color': '#FFFFFF',
+        'text-halo-width': 1.5,
+      },
+    },
+    {
+      id: 'blam-events-selected-ring',
+      type: 'circle',
+      source: 'blam-events',
+      filter: ['==', ['get', 'selected'], 1],
+      paint: {
+        'circle-radius': 17,
+        'circle-color': 'rgba(0, 0, 0, 0)',
+        'circle-stroke-color': EVENT_COLOR,
+        'circle-stroke-width': 2,
+        'circle-stroke-opacity': 0.95,
+      },
+    },
+    {
+      id: 'blam-events-pin',
+      type: 'circle',
+      source: 'blam-events',
+      paint: {
+        'circle-radius': ['case', ['==', ['get', 'selected'], 1], 13, 9.5],
+        'circle-color': EVENT_COLOR,
+        'circle-stroke-color': '#FFFFFF',
+        'circle-stroke-width': ['case', ['==', ['get', 'selected'], 1], 3, 2.5],
+      },
+    },
+  ]
+}
+
+export function createInitialMapStyle(
+  initialStyle: MapStyle,
+  initialHazards: HazardPoint[] = [],
+  initialEvents: ConservationEvent[] = [],
+  initialSelectedId: string | null = null,
+): StyleSpecification {
+  const isSat = initialStyle === 'satelit'
+  const palette = PALETTES[initialStyle === 'gelap' ? 'gelap' : 'terang']
+  const satVis = isSat ? 'visible' : 'none'
+
+  const sources: Record<string, SourceSpecification> = {
+    'esri-satelit': {
+      type: 'raster',
+      tiles: [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      ],
+      tileSize: 256,
+      maxzoom: 18,
+      attribution: 'Tiles &copy; Esri',
+    },
+    'esri-satelit-labels': {
+      type: 'raster',
+      tiles: [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+      ],
+      tileSize: 256,
+      maxzoom: 18,
+    },
+    'blam-hazards': {
+      type: 'geojson',
+      data: buildHazardGeoJson(initialHazards),
+      cluster: true,
+      clusterRadius: 48,
+      clusterMaxZoom: 8,
+      clusterProperties: {
+        sev: ['max', ['get', 'sev']],
+        hasWildfire: ['max', ['case', ['==', ['get', 'kind'], 'wildfire'], 1, 0]],
+        hasVolcano: ['max', ['case', ['==', ['get', 'kind'], 'volcano'], 1, 0]],
+      },
+    },
+    'blam-events': {
+      type: 'geojson',
+      data: buildEventGeoJson(initialEvents, initialSelectedId),
+    },
+  }
+
+  // Lazy-load vector basemap source so default satellite startup avoids extra TileJSON requests
+  if (!isSat) {
+    sources.openmaptiles = OPENMAPTILES_SOURCE
+  }
+
+  const layers: LayerSpecification[] = [
+    {
+      id: 'satelit-imagery',
+      type: 'raster',
+      source: 'esri-satelit',
+      layout: { visibility: satVis },
+      paint: { 'raster-fade-duration': 0 },
+    },
+    {
+      id: 'satelit-labels',
+      type: 'raster',
+      source: 'esri-satelit-labels',
+      layout: { visibility: satVis },
+      paint: { 'raster-fade-duration': 0 },
+    },
+    ...(isSat ? [] : createVectorLayers(palette, 'visible')),
+    ...createOverlayLayers(),
+  ]
+
+  return {
+    version: 8,
+    glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+    sources,
+    layers,
   }
 }
 
@@ -480,6 +695,17 @@ export function applyMapStyle(map: MapLibreMap, style: MapStyle): void {
   const isSat = style === 'satelit'
   const vecVis = isSat ? 'none' : 'visible'
   const satVis = isSat ? 'visible' : 'none'
+
+  if (!isSat && !map.getSource('openmaptiles')) {
+    const palette = PALETTES[style]
+    map.addSource('openmaptiles', OPENMAPTILES_SOURCE)
+    const beforeOverlay = map.getLayer('blam-hazards-cluster') ? 'blam-hazards-cluster' : undefined
+    for (const layer of createVectorLayers(palette, 'visible')) {
+      if (!map.getLayer(layer.id)) {
+        map.addLayer(layer, beforeOverlay)
+      }
+    }
+  }
 
   for (const id of SATELLITE_LAYER_IDS) {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', satVis)

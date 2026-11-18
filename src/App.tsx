@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react'
-import DesktopShell from './components/layout/DesktopShell'
-import MobileBumpShell from './components/layout/MobileBumpShell'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { getDemoSessionId } from './lib/api'
 import { useAppRoute } from './lib/route'
 import type { AppPath } from './lib/route'
 import { useMediaQuery } from './lib/useMediaQuery'
 import { AuthProvider, useAuth } from './modules/auth/AuthContext'
-import AuthModal from './modules/auth/AuthModal'
-import DemoPortalPage from './modules/demo/DemoPortalPage'
 import { useRadar } from './modules/map/useRadar'
+
+const DesktopShell = lazy(() => import('./components/layout/DesktopShell'))
+const MobileBumpShell = lazy(() => import('./components/layout/MobileBumpShell'))
+const AuthModal = lazy(() => import('./modules/auth/AuthModal'))
+const DemoPortalPage = lazy(() => import('./modules/demo/DemoPortalPage'))
 
 function BlamRoot({ isDemo, onNavigate }: { isDemo: boolean; onNavigate: (path: AppPath) => void }) {
   const { profile, loading, openAuthModal } = useAuth()
@@ -20,28 +21,28 @@ function BlamRoot({ isDemo, onNavigate }: { isDemo: boolean; onNavigate: (path: 
     document.title = isDemo ? 'Blam — Mode Demo' : 'Blam — Radar Konservasi'
   }, [isDemo])
 
-  if (isDemo && loading && Boolean(getDemoSessionId())) {
-    return <div className="h-dvh w-full bg-canvas" />
-  }
-
-  if (isDemo && !profile && !demoGuestEntered) {
+  if (isDemo && !profile && !demoGuestEntered && !(loading && Boolean(getDemoSessionId()))) {
     return (
-      <DemoPortalPage
-        onEnterGuest={() => setDemoGuestEntered(true)}
-        onGoLive={() => onNavigate('/')}
-      />
+      <Suspense fallback={<div className="h-dvh w-full bg-canvas" />}>
+        <DemoPortalPage
+          onEnterGuest={() => setDemoGuestEntered(true)}
+          onGoLive={() => onNavigate('/')}
+        />
+      </Suspense>
     )
   }
 
   return (
     <>
-      {isDesktop ? (
-        <DesktopShell radar={radar} />
-      ) : (
-        <div className="h-dvh">
-          <MobileBumpShell radar={radar} />
-        </div>
-      )}
+      <Suspense fallback={<div className="h-dvh w-full bg-canvas" />}>
+        {isDesktop ? (
+          <DesktopShell radar={radar} />
+        ) : (
+          <div className="h-dvh">
+            <MobileBumpShell radar={radar} />
+          </div>
+        )}
+      </Suspense>
 
       {isDemo && (
         <button
@@ -58,17 +59,19 @@ function BlamRoot({ isDemo, onNavigate }: { isDemo: boolean; onNavigate: (path: 
         </button>
       )}
 
-      <AuthModal
-        onExitDemo={isDemo ? () => setDemoGuestEntered(false) : undefined}
-        onGoLive={
-          isDemo
-            ? () => {
-                setDemoGuestEntered(false)
-                onNavigate('/')
-              }
-            : undefined
-        }
-      />
+      <Suspense fallback={null}>
+        <AuthModal
+          onExitDemo={isDemo ? () => setDemoGuestEntered(false) : undefined}
+          onGoLive={
+            isDemo
+              ? () => {
+                  setDemoGuestEntered(false)
+                  onNavigate('/')
+                }
+              : undefined
+          }
+        />
+      </Suspense>
     </>
   )
 }

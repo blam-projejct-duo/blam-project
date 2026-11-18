@@ -431,6 +431,27 @@ function curateHotspotsForMap(rows: HotspotPoint[], centerLat: number, centerLng
   return [...local, ...regional].slice(0, limit)
 }
 
+function curateNationalHotspots(rows: HotspotPoint[], limit = 600): HotspotPoint[] {
+  const bestByCell = new Map<string, HotspotPoint>()
+  const confRank = (c: string) => (c === 'h' ? 2 : c === 'n' ? 1 : 0)
+  const isBetter = (next: HotspotPoint, cur: HotspotPoint) =>
+    confRank(next.confidence) > confRank(cur.confidence) ||
+    (confRank(next.confidence) === confRank(cur.confidence) && next.frp > cur.frp)
+
+  // ~4.4 km cell preserves multi-point clusters within FIRE_MERGE_KM (15 km) nationwide
+  for (const h of rows) {
+    if (h.confidence === 'l') continue
+    if (isStaticNonWildfireAnomaly(h.lat, h.lng)) continue
+    const cellKey = `${(Math.round(h.lat * 25) / 25).toFixed(2)},${(Math.round(h.lng * 25) / 25).toFixed(2)}`
+    const cur = bestByCell.get(cellKey)
+    if (!cur || isBetter(h, cur)) bestByCell.set(cellKey, h)
+  }
+
+  return [...bestByCell.values()]
+    .sort((a, b) => confRank(b.confidence) - confRank(a.confidence) || b.frp - a.frp)
+    .slice(0, limit)
+}
+
 async function fetchNasaFirmsArea(
   bbox: string,
   days = 5,
@@ -2295,31 +2316,56 @@ app.get('/env/pulse', async (c) => {
   return c.json({ ...pulse, cached: false })
 })
 
-app.get('/env/layers', async (c) => {
-  const latParam = c.req.query('lat')
-  const lngParam = c.req.query('lng')
-  const lat = latParam !== undefined ? Number(latParam) : -3.8
-  const lng = lngParam !== undefined ? Number(lngParam) : 102.26
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-    return c.json({ error: 'Koordinat lat/lng tidak valid' }, 400)
+const FIRMS_CACHE_KEY = 'layers:firms:id:v7'
+const EONET_CACHE_KEY = 'layers:eonet:id:v1'
+
+async function fetchNationalFirmsMerged() {
+  const results = await Promise.all([
+    fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_NOAA21_NRT'),
+    fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_NOAA20_NRT'),
+    fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_SNPP_NRT'),
+  ])
+  const okResults = results.filter((r) => r.state === 'ok')
+  if (okResults.length === 0) {
+    return results.find((r) => r.state !== 'error') ?? results[0]
   }
+  const merged = new Map<string, HotspotPoint>()
+  for (const res of okResults) {
+    for (const p of res.points) {
+      const key = `${p.acqDate || 'nd'}:${p.acqTime || 'nt'}:${Number(p.lat).toFixed(4)}:${Number(p.lng).toFixed(4)}`
+      const prev = merged.get(key)
+      if (!prev || p.frp > prev.frp) merged.set(key, p)
+    }
+  }
+  return { count: merged.size, points: [...merged.values()], state: 'ok' as SourceState }
+}
 
-  const forceRefresh = c.req.query('refresh') === '1'
-  const firmsCacheKey = 'layers:firms:id:v7'
-  const eonetCacheKey = 'layers:eonet:id:v1'
-  const speciesCacheKey = `layers:species:${lat.toFixed(1)},${lng.toFixed(1)}:v1`
-  const { supa } = requireDb('ENV_LAYERS_CACHE')
+function normalizeHotspots(points: HotspotPoint[], falseHotspotIds: Set<string>): HotspotPoint[] {
+  return points
+    .map((h) => ({
+      ...h,
+      id:
+        h.id ||
+        `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${Number(h.lat).toFixed(4)}:${Number(h.lng).toFixed(4)}`,
+    }))
+    .filter((h) => !falseHotspotIds.has(h.id))
+}
+
+async function loadNationalHazardSources(
+  supa: SupabaseClient | null,
+  forceRefresh: boolean,
+  extraKeys: string[] = [],
+) {
   const nowIso = new Date().toISOString()
-
   let cachedHotspots: HotspotPoint[] | null = null
   let cachedEonet: EonetPoint[] | null = null
-  let cachedSpecies: SpeciesPoint[] | null = null
+  const extraCached = new Map<string, unknown>()
   let falseHotspotIds = new Set<string>()
 
   if (supa) {
     const keys = forceRefresh
       ? [FALSE_HOTSPOTS_CACHE_KEY]
-      : [firmsCacheKey, eonetCacheKey, speciesCacheKey, FALSE_HOTSPOTS_CACHE_KEY]
+      : [FIRMS_CACHE_KEY, EONET_CACHE_KEY, FALSE_HOTSPOTS_CACHE_KEY, ...extraKeys]
     const { data: cacheRows } = await supa
       .from('env_cache')
       .select('cache_key, payload_json, expires_at')
@@ -2331,88 +2377,125 @@ app.get('/env/layers', async (c) => {
         continue
       }
       if (!row.expires_at || row.expires_at <= nowIso) continue
-      if (row.cache_key === firmsCacheKey && Array.isArray(row.payload_json)) {
+      if (row.cache_key === FIRMS_CACHE_KEY && Array.isArray(row.payload_json)) {
         cachedHotspots = row.payload_json as HotspotPoint[]
-      } else if (row.cache_key === eonetCacheKey && Array.isArray(row.payload_json)) {
+      } else if (row.cache_key === EONET_CACHE_KEY && Array.isArray(row.payload_json)) {
         cachedEonet = row.payload_json as EonetPoint[]
-      } else if (row.cache_key === speciesCacheKey && Array.isArray(row.payload_json)) {
-        cachedSpecies = row.payload_json as SpeciesPoint[]
+      } else if (extraKeys.includes(row.cache_key)) {
+        extraCached.set(row.cache_key, row.payload_json)
       }
     }
   }
 
+  return { nowIso, cachedHotspots, cachedEonet, extraCached, falseHotspotIds }
+}
+
+async function persistHazardSources(
+  supa: SupabaseClient | null,
+  nowIso: string,
+  cachedHotspots: HotspotPoint[] | null,
+  cachedEonet: EonetPoint[] | null,
+  firmsRes: Awaited<ReturnType<typeof fetchNationalFirmsMerged>> | null,
+  eonetRes: Awaited<ReturnType<typeof fetchNasaEonetReference>> | null,
+) {
+  if (!supa) return
+  const expiresAt = new Date(Date.now() + TTL_MS).toISOString()
+  if (!cachedHotspots && firmsRes?.state === 'ok') {
+    const credibleHotspots = firmsRes.points
+      .filter((h) => h.confidence !== 'l' && !isStaticNonWildfireAnomaly(h.lat, h.lng))
+      .map((h) => ({
+        ...h,
+        id:
+          h.id ||
+          `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${Number(h.lat).toFixed(4)}:${Number(h.lng).toFixed(4)}`,
+      }))
+    await supa.from('env_cache').upsert({
+      cache_key: FIRMS_CACHE_KEY,
+      payload_json: credibleHotspots,
+      fetched_at: nowIso,
+      expires_at: expiresAt,
+    })
+  }
+  if (!cachedEonet && eonetRes?.state === 'ok') {
+    await supa.from('env_cache').upsert({
+      cache_key: EONET_CACHE_KEY,
+      payload_json: eonetRes.points,
+      fetched_at: nowIso,
+      expires_at: expiresAt,
+    })
+  }
+}
+
+app.get('/env/hazards', async (c) => {
+  const forceRefresh = c.req.query('refresh') === '1'
+  const { supa } = requireDb('ENV_HAZARDS_CACHE')
+  const { nowIso, cachedHotspots, cachedEonet, falseHotspotIds } = await loadNationalHazardSources(
+    supa,
+    forceRefresh,
+  )
+
+  const [firmsRes, eonetRes] = await Promise.all([
+    cachedHotspots ? Promise.resolve(null) : fetchNationalFirmsMerged(),
+    cachedEonet ? Promise.resolve(null) : fetchNasaEonetReference(),
+  ])
+
+  const normalizedHotspots = normalizeHotspots(cachedHotspots ?? firmsRes?.points ?? [], falseHotspotIds)
+  const hotspots = curateNationalHotspots(normalizedHotspots, 600)
+  const eonet = cachedEonet ?? eonetRes?.points ?? []
+
+  await persistHazardSources(supa, nowIso, cachedHotspots, cachedEonet, firmsRes, eonetRes)
+
+  c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=1200')
+  return c.json({
+    hotspots,
+    eonet,
+    fetchedAt: nowIso,
+    cached: Boolean(cachedHotspots && cachedEonet),
+    sources: {
+      nasaFirms: cachedHotspots ? 'ok' : (firmsRes?.state ?? 'error'),
+      nasaEonet: cachedEonet ? 'ok' : (eonetRes?.state ?? 'error'),
+    },
+  })
+})
+
+app.get('/env/layers', async (c) => {
+  const latParam = c.req.query('lat')
+  const lngParam = c.req.query('lng')
+  const lat = latParam !== undefined ? Number(latParam) : -3.8
+  const lng = lngParam !== undefined ? Number(lngParam) : 102.26
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    return c.json({ error: 'Koordinat lat/lng tidak valid' }, 400)
+  }
+
+  const forceRefresh = c.req.query('refresh') === '1'
+  const speciesCacheKey = `layers:species:${lat.toFixed(1)},${lng.toFixed(1)}:v1`
+  const { supa } = requireDb('ENV_LAYERS_CACHE')
+  const { nowIso, cachedHotspots, cachedEonet, extraCached, falseHotspotIds } = await loadNationalHazardSources(
+    supa,
+    forceRefresh,
+    [speciesCacheKey],
+  )
+  const cachedSpecies = (extraCached.get(speciesCacheKey) as SpeciesPoint[] | undefined) ?? null
+
   const [firmsRes, eonetRes, speciesRes] = await Promise.all([
-    cachedHotspots
-      ? Promise.resolve(null)
-      : Promise.all([
-          fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_NOAA21_NRT'),
-          fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_NOAA20_NRT'),
-          fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_SNPP_NRT'),
-        ]).then((results) => {
-          const okResults = results.filter((r) => r.state === 'ok')
-          if (okResults.length === 0) {
-            return results.find((r) => r.state !== 'error') ?? results[0]
-          }
-          const merged = new Map<string, HotspotPoint>()
-          for (const res of okResults) {
-            for (const p of res.points) {
-              const key = `${p.acqDate || 'nd'}:${p.acqTime || 'nt'}:${Number(p.lat).toFixed(4)}:${Number(p.lng).toFixed(4)}`
-              const prev = merged.get(key)
-              if (!prev || p.frp > prev.frp) merged.set(key, p)
-            }
-          }
-          return { count: merged.size, points: [...merged.values()], state: 'ok' as SourceState }
-        }),
+    cachedHotspots ? Promise.resolve(null) : fetchNationalFirmsMerged(),
     cachedEonet ? Promise.resolve(null) : fetchNasaEonetReference(),
     cachedSpecies ? Promise.resolve(null) : fetchInatSpeciesObservations(lat, lng, 55),
   ])
 
-  const normalizedHotspots = (cachedHotspots ?? firmsRes?.points ?? [])
-    .map((h) => ({
-      ...h,
-      id:
-        h.id ||
-        `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${Number(h.lat).toFixed(4)}:${Number(h.lng).toFixed(4)}`,
-    }))
-    .filter((h) => !falseHotspotIds.has(h.id))
+  const normalizedHotspots = normalizeHotspots(cachedHotspots ?? firmsRes?.points ?? [], falseHotspotIds)
   const hotspots = curateHotspotsForMap(normalizedHotspots, lat, lng, 320)
   const eonet = cachedEonet ?? eonetRes?.points ?? []
   const species = cachedSpecies ?? speciesRes?.species ?? []
 
-  if (supa) {
-    const expiresAt = new Date(Date.now() + TTL_MS).toISOString()
-    if (!cachedHotspots && firmsRes?.state === 'ok') {
-      const credibleHotspots = firmsRes.points
-        .filter((h) => h.confidence !== 'l' && !isStaticNonWildfireAnomaly(h.lat, h.lng))
-        .map((h) => ({
-          ...h,
-          id:
-            h.id ||
-            `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${Number(h.lat).toFixed(4)}:${Number(h.lng).toFixed(4)}`,
-        }))
-      await supa.from('env_cache').upsert({
-        cache_key: firmsCacheKey,
-        payload_json: credibleHotspots,
-        fetched_at: nowIso,
-        expires_at: expiresAt,
-      })
-    }
-    if (!cachedEonet && eonetRes?.state === 'ok') {
-      await supa.from('env_cache').upsert({
-        cache_key: eonetCacheKey,
-        payload_json: eonetRes.points,
-        fetched_at: nowIso,
-        expires_at: expiresAt,
-      })
-    }
-    if (!cachedSpecies && speciesRes?.state === 'ok') {
-      await supa.from('env_cache').upsert({
-        cache_key: speciesCacheKey,
-        payload_json: speciesRes.species,
-        fetched_at: nowIso,
-        expires_at: expiresAt,
-      })
-    }
+  await persistHazardSources(supa, nowIso, cachedHotspots, cachedEonet, firmsRes, eonetRes)
+  if (supa && !cachedSpecies && speciesRes?.state === 'ok') {
+    await supa.from('env_cache').upsert({
+      cache_key: speciesCacheKey,
+      payload_json: speciesRes.species,
+      fetched_at: nowIso,
+      expires_at: new Date(Date.now() + TTL_MS).toISOString(),
+    })
   }
 
   c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=1200')
