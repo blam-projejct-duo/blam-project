@@ -95,13 +95,13 @@ function BlamNatureIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="relative z-10 size-[28px] -translate-y-1 drop-shadow-[0_2px_3px_rgba(29,92,58,0.22)]"
+      className="relative z-10 size-[28px] drop-shadow-[0_2px_3px_rgba(10,42,24,0.26)]"
       aria-hidden="true"
     >
       <defs>
         <linearGradient id={gradId} x1="6" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#34A867" />
-          <stop offset="100%" stopColor="var(--color-forest)" />
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="100%" stopColor="#E4F5E8" />
         </linearGradient>
       </defs>
       <path
@@ -111,26 +111,23 @@ function BlamNatureIcon() {
       <path
         d="M4.2 9.4c2.8-.6 5.8.7 7.1 3.3.7 1.4.8 3 .3 4.5-2.7.2-5.4-1.2-6.6-3.7-.6-1.3-.9-2.7-.8-4.1Z"
         fill="var(--color-mint)"
-        stroke="var(--color-leaf)"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
       />
       <path
         d="M9.8 17.3c1.9-3.6 4.4-6.5 7.4-8.8M11.6 17.6V20.5"
         fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="1.7"
+        stroke="var(--color-forest)"
+        strokeWidth="1.8"
         strokeLinecap="round"
-        opacity="0.88"
+        opacity="0.72"
       />
       <path
         d="M11.6 17.8V20.5"
         fill="none"
-        stroke="var(--color-forest)"
-        strokeWidth="1.8"
+        stroke="#FFFFFF"
+        strokeWidth="1.9"
         strokeLinecap="round"
       />
-      <circle cx="7.4" cy="6.2" r="1.15" fill="var(--color-leaf)" opacity="0.85" />
+      <circle cx="7.4" cy="6.2" r="1.15" fill="#FFFFFF" opacity="0.88" />
     </svg>
   )
 }
@@ -168,9 +165,13 @@ function AksiActionIcon({ light = false }: { light?: boolean }) {
 
 function BellSolidIcon({ light = false }: { light?: boolean }) {
   const main = light ? '#FFFFFF' : 'var(--color-leaf)'
-  const accent = light ? '#A7F3D0' : 'var(--color-forest)'
+  const accent = light ? 'var(--color-mint)' : 'var(--color-forest)'
   return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[19px]" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      className={`relative z-10 size-[19px] ${light ? 'drop-shadow-[0_1.5px_2px_rgba(10,42,24,0.22)]' : ''}`}
+      aria-hidden="true"
+    >
       <g transform="rotate(-8 12 12)">
         <circle cx="12" cy="3.6" r="1.3" fill={accent} />
         <path
@@ -515,9 +516,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           size={38}
           label="Notifikasi"
           onClick={() => openSheet('profile', true)}
-          className="relative"
+          className="orb-primary relative"
         >
-          <BellSolidIcon />
+          <BellSolidIcon light />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-white bg-critical" />
           )}
@@ -549,8 +550,6 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             <Orb
               size={60}
               label="Bantu alam"
-              watermark="BLAM"
-              tone="primary"
               onClick={() => setReportOpen(true)}
               className="orb-primary"
             >
