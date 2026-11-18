@@ -257,3 +257,41 @@ export interface EnvPulse {
 }
 
 export type PinTone = 'critical' | 'progress' | 'resolved'
+
+export type PaymentMethod = 'qris' | 'mbanking'
+export type FundraisingStatus = 'active' | 'completed' | 'closed'
+export type OrganizerKind = 'organization' | 'agency' | 'admin'
+
+export interface FundraisingDonation {
+  id: string
+  fundraising_id: string
+  donor_id: string | null
+  donor_name: string
+  is_anonymous: boolean
+  amount: number
+  payment_method: PaymentMethod
+  bank_name: string | null
+  message: string | null
+  created_at: string
+}
+
+export interface FundraisingCampaign {
+  id: string
+  ref_source: RefSource
+  ref_external_id: string
+  hazard_kind: HazardKind
+  title: string
+  description: string
+  location_name: string
+  lat: number
+  lng: number
+  target_amount: number
+  collected_amount: number
+  status: FundraisingStatus
+  organizer_kind: OrganizerKind
+  organizer_name: string
+  organization_id: string | null
+  created_by: string | null
+  created_at: string
+  donations: FundraisingDonation[]
+}

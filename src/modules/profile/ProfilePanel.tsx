@@ -51,11 +51,11 @@ export default function ProfilePanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="capsule-dashed rounded-[20px] p-5">
+      <section className="capsule-dashed rounded-[20px] p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3.5">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="relative shrink-0">
-              <div className="flex size-14 items-center justify-center overflow-hidden rounded-full border border-line bg-canvas text-lg font-extrabold text-forest">
+              <div className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-line bg-canvas text-base font-extrabold text-forest sm:size-14 sm:text-lg">
                 {profile.avatar_url ? (
                   <img
                     src={profile.avatar_url}
@@ -88,13 +88,13 @@ export default function ProfilePanel() {
 
             <div className="min-w-0">
               <Pill>{ROLE_LABEL[profile.role]}</Pill>
-              <h2 className="mt-1.5 truncate text-[20px] font-bold text-ink">{profile.full_name}</h2>
+              <h2 className="mt-1 truncate text-[18px] font-bold text-ink sm:text-[20px]">{profile.full_name}</h2>
               {profile.email && <p className="truncate text-xs text-ink-soft">{profile.email}</p>}
             </div>
           </div>
-          <div className="shrink-0 text-right">
-            <p className="num text-2xl text-forest">{profile.points}</p>
-            <p className="text-[11px] font-bold text-ink-soft">Poin</p>
+          <div className="shrink-0 rounded-2xl border border-line/80 bg-white/80 px-3 py-1.5 text-center">
+            <p className="num text-xl leading-none text-forest sm:text-2xl">{profile.points}</p>
+            <p className="mt-0.5 text-[10px] font-bold tracking-wide text-ink-soft uppercase">Poin</p>
           </div>
         </div>
 
@@ -104,20 +104,20 @@ export default function ProfilePanel() {
           </p>
         )}
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2">
           <button
             type="button"
             disabled={avatarBusy}
             onClick={() => fileRef.current?.click()}
-            className="font-display inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white px-3 text-xs font-semibold text-forest hover:bg-mint/30 disabled:opacity-60"
+            className="font-display inline-flex h-10 items-center justify-center gap-1.5 rounded-full border-[1.5px] border-dashed border-leaf/35 bg-white px-3 text-xs font-semibold whitespace-nowrap text-forest transition hover:bg-mint/40 disabled:opacity-60"
           >
-            <Camera className="size-3.5" /> {avatarBusy ? 'Mengunggah…' : 'Edit Foto'}
+            <Camera className="size-3.5 shrink-0" /> {avatarBusy ? 'Mengunggah…' : 'Edit Foto'}
           </button>
           {isDemo && (
             <button
               type="button"
               onClick={openAuthModal}
-              className="font-display h-10 flex-1 rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white text-xs font-semibold text-forest hover:bg-mint/30"
+              className="font-display inline-flex h-10 items-center justify-center rounded-full border-[1.5px] border-dashed border-leaf/35 bg-white px-3 text-xs font-semibold whitespace-nowrap text-forest transition hover:bg-mint/40"
             >
               Ganti Peran
             </button>
@@ -125,9 +125,11 @@ export default function ProfilePanel() {
           <button
             type="button"
             onClick={() => void logout()}
-            className="font-display inline-flex h-10 items-center justify-center gap-1.5 rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white px-4 text-xs font-semibold text-ink-soft hover:text-forest"
+            className={`font-display inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-line bg-white/80 px-4 text-xs font-semibold whitespace-nowrap text-ink-soft transition hover:border-critical/30 hover:bg-critical/5 hover:text-critical ${
+              isDemo ? 'col-span-2' : ''
+            }`}
           >
-            <LogOut className="size-3.5" /> Keluar
+            <LogOut className="size-3.5 shrink-0" /> Keluar
           </button>
         </div>
       </section>

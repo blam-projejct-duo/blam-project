@@ -6,10 +6,14 @@ import type {
   EnvPulse,
   EventStatus,
   EventVisibility,
+  FundraisingCampaign,
+  FundraisingDonation,
+  HazardKind,
   NotificationItem,
   Organization,
   OrganizationMember,
   OrgType,
+  PaymentMethod,
   Profile,
   RefSource,
   ReportStatus,
@@ -374,6 +378,50 @@ export async function fetchLandRoute(
   return apiFetch<{ ok: true; distanceKm: number; coordinates: [number, number][] }>(
     `/route?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}`,
     { signal },
+  )
+}
+
+export async function fetchFundraisings(): Promise<FundraisingCampaign[]> {
+  const res = await apiFetch<{ fundraisings: FundraisingCampaign[] }>('/fundraisings')
+  return res.fundraisings
+}
+
+export async function createFundraising(input: {
+  refSource: RefSource
+  refExternalId: string
+  hazardKind: HazardKind
+  title: string
+  description: string
+  locationName: string
+  lat: number
+  lng: number
+  targetAmount: number
+  organizationId?: string
+}): Promise<{ ok: boolean; fundraising: FundraisingCampaign }> {
+  return apiFetch<{ ok: boolean; fundraising: FundraisingCampaign }>('/fundraisings', {
+    method: 'POST',
+    requireAuth: true,
+    body: JSON.stringify(input),
+  })
+}
+
+export async function donateToFundraising(
+  fundraisingId: string,
+  input: {
+    amount: number
+    paymentMethod: PaymentMethod
+    bankName?: string
+    isAnonymous: boolean
+    donorName?: string
+    message?: string
+  },
+): Promise<{ ok: boolean; fundraising: FundraisingCampaign; donation: FundraisingDonation }> {
+  return apiFetch<{ ok: boolean; fundraising: FundraisingCampaign; donation: FundraisingDonation }>(
+    `/fundraisings/${fundraisingId}/donate`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
   )
 }
 
