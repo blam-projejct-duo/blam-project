@@ -187,7 +187,7 @@ export default function MapView({
       style: createInitialMapStyle(styleRef.current),
       center: INDONESIA_CENTER,
       zoom: 4.3,
-      minZoom: 2.5,
+      minZoom: 1,
       maxZoom: 18,
       attributionControl: { compact: true },
     })
