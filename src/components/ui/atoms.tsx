@@ -1,4 +1,5 @@
 import { Droplets, TreePine, Waves, X } from 'lucide-react'
+import { useId } from 'react'
 import type { ReactNode } from 'react'
 import {
   ECOSYSTEM_LABEL,
@@ -62,15 +63,22 @@ export function Orb({
   size,
   label,
   onClick,
+  watermark,
+  tone = 'default',
   className = '',
   children,
 }: {
   size: number
   label: string
   onClick?: () => void
+  watermark?: string
+  tone?: 'default' | 'primary'
   className?: string
   children: ReactNode
 }) {
+  const arcId = useId()
+  const markSize = watermark && watermark.length <= 4 ? 29 : 25
+
   return (
     <button
       type="button"
@@ -79,6 +87,25 @@ export function Orb({
       className={`orb ${className}`}
       style={{ width: size, height: size }}
     >
+      {watermark && (
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-full">
+          <svg viewBox="0 0 100 100" className="size-full select-none">
+            <defs>
+              <path id={arcId} d="M 5,62 A 45,35 0 0,0 95,62" />
+            </defs>
+            <text
+              fill={tone === 'primary' ? 'rgba(255, 255, 255, 0.38)' : 'rgba(29, 92, 58, 0.30)'}
+              fontSize={markSize}
+              fontWeight="800"
+              letterSpacing="-0.04em"
+            >
+              <textPath href={`#${arcId}`} startOffset="50%" textAnchor="middle">
+                {watermark}
+              </textPath>
+            </text>
+          </svg>
+        </span>
+      )}
       {children}
     </button>
   )
