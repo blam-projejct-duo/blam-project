@@ -78,28 +78,32 @@ button {
   display: grid;
   place-items: center;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.96);
-  background: linear-gradient(180deg, #ffffff 0%, #f8faf7 58%, #e4ebe2 100%);
+  border: 0.75px solid rgba(255, 255, 255, 0.85);
+  background: radial-gradient(120% 110% at 50% 24%, #ffffff 0%, #ffffff 56%, #eef2ee 84%, #e0e7e0 100%);
   box-shadow:
-    0 7px 16px -1px rgba(19, 36, 26, 0.22),
-    0 3px 6px rgba(19, 36, 26, 0.14),
-    inset 0 2.5px 3px #ffffff,
-    inset 0 -7px 10px -2px rgba(19, 36, 26, 0.2),
-    inset 0 -2px 4px rgba(19, 36, 26, 0.14);
+    0 -0.5px 2px rgba(255, 255, 255, 0.4),
+    0 0 2px rgba(255, 255, 255, 0.22),
+    0 2.5px 5px -1.5px rgba(19, 36, 26, 0.14),
+    0 1px 2px rgba(19, 36, 26, 0.08),
+    inset 0 2px 2px rgba(255, 255, 255, 0.98),
+    inset 0 -4px 5.5px rgba(19, 36, 26, 0.1),
+    inset 0 -1.5px 2px rgba(19, 36, 26, 0.06);
   color: var(--color-forest);
   transition: transform 120ms var(--ease-spring);
 }
 
 [data-map-style='satelit'] .orb,
 [data-map-style='gelap'] .orb {
-  border-color: rgba(255, 255, 255, 0.96);
-  background: linear-gradient(180deg, #ffffff 0%, #f7faf6 56%, #dfe8dc 100%);
+  border-color: rgba(255, 255, 255, 0.52);
+  background: radial-gradient(120% 110% at 50% 24%, #ffffff 0%, #ffffff 55%, #edf1ed 84%, #dde4dd 100%);
   box-shadow:
-    0 10px 22px -2px rgba(0, 0, 0, 0.46),
-    0 4px 8px rgba(0, 0, 0, 0.28),
-    inset 0 2.5px 3px #ffffff,
-    inset 0 -7.5px 11px -2px rgba(19, 36, 26, 0.22),
-    inset 0 -2.5px 4px rgba(19, 36, 26, 0.15);
+    0 -0.5px 2px rgba(255, 255, 255, 0.24),
+    0 0 2px rgba(255, 255, 255, 0.14),
+    0 3px 6px -1.5px rgba(0, 0, 0, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.14),
+    inset 0 2px 2px rgba(255, 255, 255, 0.98),
+    inset 0 -4.5px 6px rgba(19, 36, 26, 0.12),
+    inset 0 -1.5px 2px rgba(19, 36, 26, 0.07);
   color: var(--color-forest);
 }
 
@@ -113,53 +117,36 @@ button {
 .orb:active {
   transform: scale(0.95);
   box-shadow:
-    0 1px 6px rgba(19, 36, 26, 0.14),
-    inset 0 2px 4px rgba(19, 36, 26, 0.12);
+    0 1px 4px rgba(19, 36, 26, 0.14),
+    inset 0 2px 4px rgba(19, 36, 26, 0.14);
 }
 
 .orb-primary {
-  border: 1px solid rgba(255, 255, 255, 0.96);
+  border: 0.75px solid rgba(255, 255, 255, 0.88);
   color: var(--color-forest);
-  background: linear-gradient(180deg, #ffffff 0%, #f6faf5 56%, #dce9dc 100%);
+  background: radial-gradient(120% 110% at 50% 24%, #ffffff 0%, #ffffff 55%, #eaf1ea 84%, #dce7dc 100%);
   box-shadow:
-    0 8px 18px -1px rgba(19, 36, 26, 0.24),
-    0 3px 7px rgba(29, 92, 58, 0.16),
-    inset 0 2.5px 3px #ffffff,
-    inset 0 -8px 11px -2px rgba(29, 92, 58, 0.22),
-    inset 0 -2.5px 4px rgba(29, 92, 58, 0.15);
+    0 -0.5px 2px rgba(255, 255, 255, 0.44),
+    0 0 2.5px rgba(255, 255, 255, 0.24),
+    0 3px 6px -1.5px rgba(19, 36, 26, 0.16),
+    0 1px 2.5px rgba(29, 92, 58, 0.09),
+    inset 0 2px 2px rgba(255, 255, 255, 0.98),
+    inset 0 -4.5px 6px rgba(29, 92, 58, 0.12),
+    inset 0 -1.5px 2px rgba(29, 92, 58, 0.07);
 }
 
 [data-map-style='satelit'] .orb-primary,
 [data-map-style='gelap'] .orb-primary {
-  border-color: rgba(255, 255, 255, 0.96);
-  background: linear-gradient(180deg, #ffffff 0%, #f5f9f4 54%, #d9e7d9 100%);
+  border-color: rgba(255, 255, 255, 0.56);
+  background: radial-gradient(120% 110% at 50% 24%, #ffffff 0%, #ffffff 54%, #e9f0e9 84%, #d9e5d9 100%);
   box-shadow:
-    0 11px 24px -2px rgba(0, 0, 0, 0.48),
-    0 4px 9px rgba(0, 0, 0, 0.3),
-    inset 0 2.5px 3px #ffffff,
-    inset 0 -8.5px 12px -2px rgba(29, 92, 58, 0.24),
-    inset 0 -2.5px 5px rgba(29, 92, 58, 0.17);
-}
-
-.orb-avatar {
-  box-shadow:
-    0 7px 16px -1px rgba(19, 36, 26, 0.22),
-    0 3px 6px rgba(19, 36, 26, 0.14),
-    inset 0 0 0 1.5px rgba(47, 138, 87, 0.28),
-    inset 0 2.5px 3px #ffffff,
-    inset 0 -6.5px 9px -2px rgba(19, 36, 26, 0.19),
-    inset 0 -2px 4px rgba(19, 36, 26, 0.13);
-}
-
-[data-map-style='satelit'] .orb-avatar,
-[data-map-style='gelap'] .orb-avatar {
-  box-shadow:
-    0 10px 22px -2px rgba(0, 0, 0, 0.46),
-    0 4px 8px rgba(0, 0, 0, 0.28),
-    inset 0 0 0 1.5px rgba(47, 138, 87, 0.34),
-    inset 0 2.5px 3px #ffffff,
-    inset 0 -7px 10px -2px rgba(19, 36, 26, 0.21),
-    inset 0 -2px 4px rgba(19, 36, 26, 0.14);
+    0 -0.5px 2px rgba(255, 255, 255, 0.26),
+    0 0 2.5px rgba(255, 255, 255, 0.15),
+    0 3.5px 7px -1.5px rgba(0, 0, 0, 0.27),
+    0 1px 2.5px rgba(0, 0, 0, 0.15),
+    inset 0 2px 2px rgba(255, 255, 255, 0.98),
+    inset 0 -5px 6.5px rgba(29, 92, 58, 0.13),
+    inset 0 -1.5px 2px rgba(29, 92, 58, 0.08);
 }
 
 .glass {
@@ -184,14 +171,13 @@ button {
 
 [data-map-style='gelap'] .pill-top,
 [data-map-style='satelit'] .pill-top {
-  background: rgba(19, 36, 26, 0.22);
-  border-color: rgba(255, 255, 255, 0.22);
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  background: rgba(19, 36, 26, 0.24);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.14),
-    inset 0 1px 1px rgba(255, 255, 255, 0.28),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.1);
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.14);
 }
 
 [data-map-style='gelap'] .pill-top-icon,
@@ -200,16 +186,16 @@ button {
 }
 
 .orb-mark {
-  fill: rgba(47, 138, 87, 0.34);
+  fill: rgba(47, 138, 87, 0.32);
 }
 
 .orb-mark-primary {
-  fill: rgba(47, 138, 87, 0.34);
+  fill: rgba(47, 138, 87, 0.32);
 }
 
 .map-label {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 500;
   line-height: 1;
   letter-spacing: 0.01em;
   white-space: nowrap;

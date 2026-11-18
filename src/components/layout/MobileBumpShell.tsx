@@ -93,7 +93,11 @@ function RadarCompassIcon({ light = false }: { light?: boolean }) {
 function BlamNatureIcon() {
   const gradId = useId()
   return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[26px] -translate-y-1" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      className="relative z-10 size-[28px] -translate-y-1 drop-shadow-[0_2px_3px_rgba(29,92,58,0.22)]"
+      aria-hidden="true"
+    >
       <defs>
         <linearGradient id={gradId} x1="6" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#34A867" />
