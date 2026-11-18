@@ -66,11 +66,11 @@ const PALETTES: Record<'terang' | 'gelap', ThemePalette> = {
 }
 
 const HYBRID_ROADS = {
-  roadMinor: 'rgba(255, 255, 255, 0.72)',
-  roadMajorCasing: 'rgba(17, 24, 39, 0.58)',
-  roadMajorInner: 'rgba(255, 255, 255, 0.88)',
-  roadMotorwayCasing: 'rgba(17, 24, 39, 0.65)',
-  roadMotorwayInner: 'rgba(253, 224, 71, 0.92)',
+  roadMinor: 'rgba(255, 255, 255, 0.45)',
+  roadMajorCasing: 'rgba(17, 24, 39, 0.32)',
+  roadMajorInner: 'rgba(255, 255, 255, 0.46)',
+  roadMotorwayCasing: 'rgba(17, 24, 39, 0.36)',
+  roadMotorwayInner: 'rgba(253, 224, 71, 0.52)',
 }
 
 const ROAD_LAYER_IDS = [
@@ -248,7 +248,7 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         ],
         paint: {
           'line-color': roadPalette.roadMinor,
-          'line-opacity': isSat ? 0.5 : 0.75,
+          'line-opacity': isSat ? 0.24 : 0.75,
           'line-width': ['interpolate', ['exponential', 1.2], ['zoom'], 13, 1, 18, 4],
         },
       },
@@ -266,7 +266,7 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         ],
         paint: {
           'line-color': roadPalette.roadMinor,
-          'line-opacity': isSat ? 0.72 : 0.9,
+          'line-opacity': isSat ? 0.32 : 0.9,
           'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 11, 0.8, 17, 7],
         },
       },
@@ -506,9 +506,9 @@ export function applyMapStyle(map: MapLibreMap, style: MapStyle): void {
 
   const roadPalette = isSat ? HYBRID_ROADS : PALETTES[style]
   map.setPaintProperty('road-path', 'line-color', roadPalette.roadMinor)
-  map.setPaintProperty('road-path', 'line-opacity', isSat ? 0.5 : 0.75)
+  map.setPaintProperty('road-path', 'line-opacity', isSat ? 0.24 : 0.75)
   map.setPaintProperty('road-minor', 'line-color', roadPalette.roadMinor)
-  map.setPaintProperty('road-minor', 'line-opacity', isSat ? 0.72 : 0.9)
+  map.setPaintProperty('road-minor', 'line-opacity', isSat ? 0.32 : 0.9)
   map.setPaintProperty('road-major-casing', 'line-color', roadPalette.roadMajorCasing)
   map.setPaintProperty('road-major-inner', 'line-color', roadPalette.roadMajorInner)
   map.setPaintProperty('road-motorway-casing', 'line-color', roadPalette.roadMotorwayCasing)
