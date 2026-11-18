@@ -1,18 +1,19 @@
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 import type { HazardPoint } from './hotspotCluster'
 
-export type RadarLayer = 'wildfire' | 'suspected' | 'volcano' | 'event'
+export type RadarLayer = 'wildfire' | 'suspected' | 'flood' | 'volcano' | 'event'
 
 export const LAYER_CHIPS: ReadonlyArray<{ layer: RadarLayer; label: string; dot: string }> = [
   { layer: 'wildfire', label: 'Karhutla', dot: 'bg-critical' },
   { layer: 'suspected', label: 'Titik Panas', dot: 'bg-progress' },
+  { layer: 'flood', label: 'Banjir', dot: 'bg-cobalt' },
   { layer: 'volcano', label: 'Gunung Berapi', dot: 'bg-purple-600' },
   { layer: 'event', label: 'Event Aksi', dot: 'bg-resolved' },
 ]
 
 function matchesHazardLayer(layers: Set<RadarLayer>, kind?: HazardKind): boolean {
   if (layers.size === 0) return true
-  if (kind === 'wildfire' || kind === 'suspected' || kind === 'volcano') {
+  if (kind === 'wildfire' || kind === 'suspected' || kind === 'flood' || kind === 'volcano') {
     return layers.has(kind)
   }
   return false
@@ -35,6 +36,26 @@ export function filterRadarItems(
   const visibleHazards = layers.size === 0 ? hazards : hazards.filter((h) => matchesHazardLayer(layers, h.kind))
   const visibleSignals = layers.size === 0 ? signals : signals.filter((s) => matchesHazardLayer(layers, s.kind))
   return { visibleEvents, visibleHazards, visibleSignals }
+}
+
+export function formatSignalSource(source: string): string {
+  if (source === 'nasa_firms') return 'NASA FIRMS'
+  if (source === 'nasa_eonet') return 'NASA EONET'
+  if (source === 'open_meteo_flood') return 'Open-Meteo Flood'
+  if (source === 'petabencana') return 'PetaBencana.id'
+  return source
+}
+
+export function formatFloodRiskLabel(item: {
+  kind?: HazardKind
+  source?: string
+  severity?: 'high' | 'medium' | 'low'
+}): string | null {
+  if (item.kind !== 'flood') return null
+  if (item.source === 'open_meteo_flood') {
+    return item.severity === 'high' ? 'Risiko Tinggi' : 'Risiko Sedang'
+  }
+  return 'Sedang Banjir'
 }
 
 /**

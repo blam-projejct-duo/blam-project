@@ -194,8 +194,11 @@ export interface VerifyReportInput {
   imageBase64: string
   mimeType: 'image/jpeg' | 'image/png' | 'image/webp'
   ecosystem: Ecosystem
+  incidentType?: string
   title?: string
   description: string
+  audioBase64?: string
+  audioMimeType?: string
   locationName: string
   lat: number
   lng: number
@@ -336,6 +339,17 @@ export async function fetchEnvLayers(lat: number, lng: number, signal?: AbortSig
     sources: data.sources,
   })
   return data
+}
+
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; name: string; detail: string; fullAddress: string }> {
+  return apiFetch<{ ok: boolean; name: string; detail: string; fullAddress: string }>(
+    `/geocode/reverse?lat=${lat}&lng=${lng}`,
+    { signal },
+  )
 }
 
 export async function fetchLandRoute(

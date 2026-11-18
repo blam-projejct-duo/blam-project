@@ -1,6 +1,7 @@
-import { ChevronDown, Flame, Search, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronDown, Droplets, Flame, Mountain, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ECOSYSTEM_FILTERS, EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
+import { formatFloodRiskLabel, formatSignalSource } from '../../modules/map/radarFilters'
 import { DashedOutline, EcoBadge } from '../ui/atoms'
 import type { ConservationEvent, Ecosystem, HazardKind, SatelliteSignal } from '../../types'
 
@@ -64,9 +65,13 @@ function SignalRow({
   linked: boolean
   onOpen: () => void
 }) {
-  const sourceLabel = signal.source === 'nasa_firms' ? 'FIRMS' : 'EONET'
-  const meta = linked ? `${sourceLabel} · Ada Aksi` : `${sourceLabel} · ${signal.categoryLabel}`
+  const sourceLabel = formatSignalSource(signal.source)
+  const riskLabel = formatFloodRiskLabel(signal)
+  const meta = linked
+    ? `${sourceLabel} · Ada Aksi`
+    : `${sourceLabel} · ${riskLabel ?? signal.categoryLabel}`
   const kind = signal.kind ?? 'suspected'
+  const SignalIcon = kind === 'flood' ? Droplets : kind === 'volcano' ? Mountain : Flame
 
   return (
     <li className="relative rounded-[20px] bg-[#f7faf6] transition-colors hover:bg-mint/30">
@@ -75,7 +80,7 @@ function SignalRow({
         <span
           className={`grid size-11 shrink-0 place-items-center rounded-[14px] border-[1.5px] border-leaf/25 bg-white ${SIGNAL_TEXT_COLOR[kind]}`}
         >
-          <Flame className="size-5" strokeWidth={2} />
+          <SignalIcon className="size-5" strokeWidth={2} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="font-display block truncate text-[15px] font-semibold text-ink">{signal.title}</span>
