@@ -116,6 +116,27 @@ interface MarkerEntry {
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+function computeGlobeMinZoom(w: number, h: number): number {
+  if (w <= 0 || h <= 0) return 1.4
+  const targetPx = Math.min(w, h) * 0.9
+  const u = targetPx / h
+  const k = (u * u / 3 + Math.sqrt((u ** 4) / 9 + u * u)) / 2
+  const z = Math.log2((2 * Math.PI * k * h) / 512)
+  return Math.min(4.0, Math.max(0.5, Number(z.toFixed(2))))
+}
+
+function lockFlatOrientation(map: MapLibreMap): void {
+  map.setMinPitch(0)
+  map.setMaxPitch(0)
+  map.dragRotate.disable()
+  map.touchPitch.disable()
+  map.touchZoomRotate.disableRotation()
+  map.keyboard.disableRotation()
+  if (map.getBearing() !== 0 || map.getPitch() !== 0) {
+    map.jumpTo({ bearing: 0, pitch: 0 })
+  }
+}
+
 const HAZARD_COLOR = [
   'match',
   ['get', 'kind'],
@@ -210,11 +231,13 @@ function fitBox(
 
   const safeTop = Math.min(pad.top, Math.floor(h * 0.25))
   const safeBottom = Math.min(pad.bottom, Math.max(0, h - safeTop - Math.min(180, Math.floor(h * 0.35))))
+  const safeLeft = Math.min(pad.left, Math.max(0, w - Math.min(260, Math.floor(w * 0.45))))
+  const safeRight = Math.min(pad.right, Math.max(0, w - safeLeft - Math.min(260, Math.floor(w * 0.45))))
   const safePad = {
     top: safeTop,
     bottom: safeBottom,
-    left: Math.min(pad.left, Math.floor(w * 0.2)),
-    right: Math.min(pad.right, Math.floor(w * 0.2)),
+    left: safeLeft,
+    right: safeRight,
   }
 
   // Always clear stale persistent padding so cameraForBounds never double-subtracts it.
@@ -270,7 +293,7 @@ export default function MapView({
   const activeRouteRef = useRef(activeRoute)
   const selectedIdRef = useRef(selectedId)
   const selectedSignalRef = useRef(selectedSignal)
-  const radarBottomRef = useRef(0)
+  const radarPadRef = useRef<{ bottom: number; left: number; right: number }>({ bottom: 0, left: 0, right: 0 })
   const styleRef = useRef(style)
   const radarModeRef = useRef(radarMode)
   const fitIndonesiaSignalRef = useRef(fitIndonesiaSignal)
@@ -279,7 +302,13 @@ export default function MapView({
     onSelectRef.current = onSelect
     onSelectSignalRef.current = onSelectSignal
     paddingRef.current = padding
-    if (radarMode && padding.bottom > 0) radarBottomRef.current = padding.bottom
+    if (radarMode && (padding.bottom > 0 || (padding.left ?? 0) > 0)) {
+      radarPadRef.current = {
+        bottom: padding.bottom,
+        left: padding.left ?? 0,
+        right: padding.right,
+      }
+    }
     eventsRef.current = events
     hazardsRef.current = hazards
     activeRouteRef.current = activeRoute
@@ -288,6 +317,7 @@ export default function MapView({
     styleRef.current = style
     radarModeRef.current = radarMode
     fitIndonesiaSignalRef.current = fitIndonesiaSignal
+    if (mapRef.current) lockFlatOrientation(mapRef.current)
   })
 
   const focusOn = (lat: number, lng: number, zoom: number, animate = true) => {
@@ -314,14 +344,24 @@ export default function MapView({
       style: createInitialMapStyle(styleRef.current),
       center: INDONESIA_CENTER,
       zoom: 4.3,
-      minZoom: 1.8,
+      minZoom: computeGlobeMinZoom(host.clientWidth, host.clientHeight),
       maxZoom: 18,
+      bearing: 0,
+      pitch: 0,
+      minPitch: 0,
+      maxPitch: 0,
+      pitchWithRotate: false,
+      rollEnabled: false,
+      dragRotate: false,
+      touchPitch: false,
       maxTileCacheZoomLevels: 15,
       refreshExpiredTiles: false,
       cancelPendingTileRequestsWhileZooming: false,
       fadeDuration: 150,
       attributionControl: { compact: true },
     })
+
+    lockFlatOrientation(map)
 
     mapRef.current = map
     readyRef.current = false
@@ -637,7 +677,10 @@ export default function MapView({
       applyMapStyle(map, styleRef.current)
     })
 
-    const ro = new ResizeObserver(() => map.resize())
+    const ro = new ResizeObserver(() => {
+      map.setMinZoom(computeGlobeMinZoom(host.clientWidth, host.clientHeight))
+      map.resize()
+    })
     ro.observe(host)
 
     const markers = markersRef.current
@@ -786,8 +829,8 @@ export default function MapView({
     prevRadarRef.current = radarMode
 
     if (!radarMode) {
-      const prevBottom = radarBottomRef.current
-      radarBottomRef.current = 0
+      const prevPad = radarPadRef.current
+      radarPadRef.current = { bottom: 0, left: 0, right: 0 }
       pendingWipeRef.current = false
       wipeDoneRef.current = false
       clearPendingWipe()
@@ -796,15 +839,25 @@ export default function MapView({
       setBaseTransition(map, 280)
       setIndonesiaLayers(map, 'blam-indonesia', false, style)
 
-      if (wasRadar && prevBottom > 0 && !selectedSignalRef.current && !selectedIdRef.current) {
+      const currentLeft = paddingRef.current.left ?? 0
+      const currentRight = paddingRef.current.right
+      const shiftedBottom = prevPad.bottom > 0 && paddingRef.current.bottom === 0
+      const shiftedLeft = prevPad.left > currentLeft
+
+      if (wasRadar && (shiftedBottom || shiftedLeft) && !selectedSignalRef.current && !selectedIdRef.current) {
         const host = hostRef.current
-        if (host && host.clientHeight > 0) {
-          const visibleCenterY = Math.round(64 + Math.max(0, host.clientHeight - 64 - prevBottom) / 2)
-          const visibleCenter = map.unproject([host.clientWidth / 2, visibleCenterY])
+        if (host && host.clientWidth > 0 && host.clientHeight > 0) {
+          const visibleCenterX = shiftedLeft
+            ? Math.round(prevPad.left + Math.max(0, host.clientWidth - prevPad.left - prevPad.right) / 2)
+            : Math.round(host.clientWidth / 2)
+          const visibleCenterY = shiftedBottom
+            ? Math.round(64 + Math.max(0, host.clientHeight - 64 - prevPad.bottom) / 2)
+            : Math.round(host.clientHeight / 2)
+          const visibleCenter = map.unproject([visibleCenterX, visibleCenterY])
           map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 })
           map.easeTo({
             center: visibleCenter,
-            offset: [0, -14],
+            offset: shiftedBottom ? [0, -14] : [Math.round((currentLeft - currentRight) / 2), 0],
             duration: reducedMotion() ? 0 : 400,
           })
         }

@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { useState } from 'react'
-import { Pill, StatusPill } from '../../components/ui/atoms'
+import { DashedOutline, Pill, StatusPill } from '../../components/ui/atoms'
 import { updateEventVisibility } from '../../lib/api'
 import type { ConservationEvent } from '../../types'
 import { useAuth } from '../auth/AuthContext'
@@ -39,7 +39,8 @@ interface Props {
 
 function Tile({ value, unit, label }: { value: string; unit?: string; label: string }) {
   return (
-    <div className="rounded-tile bg-canvas p-3.5">
+    <div className="relative rounded-tile bg-[#f7faf6] p-3.5">
+      <DashedOutline rx={13} />
       <p className="num flex flex-wrap items-baseline gap-x-1 text-[16px] leading-snug text-ink">
         <span>{value}</span>
         {unit && <span className="text-xs font-bold text-ink-soft">{unit}</span>}
@@ -240,7 +241,8 @@ export default function EventDetail({
       )}
 
       {(routeLoading || routeError || routeForEvent) && (
-        <section className="rounded-card border border-line bg-canvas p-4">
+        <section className="relative rounded-[20px] bg-[#f7faf6] p-4">
+          <DashedOutline rx={19} />
           {routeLoading && (
             <p className="text-xs font-bold text-ink-soft">Meminta izin GPS &amp; menghitung rute…</p>
           )}
@@ -255,7 +257,7 @@ export default function EventDetail({
                   <button
                     type="button"
                     onClick={() => void onStartRoute()}
-                    className="h-9 rounded-full bg-ink px-3.5 text-xs font-bold text-white"
+                    className="btn-primary h-9 px-3.5 text-xs"
                   >
                     Coba Lagi
                   </button>
@@ -283,7 +285,7 @@ export default function EventDetail({
                     aria-pressed={routeForEvent.mode === 'land'}
                     className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition-colors ${
                       routeForEvent.mode === 'land'
-                        ? 'bg-ink text-white'
+                        ? 'bg-leaf text-white'
                         : 'border border-line bg-white text-ink hover:bg-muted'
                     } disabled:opacity-45`}
                   >
@@ -295,7 +297,7 @@ export default function EventDetail({
                     aria-pressed={routeForEvent.mode === 'air'}
                     className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition-colors ${
                       routeForEvent.mode === 'air'
-                        ? 'bg-ink text-white'
+                        ? 'bg-leaf text-white'
                         : 'border border-line bg-white text-ink hover:bg-muted'
                     }`}
                   >
@@ -352,7 +354,8 @@ export default function EventDetail({
       </p>
 
       {recommendations.length > 0 && (
-        <div className="border-t-[1.5px] border-dashed border-dash pt-1 text-[13px] font-medium text-ink-soft">
+        <div className="relative rounded-[20px] bg-[#f7faf6] px-4 py-1 text-[13px] font-medium text-ink-soft">
+          <DashedOutline rx={19} />
           {recommendations.slice(0, 2).map((rec) => (
             <p key={rec} className="dashed-row py-2.5">
               {rec}
@@ -362,13 +365,14 @@ export default function EventDetail({
       )}
 
       {latestAction && (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t-[1.5px] border-dashed border-dash pt-4 text-[13px] font-semibold text-ink-soft">
+        <div className="relative flex flex-wrap items-center justify-between gap-2 rounded-[20px] bg-[#f7faf6] px-4 py-3 text-[13px] font-semibold text-ink-soft">
+          <DashedOutline rx={19} />
           <p>
             <span className="text-ink">{Number(latestAction.waste_kg)} kg</span> ·{' '}
             <span className="text-ink">{latestAction.trees_planted}</span> bibit
           </p>
           {latestAction.verified_by_agency && (
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-ink">
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-forest">
               <ShieldCheck className="size-3.5" /> Sah
             </span>
           )}
@@ -376,7 +380,8 @@ export default function EventDetail({
       )}
 
       {actionError && (
-        <p role="alert" className="rounded-card border border-line bg-white px-4 py-3 text-xs font-semibold text-ink">
+        <p role="alert" className="relative rounded-[20px] bg-[#f7faf6] px-4 py-3 text-xs font-semibold text-ink">
+          <DashedOutline rx={19} />
           {actionError}
         </p>
       )}
@@ -387,8 +392,9 @@ export default function EventDetail({
             type="button"
             disabled={routeLoading}
             onClick={() => void onStartRoute()}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-white text-sm font-bold text-ink hover:bg-canvas disabled:opacity-60"
+            className="font-display relative flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#f7faf6] text-sm font-semibold text-forest transition-colors hover:bg-mint/35 disabled:opacity-60"
           >
+            <DashedOutline rx={23} />
             <Navigation className="size-4" />
             {routeLoading ? 'Mencari Rute…' : 'Arahkan ke Lokasi'}
           </button>
@@ -411,8 +417,9 @@ export default function EventDetail({
           <button
             type="button"
             onClick={() => setResolveOpen(true)}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-white text-sm font-bold text-ink hover:bg-canvas"
+            className="font-display relative flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#f7faf6] text-sm font-semibold text-forest transition-colors hover:bg-mint/35"
           >
+            <DashedOutline rx={23} />
             <Camera className="size-4" />
             Foto After
           </button>

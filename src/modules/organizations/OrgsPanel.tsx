@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Building2, Check, Plus, UserCheck, UserMinus, Users } from 'lucide-react'
 import { useState } from 'react'
-import { DashedRow, Pill } from '../../components/ui/atoms'
+import { DashedOutline, DashedRow, Pill } from '../../components/ui/atoms'
 import { createOrg, fetchOrgs, joinOrg, manageOrgMember } from '../../lib/api'
 import { CACHE_TTL_MS } from '../../lib/queryClient'
 import type { OrgType } from '../../types'
@@ -105,7 +105,8 @@ export default function OrgsPanel() {
       </div>
 
       {showCreate && (
-        <div className="capsule-dashed flex flex-col gap-3 rounded-[20px] p-4">
+        <div className="relative flex flex-col gap-3 rounded-[20px] bg-[#f7faf6] p-4">
+          <DashedOutline rx={19} />
           <input className={field} placeholder="Nama organisasi" value={name} onChange={(e) => setName(e.target.value)} />
           <div className="flex gap-2">
             {(['community', 'agency'] as const).map((t) => (
@@ -136,10 +137,14 @@ export default function OrgsPanel() {
       )}
 
       {notice && (
-        <p className="rounded-card border border-line bg-white px-4 py-3 text-xs font-semibold text-ink">{notice}</p>
+        <p className="relative rounded-[20px] bg-[#f7faf6] px-4 py-3 text-xs font-semibold text-ink">
+          <DashedOutline rx={19} />
+          {notice}
+        </p>
       )}
       {error && (
-        <p role="alert" className="rounded-card border border-line bg-white px-4 py-3 text-xs font-semibold text-ink">
+        <p role="alert" className="relative rounded-[20px] bg-[#f7faf6] px-4 py-3 text-xs font-semibold text-ink">
+          <DashedOutline rx={19} />
           {error}
         </p>
       )}
@@ -155,7 +160,8 @@ export default function OrgsPanel() {
             const lead = isLeadOf(org.id)
             const members = org.members ?? []
             return (
-              <section key={org.id} className="capsule-dashed rounded-[20px] p-4">
+              <section key={org.id} className="relative rounded-[20px] bg-[#f7faf6] p-4">
+                <DashedOutline rx={19} />
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -207,7 +213,7 @@ export default function OrgsPanel() {
                               type="button"
                               disabled={busyId === `${org.id}:${m.user_id}`}
                               onClick={() => void handleMember(org.id, m.user_id, 'approve')}
-                              className="inline-flex h-8 items-center gap-1 rounded-full bg-ink px-3 text-xs font-bold text-white"
+                              className="btn-primary h-8 px-3 text-xs"
                             >
                               <UserCheck className="size-3.5" /> Terima
                             </button>

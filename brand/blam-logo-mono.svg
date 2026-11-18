@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <mask id="bmono-vein-mask">
+      <rect x="0" y="0" width="512" height="512" fill="white"/>
+      <path d="M247 368 L252 178 C252 173, 260 173, 260 178 L265 368 Z" fill="black"/>
+      <path d="M254 282 C230 266, 206 252, 186 240" fill="none" stroke="black" stroke-width="11.5" stroke-linecap="round"/>
+      <path d="M258 250 C282 234, 304 220, 322 208" fill="none" stroke="black" stroke-width="11.5" stroke-linecap="round"/>
+    </mask>
+  </defs>
+
+  <g transform="translate(272, 238) scale(1.40) translate(-235.6, -257.0) translate(0, 22) rotate(14 256 234)">
+    <g mask="url(#bmono-vein-mask)">
+      <path d="M256 68 C239 68, 222 87, 195 135 C158 202, 122 284, 130 339 C136 375, 170 392, 204 375 L244 355 C250 352, 256 351, 256 351 L256 68 Z"
+            fill="#1D5C3A" fill-opacity="0.78"/>
+      <path d="M256 68 C273 68, 290 87, 317 135 C354 202, 390 284, 382 339 C376 375, 342 392, 308 375 L268 355 C262 352, 256 351, 256 351 L256 68 Z"
+            fill="#1D5C3A"/>
+    </g>
+  </g>
+</svg>

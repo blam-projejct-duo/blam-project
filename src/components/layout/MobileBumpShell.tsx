@@ -7,10 +7,19 @@ import {
   ChevronDown,
   Shield,
 } from 'lucide-react'
-import { Suspense, lazy, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Orb } from '../../components/ui/atoms'
-import { ECOSYSTEM_FILTERS } from '../../lib/constants'
+import { DashedOutline, Orb } from '../../components/ui/atoms'
+import {
+  AksiActionIcon,
+  BellSolidIcon,
+  BlamNatureIcon,
+  GuestAvatarIcon,
+  LocateDuotoneIcon,
+  MapPillIcon,
+  RadarCompassIcon,
+  SearchDuotoneIcon,
+} from '../../components/ui/bumpIcons'
 import { useAuth } from '../../modules/auth/AuthContext'
 import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
 import MapView from '../../modules/map/MapView'
@@ -18,7 +27,7 @@ import { filterRadarItems, LAYER_CHIPS } from '../../modules/map/radarFilters'
 import type { RadarLayer } from '../../modules/map/radarFilters'
 import type { Radar } from '../../modules/map/useRadar'
 import EventListPanel from './EventListPanel'
-import type { CitizenReport, Ecosystem, SatelliteSignal } from '../../types'
+import type { CitizenReport, SatelliteSignal } from '../../types'
 
 const AdminPanel = lazy(() => import('../../modules/admin/AdminPanel'))
 const AgencyInboxPanel = lazy(() => import('../../modules/agency/AgencyInboxPanel'))
@@ -42,204 +51,6 @@ function DockItem({ label, children }: { label: string; children: ReactNode }) {
       {children}
       <span className="map-label">{label}</span>
     </div>
-  )
-}
-
-function MapPillIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="pill-top-icon size-2.5 shrink-0 text-leaf" aria-hidden="true">
-      <path
-        d="M12 2.4c-3.9 0-7 3-7 6.8 0 4.6 5 10.1 6.3 11.5.4.4 1 .4 1.4 0C14 19.3 19 13.8 19 9.2c0-3.8-3.1-6.8-7-6.8Z"
-        fill="currentColor"
-      />
-      <circle cx="12" cy="9.2" r="2.7" fill="#fff" fillOpacity="0.92" />
-    </svg>
-  )
-}
-
-function RadarCompassIcon({ light = false }: { light?: boolean }) {
-  const gradId = useId()
-  const ring = light ? '#FFFFFF' : 'var(--color-leaf)'
-  const tipMain = light ? '#FFFFFF' : 'var(--color-forest)'
-  const tipSub = light ? '#A7F3D0' : '#34D399'
-  const dot = light ? 'var(--color-forest)' : '#FFFFFF'
-  return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[25px] -translate-y-0.5" aria-hidden="true">
-      <defs>
-        <linearGradient id={gradId} x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor={light ? 'rgba(255,255,255,0.34)' : '#ECFDF5'} />
-          <stop offset="100%" stopColor={light ? 'rgba(167,243,208,0.16)' : '#C6F0D3'} />
-        </linearGradient>
-      </defs>
-      <circle cx="12" cy="12" r="9.3" fill={`url(#${gradId})`} stroke={ring} strokeWidth="2" />
-      <circle cx="12" cy="5.2" r="0.9" fill={ring} opacity="0.7" />
-      <circle cx="12" cy="18.8" r="0.9" fill={ring} opacity="0.7" />
-      <circle cx="5.2" cy="12" r="0.9" fill={ring} opacity="0.7" />
-      <circle cx="18.8" cy="12" r="0.9" fill={ring} opacity="0.7" />
-      <path
-        d="M16.1 7.9c.3.2.4.5.2.9l-2.1 4.4c-.1.2-.3.4-.5.5l-4.4 2.1c-.4.2-.8 0-1-.3-.2-.3-.1-.6 0-.9l2.1-4.4c.1-.2.3-.4.5-.5l4.4-2.1c.3-.1.6 0 .8.3Z"
-        fill={tipSub}
-      />
-      <path
-        d="M16.1 7.9c.3.2.4.5.2.9l-2.1 4.4c-.1.2-.3.4-.5.5l-3.3-3.3 4.9-2.4c.3-.2.6-.2.8-.1Z"
-        fill={tipMain}
-      />
-      <circle cx="12" cy="12" r="1.9" fill={dot} stroke={ring} strokeWidth="1.2" />
-    </svg>
-  )
-}
-
-function BlamNatureIcon() {
-  const gradId = useId()
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="relative z-10 size-[28px] drop-shadow-[0_2px_3px_rgba(10,42,24,0.26)]"
-      aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id={gradId} x1="6" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#FFFFFF" />
-          <stop offset="100%" stopColor="#E4F5E8" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M19.8 4.4c-5.4-.3-10.3 2.5-11.9 7.8-.6 2-.1 4.1 1.3 5.4 4.7.8 9.2-2 10.6-7 .5-2 .6-4.2 0-6.2Z"
-        fill={`url(#${gradId})`}
-      />
-      <path
-        d="M4.2 9.4c2.8-.6 5.8.7 7.1 3.3.7 1.4.8 3 .3 4.5-2.7.2-5.4-1.2-6.6-3.7-.6-1.3-.9-2.7-.8-4.1Z"
-        fill="var(--color-mint)"
-      />
-      <path
-        d="M9.8 17.3c1.9-3.6 4.4-6.5 7.4-8.8M11.6 17.6V20.5"
-        fill="none"
-        stroke="var(--color-forest)"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        opacity="0.72"
-      />
-      <path
-        d="M11.6 17.8V20.5"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-      />
-      <circle cx="7.4" cy="6.2" r="1.15" fill="#FFFFFF" opacity="0.88" />
-    </svg>
-  )
-}
-
-function AksiActionIcon({ light = false }: { light?: boolean }) {
-  const gradId = useId()
-  const stroke = light ? 'var(--color-forest)' : '#FFFFFF'
-  const clip = light ? 'var(--color-mint)' : '#D1FAE5'
-  const clipBorder = light ? '#FFFFFF' : 'var(--color-leaf)'
-  return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[24px] -translate-y-0.5" aria-hidden="true">
-      <defs>
-        <linearGradient id={gradId} x1="4" y1="5" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor={light ? '#FFFFFF' : '#34A867'} />
-          <stop offset="100%" stopColor={light ? '#ECFDF5' : 'var(--color-forest)'} />
-        </linearGradient>
-      </defs>
-      <g transform="rotate(-5 12 12.5)">
-        <rect x="4.5" y="5" width="15" height="15.2" rx="4.5" fill={`url(#${gradId})`} />
-        <rect x="8.3" y="2.8" width="7.4" height="3.8" rx="1.9" fill={clip} stroke={clipBorder} strokeWidth="1.3" />
-        <path
-          d="M8.7 13.1l2.2 2.2 4.5-4.6"
-          fill="none"
-          stroke={stroke}
-          strokeWidth="2.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <rect x="8.5" y="16.9" width="7" height="1.5" rx="0.75" fill={stroke} fillOpacity="0.45" />
-      </g>
-      <circle cx="19.5" cy="5.5" r="1.4" fill="var(--color-leaf)" />
-    </svg>
-  )
-}
-
-function BellSolidIcon({ light = false }: { light?: boolean }) {
-  const main = light ? '#FFFFFF' : 'var(--color-leaf)'
-  const accent = light ? 'var(--color-mint)' : 'var(--color-forest)'
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={`relative z-10 size-[19px] ${light ? 'drop-shadow-[0_1.5px_2px_rgba(10,42,24,0.22)]' : ''}`}
-      aria-hidden="true"
-    >
-      <g transform="rotate(-8 12 12)">
-        <circle cx="12" cy="3.6" r="1.3" fill={accent} />
-        <path
-          d="M12 4.4a5.2 5.2 0 0 0-5.2 5.2v2.9c0 1-.4 2-1.1 2.7l-.7.8c-.6.6-.1 1.6.7 1.6h12.6c.8 0 1.3-1 .7-1.6l-.7-.8a3.8 3.8 0 0 1-1.1-2.7V9.6A5.2 5.2 0 0 0 12 4.4Z"
-          fill={main}
-        />
-        <path d="M9.6 18.2a2.5 2.5 0 0 0 4.8 0" fill={accent} />
-      </g>
-      <path
-        d="M18.6 6.8c.9.9 1.3 2 1.2 3.2"
-        fill="none"
-        stroke={accent}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function GuestAvatarIcon({ light = false }: { light?: boolean }) {
-  const head = light ? '#FFFFFF' : 'var(--color-leaf)'
-  const bodyFill = light ? 'rgba(255,255,255,0.34)' : 'var(--color-mint)'
-  const bodyStroke = light ? '#FFFFFF' : 'var(--color-leaf)'
-  return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[19px]" aria-hidden="true">
-      <circle cx="12" cy="8.2" r="3.9" fill={head} />
-      <circle cx="10.7" cy="7.2" r="0.9" fill={light ? 'var(--color-leaf)' : '#FFFFFF'} fillOpacity="0.65" />
-      <path
-        d="M5.2 19.3c.7-3.4 3.4-5.2 6.8-5.2s6.1 1.8 6.8 5.2c.2.8-.4 1.5-1.2 1.5H6.4c-.8 0-1.4-.7-1.2-1.5Z"
-        fill={bodyFill}
-        stroke={bodyStroke}
-        strokeWidth="1.9"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function SearchDuotoneIcon({ light = false }: { light?: boolean }) {
-  const stroke = light ? '#FFFFFF' : 'var(--color-leaf)'
-  const lens = light ? 'rgba(255,255,255,0.26)' : 'var(--color-mint)'
-  const accent = light ? '#A7F3D0' : 'var(--color-forest)'
-  return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[17px]" aria-hidden="true">
-      <circle cx="10.6" cy="10.6" r="6.3" fill={lens} stroke={stroke} strokeWidth="2.3" />
-      <path d="M8.3 8.2a3.3 3.3 0 0 1 3.6-.8" fill="none" stroke="#FFFFFF" strokeWidth="1.7" strokeLinecap="round" opacity="0.85" />
-      <path d="M15.4 15.4l4.3 4.3" stroke={accent} strokeWidth="3.1" strokeLinecap="round" />
-      <path d="M15.4 15.4l2.1 2.1" stroke={stroke} strokeWidth="2.3" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function LocateDuotoneIcon({ light = false }: { light?: boolean }) {
-  const stroke = light ? '#FFFFFF' : 'var(--color-leaf)'
-  const core = light ? '#A7F3D0' : 'var(--color-forest)'
-  const inner = light ? '#FFFFFF' : 'var(--color-leaf)'
-  return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[17px]" aria-hidden="true">
-      <circle cx="12" cy="12" r="6.4" fill="none" stroke={stroke} strokeWidth="2.1" />
-      <circle cx="12" cy="12" r="2.7" fill={inner} />
-      <circle cx="11.3" cy="11.3" r="0.8" fill="#FFFFFF" opacity="0.8" />
-      <path
-        d="M12 3.2v2.4M12 18.4v2.4M3.2 12h2.4M18.4 12h2.4"
-        fill="none"
-        stroke={core}
-        strokeWidth="2.1"
-        strokeLinecap="round"
-      />
-    </svg>
   )
 }
 
@@ -439,25 +250,8 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             className="absolute inset-0 z-[510] cursor-default"
             onClick={() => setMenuOpen(false)}
           />
-          <div className="absolute top-[calc(env(safe-area-inset-top)+48px)] left-1/2 z-[520] flex w-[min(340px,calc(100%-32px))] -translate-x-1/2 flex-col gap-3 rounded-[24px] border-[1.5px] border-dashed border-leaf/30 bg-white/95 p-4 shadow-[0_8px_24px_rgba(19,36,26,0.12)] backdrop-blur-md">
-            <div className="flex flex-wrap gap-2">
-              {ECOSYSTEM_FILTERS.map((f) => {
-                const active = radar.filter === f.id
-                return (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => radar.setFilter(f.id as Ecosystem | 'all')}
-                    aria-pressed={active}
-                    className={`font-display h-10 rounded-full px-4 text-[13px] font-semibold transition-colors ${
-                      active ? 'bg-leaf text-white' : 'capsule-dashed text-ink hover:bg-mint/35'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                )
-              })}
-            </div>
+          <div className="absolute top-[calc(env(safe-area-inset-top)+48px)] left-1/2 z-[520] flex w-[min(340px,calc(100%-32px))] -translate-x-1/2 flex-col gap-3 rounded-[24px] bg-white/95 p-4 shadow-[0_8px_24px_rgba(19,36,26,0.12)] backdrop-blur-md">
+            <DashedOutline rx={23} />
             <MapStyleSwitcher value={radar.style} onChange={radar.setStyle} className="w-full [&>button]:flex-1" />
             <div className="flex flex-wrap gap-2">
               {LAYER_CHIPS.map((c) => {
@@ -468,10 +262,11 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                     type="button"
                     onClick={() => toggleLayer(c.layer)}
                     aria-pressed={on}
-                    className={`font-display flex h-9 items-center gap-2 rounded-full px-3.5 text-[12px] font-semibold transition-colors ${
-                      on ? 'bg-leaf text-white' : 'capsule-dashed text-ink hover:bg-mint/35'
+                    className={`font-display relative flex h-9 items-center gap-2 rounded-full px-3.5 text-[12px] font-semibold transition-colors ${
+                      on ? 'bg-leaf text-white' : 'bg-[#f7faf6] text-ink hover:bg-mint/35'
                     }`}
                   >
+                    {!on && <DashedOutline rx={17} />}
                     <span className={`size-2 rounded-full ${c.dot} ${on ? 'ring-1 ring-white/80' : ''}`} />
                     {c.label}
                   </button>
@@ -481,8 +276,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             <button
               type="button"
               onClick={() => openSheet('orgs', true)}
-              className="font-display flex h-10 items-center justify-center gap-2 rounded-full border-[1.5px] border-dashed border-leaf/35 bg-white text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
+              className="font-display relative flex h-10 items-center justify-center gap-2 rounded-full bg-[#f7faf6] text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
             >
+              <DashedOutline rx={19} />
               <Building2 className="size-4" /> Organisasi
             </button>
             {canOrganize && (
@@ -490,8 +286,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                 <button
                   type="button"
                   onClick={() => openSheet('verify', true)}
-                  className="font-display flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full border-[1.5px] border-dashed border-leaf/35 bg-white text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
+                  className="font-display relative flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#f7faf6] text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
                 >
+                  <DashedOutline rx={19} />
                   <CheckSquare className="size-4" /> Verifikasi
                 </button>
                 <button
@@ -507,8 +304,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               <button
                 type="button"
                 onClick={() => openSheet('agency', true)}
-                className="font-display flex h-10 items-center justify-center gap-2 rounded-full border-[1.5px] border-dashed border-leaf/35 bg-white text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
+                className="font-display relative flex h-10 items-center justify-center gap-2 rounded-full bg-[#f7faf6] text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
               >
+                <DashedOutline rx={19} />
                 <Shield className="size-4" /> Eskalasi
               </button>
             )}
@@ -577,10 +375,10 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               <RadarCompassIcon />
             </Orb>
           </DockItem>
-          <DockItem label="Jaga Alam">
+          <DockItem label="Blam!">
             <Orb
               size={60}
-              label="Bantu alam"
+              label="Blam!"
               onClick={() => setReportOpen(true)}
               className="orb-primary"
             >

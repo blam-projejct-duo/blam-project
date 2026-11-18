@@ -7,7 +7,7 @@ import { isSupabaseConfigured } from '../../lib/supabase'
 import { useAuth } from './AuthContext'
 
 const field =
-  'h-12 w-full rounded-full border border-line bg-canvas px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-cobalt focus:bg-white focus:outline-none'
+  'h-12 w-full rounded-full border border-line bg-canvas px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-leaf focus:bg-white focus:outline-none'
 
 export function AuthPanel({
   onExitDemo,
@@ -111,7 +111,7 @@ export function AuthPanel({
                   type="button"
                   disabled={busy}
                   onClick={() => void pickDemo(acc.id)}
-                  className={`flex flex-col items-start rounded-[20px] border p-3.5 text-left transition-colors disabled:opacity-60 ${active ? 'border-ink bg-white' : 'border-line bg-canvas hover:bg-white'
+                  className={`flex flex-col items-start rounded-[20px] border p-3.5 text-left transition-colors disabled:opacity-60 ${active ? 'border-leaf bg-mint/30' : 'border-line bg-canvas hover:bg-white'
                     }`}
                 >
                   <span className="text-xs font-extrabold text-ink-soft">{ROLE_LABEL[acc.role]}</span>

@@ -8,7 +8,7 @@ import type { ConservationEvent } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 
 const field =
-  'h-12 w-full rounded-full border border-line bg-canvas px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-cobalt focus:bg-white focus:outline-none'
+  'h-12 w-full rounded-full border border-line bg-canvas px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-leaf focus:bg-white focus:outline-none'
 
 export default function ResolveActionModal({
   event,

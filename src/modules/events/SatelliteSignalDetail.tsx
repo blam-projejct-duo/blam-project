@@ -9,7 +9,7 @@ import {
   ShieldAlert,
 } from 'lucide-react'
 import { useState } from 'react'
-import { Pill } from '../../components/ui/atoms'
+import { DashedOutline, Pill } from '../../components/ui/atoms'
 import { moderateHotspotAdmin } from '../../lib/api'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
@@ -43,9 +43,20 @@ interface Props {
   onModerated: () => Promise<void>
 }
 
-function Tile({ value, unit, label }: { value: string; unit?: string; label: string }) {
+function Tile({
+  value,
+  unit,
+  label,
+  surface = 'bg-[#f7faf6]',
+}: {
+  value: string
+  unit?: string
+  label: string
+  surface?: string
+}) {
   return (
-    <div className="rounded-tile bg-canvas p-3.5">
+    <div className={`relative rounded-tile p-3.5 ${surface}`}>
+      <DashedOutline rx={13} />
       <p className="num flex flex-wrap items-baseline gap-x-1 text-[16px] leading-snug text-ink">
         <span>{value}</span>
         {unit && <span className="text-xs font-bold text-ink-soft">{unit}</span>}
@@ -147,24 +158,26 @@ export default function SatelliteSignalDetail({
       </header>
 
       {signal.reason && (
-        <section className="rounded-card border border-line bg-canvas p-4">
-          <h3 className="text-xs font-extrabold tracking-wide text-ink-soft uppercase">Detail Radar</h3>
+        <section className="relative rounded-[20px] bg-[#f7faf6] p-4">
+          <DashedOutline rx={19} />
+          <h3 className="font-display text-xs font-semibold tracking-wider text-ink-soft uppercase">Detail Radar</h3>
           <p className="mt-1.5 text-sm leading-relaxed font-medium text-ink">{signal.reason}</p>
           {(signal.kind === 'wildfire' || signal.kind === 'suspected') && (signal.pointCount ?? 0) > 0 && (
             <div className="mt-3 grid grid-cols-3 gap-2">
               <Tile
+                surface="bg-white"
                 value={String(signal.pointCount)}
                 label={signal.kind === 'suspected' ? 'Titik Panas' : 'Titik Api'}
               />
-              <Tile value={formatHeatScale(signal.totalFrp, signal.frp)} label="Skala Panas" />
-              <Tile value={`±${signal.radiusKm ?? 1}`} unit="km" label="Radius Area" />
+              <Tile surface="bg-white" value={formatHeatScale(signal.totalFrp, signal.frp)} label="Skala Panas" />
+              <Tile surface="bg-white" value={`±${signal.radiusKm ?? 1}`} unit="km" label="Radius Area" />
             </div>
           )}
           {signal.kind === 'flood' && signal.dischargeM3s != null && (
             <div className="mt-3 grid grid-cols-3 gap-2">
-              <Tile value={String(signal.dischargeM3s)} unit="m³/s" label="Debit Sungai" />
-              <Tile value={`${signal.dischargeRatio ?? 1}×`} label="Dari Normal" />
-              <Tile value={String(signal.rainMm ?? 0)} unit="mm" label="Hujan 72j" />
+              <Tile surface="bg-white" value={String(signal.dischargeM3s)} unit="m³/s" label="Debit Sungai" />
+              <Tile surface="bg-white" value={`${signal.dischargeRatio ?? 1}×`} label="Dari Normal" />
+              <Tile surface="bg-white" value={String(signal.rainMm ?? 0)} unit="mm" label="Hujan 72j" />
             </div>
           )}
         </section>
@@ -177,7 +190,8 @@ export default function SatelliteSignalDetail({
       </div>
 
       {error && (
-        <p role="alert" className="rounded-card border border-line bg-white px-4 py-3 text-xs font-semibold text-ink">
+        <p role="alert" className="relative rounded-[20px] bg-[#f7faf6] px-4 py-3 text-xs font-semibold text-ink">
+          <DashedOutline rx={19} />
           {error}
         </p>
       )}
@@ -195,7 +209,8 @@ export default function SatelliteSignalDetail({
             Lihat Event Resmi
           </button>
         ) : !canOrganize ? (
-          <div className="rounded-card border border-line bg-canvas px-4 py-3.5 text-center text-sm font-bold text-ink-soft">
+          <div className="relative rounded-[20px] bg-[#f7faf6] px-4 py-3.5 text-center text-sm font-semibold text-ink-soft">
+            <DashedOutline rx={19} />
             {signal.kind === 'suspected'
               ? 'Menunggu verifikasi langsung relawan di lapangan'
               : 'Belum ada event organisasi'}
@@ -217,8 +232,9 @@ export default function SatelliteSignalDetail({
                 type="button"
                 disabled={busyModerate}
                 onClick={() => void dismissFalseHotspot()}
-                className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border border-line bg-white text-xs font-bold text-ink-soft hover:text-ink disabled:opacity-50"
+                className="font-display relative inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-[#f7faf6] text-xs font-semibold text-ink-soft transition-colors hover:bg-mint/35 hover:text-forest disabled:opacity-50"
               >
+                <DashedOutline rx={21} />
                 <Ban className="size-3.5" />
                 Tandai Sinyal Palsu
               </button>
