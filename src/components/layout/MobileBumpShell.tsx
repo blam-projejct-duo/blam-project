@@ -5,29 +5,29 @@ import {
   CalendarPlus,
   CheckSquare,
   ChevronDown,
-  Leaf,
   Shield,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Orb } from '../../components/ui/atoms'
 import { ECOSYSTEM_FILTERS, mapEventTone } from '../../lib/constants'
-import AdminPanel from '../../modules/admin/AdminPanel'
-import AgencyInboxPanel from '../../modules/agency/AgencyInboxPanel'
 import { useAuth } from '../../modules/auth/AuthContext'
-import CreateEventForm from '../../modules/events/CreateEventForm'
-import EventDetail from '../../modules/events/EventDetail'
-import SatelliteSignalDetail from '../../modules/events/SatelliteSignalDetail'
 import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
 import MapView from '../../modules/map/MapView'
 import type { Radar } from '../../modules/map/useRadar'
-import OrgsPanel from '../../modules/organizations/OrgsPanel'
-import ProfilePanel from '../../modules/profile/ProfilePanel'
-import QuickReportFlow from '../../modules/reports/QuickReportFlow'
-import VerificationRadarPanel from '../../modules/reports/VerificationRadarPanel'
 import EventListPanel from './EventListPanel'
 import type { CitizenReport, Ecosystem, PinTone, SatelliteSignal } from '../../types'
+
+const AdminPanel = lazy(() => import('../../modules/admin/AdminPanel'))
+const AgencyInboxPanel = lazy(() => import('../../modules/agency/AgencyInboxPanel'))
+const CreateEventForm = lazy(() => import('../../modules/events/CreateEventForm'))
+const EventDetail = lazy(() => import('../../modules/events/EventDetail'))
+const SatelliteSignalDetail = lazy(() => import('../../modules/events/SatelliteSignalDetail'))
+const OrgsPanel = lazy(() => import('../../modules/organizations/OrgsPanel'))
+const ProfilePanel = lazy(() => import('../../modules/profile/ProfilePanel'))
+const QuickReportFlow = lazy(() => import('../../modules/reports/QuickReportFlow'))
+const VerificationRadarPanel = lazy(() => import('../../modules/reports/VerificationRadarPanel'))
 
 type Snap = 'peek' | 'half' | 'full'
 type Mode = 'detail' | 'signal' | 'list' | 'orgs' | 'profile' | 'verify' | 'agency' | 'admin' | null
@@ -44,77 +44,186 @@ function DockItem({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-function RadarCompassIcon() {
+function MapPillIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[21px] -translate-y-0.5" aria-hidden="true">
-      <circle cx="12" cy="12" r="9.5" fill="var(--color-mint)" stroke="var(--color-leaf)" strokeWidth="1.9" />
-      <polygon points="15.8,8.2 13.6,13.6 10.4,10.4" fill="var(--color-leaf)" />
-      <polygon points="8.2,15.8 10.4,10.4 13.6,13.6" fill="var(--color-forest)" />
-      <circle cx="12" cy="12" r="1.4" fill="#fff" />
+    <svg viewBox="0 0 24 24" className="pill-top-icon size-3 shrink-0 text-leaf" aria-hidden="true">
+      <path
+        d="M12 2.4c-3.9 0-7 3-7 6.8 0 4.6 5 10.1 6.3 11.5.4.4 1 .4 1.4 0C14 19.3 19 13.8 19 9.2c0-3.8-3.1-6.8-7-6.8Z"
+        fill="currentColor"
+      />
+      <circle cx="12" cy="9.2" r="2.7" fill="#fff" fillOpacity="0.92" />
+      <circle cx="17.8" cy="4.6" r="1.4" fill="currentColor" opacity="0.7" />
     </svg>
   )
 }
 
-function BlamTreeIcon() {
+function RadarCompassIcon({ light = false }: { light?: boolean }) {
+  const gradId = useId()
+  const ring = light ? '#FFFFFF' : 'var(--color-leaf)'
+  const tipMain = light ? '#FFFFFF' : 'var(--color-forest)'
+  const tipSub = light ? '#A7F3D0' : '#34D399'
+  const dot = light ? 'var(--color-forest)' : '#FFFFFF'
   return (
     <svg viewBox="0 0 24 24" className="relative z-10 size-[25px] -translate-y-0.5" aria-hidden="true">
+      <defs>
+        <linearGradient id={gradId} x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor={light ? 'rgba(255,255,255,0.34)' : '#ECFDF5'} />
+          <stop offset="100%" stopColor={light ? 'rgba(167,243,208,0.16)' : '#C6F0D3'} />
+        </linearGradient>
+      </defs>
+      <circle cx="12" cy="12" r="9.3" fill={`url(#${gradId})`} stroke={ring} strokeWidth="2" />
+      <circle cx="12" cy="5.2" r="0.9" fill={ring} opacity="0.7" />
+      <circle cx="12" cy="18.8" r="0.9" fill={ring} opacity="0.7" />
+      <circle cx="5.2" cy="12" r="0.9" fill={ring} opacity="0.7" />
+      <circle cx="18.8" cy="12" r="0.9" fill={ring} opacity="0.7" />
       <path
-        d="M12 2.8c-2.6 0-4.7 1.8-5.1 4.2a4 4 0 0 0-3.1 3.9c0 2.2 1.8 4 4 4h8.4c2.2 0 4-1.8 4-4 0-1.9-1.3-3.5-3.1-3.9-.4-2.4-2.5-4.2-5.1-4.2Z"
-        fill="#fff"
+        d="M16.1 7.9c.3.2.4.5.2.9l-2.1 4.4c-.1.2-.3.4-.5.5l-4.4 2.1c-.4.2-.8 0-1-.3-.2-.3-.1-.6 0-.9l2.1-4.4c.1-.2.3-.4.5-.5l4.4-2.1c.3-.1.6 0 .8.3Z"
+        fill={tipSub}
       />
-      <path d="M12 7.5v8.2M12 11.4l2.4-1.8M12 12.8l-2.3-1.6" stroke="var(--color-forest)" strokeWidth="1.7" strokeLinecap="round" />
-      <rect x="10.7" y="14.5" width="2.6" height="5.4" rx="1.2" fill="#fff" />
-      <ellipse cx="12" cy="19.8" rx="4.5" ry="1.1" fill="#fff" fillOpacity="0.45" />
-    </svg>
-  )
-}
-
-function AksiActionIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[20px] -translate-y-0.5" aria-hidden="true">
-      <rect x="4" y="5" width="16" height="15" rx="4.5" fill="var(--color-leaf)" />
-      <rect x="8" y="3" width="8" height="4" rx="2" fill="var(--color-mint)" stroke="var(--color-leaf)" strokeWidth="1.6" />
-      <path d="M8.5 13.2l2.3 2.3 4.7-4.7" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function BellSolidIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[15px]" aria-hidden="true">
       <path
-        d="M12 3.2a5.5 5.5 0 0 0-5.5 5.5v3.1c0 1-.4 2-1.1 2.7l-.8.9c-.5.5-.1 1.4.6 1.4h13.6c.7 0 1.1-.9.6-1.4l-.8-.9a3.9 3.9 0 0 1-1.1-2.7V8.7A5.5 5.5 0 0 0 12 3.2Z"
-        fill="var(--color-leaf)"
+        d="M16.1 7.9c.3.2.4.5.2.9l-2.1 4.4c-.1.2-.3.4-.5.5l-3.3-3.3 4.9-2.4c.3-.2.6-.2.8-.1Z"
+        fill={tipMain}
       />
-      <path d="M9.8 18.2a2.2 2.2 0 0 0 4.4 0" fill="var(--color-forest)" />
+      <circle cx="12" cy="12" r="1.9" fill={dot} stroke={ring} strokeWidth="1.2" />
     </svg>
   )
 }
 
-function GuestAvatarIcon() {
+function BlamNatureIcon() {
+  const gradId = useId()
   return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[16px]" aria-hidden="true">
-      <circle cx="12" cy="8.5" r="3.8" fill="var(--color-leaf)" />
-      <path d="M5.5 19.2c.8-3.2 3.3-5 6.5-5s5.7 1.8 6.5 5" fill="var(--color-mint)" stroke="var(--color-leaf)" strokeWidth="1.8" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[27px] -translate-y-0.5" aria-hidden="true">
+      <defs>
+        <linearGradient id={gradId} x1="5" y1="3" x2="20" y2="19" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="100%" stopColor="#DDEEDF" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M19.8 4.4c-5.4-.3-10.3 2.5-11.9 7.8-.6 2-.1 4.1 1.3 5.4 4.7.8 9.2-2 10.6-7 .5-2 .6-4.2 0-6.2Z"
+        fill={`url(#${gradId})`}
+      />
+      <path
+        d="M4.2 9.4c2.8-.6 5.8.7 7.1 3.3.7 1.4.8 3 .3 4.5-2.7.2-5.4-1.2-6.6-3.7-.6-1.3-.9-2.7-.8-4.1Z"
+        fill="var(--color-mint)"
+      />
+      <path
+        d="M9.6 17.5c1.9-3.7 4.4-6.7 7.6-9.1M11.6 17.6V20.5"
+        fill="none"
+        stroke="var(--color-forest)"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <circle cx="7.2" cy="6.2" r="1.1" fill="#FFFFFF" opacity="0.85" />
     </svg>
   )
 }
 
-function SearchDuotoneIcon() {
+function AksiActionIcon({ light = false }: { light?: boolean }) {
+  const gradId = useId()
+  const stroke = light ? 'var(--color-forest)' : '#FFFFFF'
+  const clip = light ? 'var(--color-mint)' : '#D1FAE5'
+  const clipBorder = light ? '#FFFFFF' : 'var(--color-leaf)'
   return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[18px]" aria-hidden="true">
-      <circle cx="10.8" cy="10.8" r="6.4" fill="var(--color-mint)" stroke="var(--color-leaf)" strokeWidth="2.3" />
-      <path d="M15.6 15.6l4.2 4.2" stroke="var(--color-leaf)" strokeWidth="2.5" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[24px] -translate-y-0.5" aria-hidden="true">
+      <defs>
+        <linearGradient id={gradId} x1="4" y1="5" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor={light ? '#FFFFFF' : '#34A867'} />
+          <stop offset="100%" stopColor={light ? '#ECFDF5' : 'var(--color-forest)'} />
+        </linearGradient>
+      </defs>
+      <g transform="rotate(-5 12 12.5)">
+        <rect x="4.5" y="5" width="15" height="15.2" rx="4.5" fill={`url(#${gradId})`} />
+        <rect x="8.3" y="2.8" width="7.4" height="3.8" rx="1.9" fill={clip} stroke={clipBorder} strokeWidth="1.3" />
+        <path
+          d="M8.7 13.1l2.2 2.2 4.5-4.6"
+          fill="none"
+          stroke={stroke}
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <rect x="8.5" y="16.9" width="7" height="1.5" rx="0.75" fill={stroke} fillOpacity="0.45" />
+      </g>
+      <circle cx="19.5" cy="5.5" r="1.4" fill="var(--color-leaf)" />
     </svg>
   )
 }
 
-function LocateDuotoneIcon() {
+function BellSolidIcon({ light = false }: { light?: boolean }) {
+  const main = light ? '#FFFFFF' : 'var(--color-leaf)'
+  const accent = light ? '#A7F3D0' : 'var(--color-forest)'
   return (
-    <svg viewBox="0 0 24 24" className="relative z-10 size-[18px]" aria-hidden="true">
-      <circle cx="12" cy="12" r="6.5" fill="var(--color-mint)" stroke="var(--color-leaf)" strokeWidth="2.1" />
-      <circle cx="12" cy="12" r="2.4" fill="var(--color-leaf)" />
-      <path d="M12 2.6v2.7M12 18.7v2.7M2.6 12h2.7M18.7 12h2.7" stroke="var(--color-leaf)" strokeWidth="2.1" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[19px]" aria-hidden="true">
+      <g transform="rotate(-8 12 12)">
+        <circle cx="12" cy="3.6" r="1.3" fill={accent} />
+        <path
+          d="M12 4.4a5.2 5.2 0 0 0-5.2 5.2v2.9c0 1-.4 2-1.1 2.7l-.7.8c-.6.6-.1 1.6.7 1.6h12.6c.8 0 1.3-1 .7-1.6l-.7-.8a3.8 3.8 0 0 1-1.1-2.7V9.6A5.2 5.2 0 0 0 12 4.4Z"
+          fill={main}
+        />
+        <path d="M9.6 18.2a2.5 2.5 0 0 0 4.8 0" fill={accent} />
+      </g>
+      <path
+        d="M18.6 6.8c.9.9 1.3 2 1.2 3.2"
+        fill="none"
+        stroke={accent}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function GuestAvatarIcon({ light = false }: { light?: boolean }) {
+  const head = light ? '#FFFFFF' : 'var(--color-leaf)'
+  const bodyFill = light ? 'rgba(255,255,255,0.34)' : 'var(--color-mint)'
+  const bodyStroke = light ? '#FFFFFF' : 'var(--color-leaf)'
+  return (
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[19px]" aria-hidden="true">
+      <circle cx="12" cy="8.2" r="3.9" fill={head} />
+      <circle cx="10.7" cy="7.2" r="0.9" fill={light ? 'var(--color-leaf)' : '#FFFFFF'} fillOpacity="0.65" />
+      <path
+        d="M5.2 19.3c.7-3.4 3.4-5.2 6.8-5.2s6.1 1.8 6.8 5.2c.2.8-.4 1.5-1.2 1.5H6.4c-.8 0-1.4-.7-1.2-1.5Z"
+        fill={bodyFill}
+        stroke={bodyStroke}
+        strokeWidth="1.9"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function SearchDuotoneIcon({ light = false }: { light?: boolean }) {
+  const stroke = light ? '#FFFFFF' : 'var(--color-leaf)'
+  const lens = light ? 'rgba(255,255,255,0.26)' : 'var(--color-mint)'
+  const accent = light ? '#A7F3D0' : 'var(--color-forest)'
+  return (
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[19px]" aria-hidden="true">
+      <circle cx="10.6" cy="10.6" r="6.3" fill={lens} stroke={stroke} strokeWidth="2.3" />
+      <path d="M8.3 8.2a3.3 3.3 0 0 1 3.6-.8" fill="none" stroke="#FFFFFF" strokeWidth="1.7" strokeLinecap="round" opacity="0.85" />
+      <path d="M15.4 15.4l4.3 4.3" stroke={accent} strokeWidth="3.1" strokeLinecap="round" />
+      <path d="M15.4 15.4l2.1 2.1" stroke={stroke} strokeWidth="2.3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function LocateDuotoneIcon({ light = false }: { light?: boolean }) {
+  const ring = light ? 'rgba(255,255,255,0.45)' : 'var(--color-leaf)'
+  const fillRing = light ? 'rgba(255,255,255,0.18)' : 'var(--color-mint)'
+  const main = light ? '#FFFFFF' : 'var(--color-leaf)'
+  const shade = light ? '#A7F3D0' : 'var(--color-forest)'
+  return (
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[19px]" aria-hidden="true">
+      <circle cx="12" cy="12" r="9.1" fill={fillRing} stroke={ring} strokeWidth="1.5" strokeDasharray="3.2 2.4" />
+      <path
+        d="M17.3 6.7c.4.2.5.6.3 1l-4.2 9.4c-.3.6-1.2.6-1.4-.1l-1.2-3.5-3.5-1.2c-.7-.2-.7-1.1-.1-1.4l9.4-4.2c.3-.2.5-.1.7 0Z"
+        fill={main}
+      />
+      <path
+        d="M17.6 7.7l-4.2 9.4c-.3.6-1.2.6-1.4-.1l-1.2-3.5 6.8-5.8Z"
+        fill={shade}
+        opacity="0.72"
+      />
     </svg>
   )
 }
@@ -300,9 +409,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
           aria-expanded={menuOpen}
-          className="pill-top flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium whitespace-nowrap transition-transform duration-120 active:scale-95"
+          className="pill-top flex h-6.5 items-center gap-1 rounded-full px-2.5 text-[10px] font-medium tracking-tight whitespace-nowrap transition-transform duration-120 active:scale-95"
         >
-          <Leaf className="pill-top-icon size-3 text-leaf" strokeWidth={2.4} />
+          <MapPillIcon />
           {visibleEvents.length + visibleHazards.length} tampilan peta
           <ChevronDown
             className={`size-2.5 opacity-65 transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`}
@@ -406,24 +515,24 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         </>
       )}
 
-      <div className="absolute top-[calc(env(safe-area-inset-top)+12px)] right-3.5 z-[500] flex flex-col gap-2">
+      <div className="absolute top-[calc(env(safe-area-inset-top)+14px)] right-4 z-[500] flex flex-col gap-2.5">
         <Orb
-          size={36}
+          size={40}
           label={profile ? 'Profil' : 'Masuk'}
           onClick={() => openSheet('profile', true)}
-          className="orb-avatar text-[11px] font-extrabold"
+          className="orb-avatar text-xs font-extrabold"
         >
           {initials ?? <GuestAvatarIcon />}
         </Orb>
         <Orb
-          size={36}
+          size={40}
           label="Notifikasi"
           onClick={() => openSheet('profile', true)}
           className="relative"
         >
           <BellSolidIcon />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full border-2 border-white bg-critical" />
+            <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-white bg-critical" />
           )}
         </Orb>
       </div>
@@ -435,7 +544,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         inert={sheetOpen}
         className="pointer-events-none absolute inset-x-0 bottom-0 z-[500]"
       >
-        <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex justify-between px-3.5 pb-3`}>
+        <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex justify-between px-4 pb-4`}>
           <Orb size={42} label="Cari lokasi" onClick={() => openSheet('list', false, true)}>
             <SearchDuotoneIcon />
           </Orb>
@@ -443,9 +552,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             <LocateDuotoneIcon />
           </Orb>
         </div>
-        <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex items-end justify-center gap-6 pb-[calc(env(safe-area-inset-bottom)+14px)]`}>
+        <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex items-end justify-center gap-7 pb-[calc(env(safe-area-inset-bottom)+18px)]`}>
           <DockItem label="Jelajah">
-            <Orb size={48} label="Jelajah" watermark="RADAR" onClick={radar.fitAll}>
+            <Orb size={54} label="Jelajah" watermark="RADAR" onClick={radar.fitAll}>
               <RadarCompassIcon />
             </Orb>
           </DockItem>
@@ -458,14 +567,14 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               onClick={() => setReportOpen(true)}
               className="orb-primary"
             >
-              <BlamTreeIcon />
+              <BlamNatureIcon />
             </Orb>
           </DockItem>
           <DockItem label="Aksi">
-            <Orb size={48} label="Aksi" watermark="AKSI" onClick={() => openSheet('list')} className="relative">
+            <Orb size={54} label="Aksi" watermark="AKSI" onClick={() => openSheet('list')} className="relative">
               <AksiActionIcon />
               {openCount > 0 && (
-                <span className="num absolute -top-1 -right-1 grid size-4.5 place-items-center rounded-full border-2 border-white bg-ink text-[9px] text-white">
+                <span className="num absolute -top-1 -right-1 grid size-5 place-items-center rounded-full border-2 border-white bg-ink text-[10px] text-white">
                   {openCount}
                 </span>
               )}
@@ -504,71 +613,73 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           <div
             className={`min-h-0 flex-1 px-5 pb-32 ${snap === 'full' ? 'overflow-y-auto' : 'overflow-hidden'}`}
           >
-            {mode === 'detail' && selected && (
-              <EventDetail
-                key={selected.id}
-                event={selected}
-                joined={radar.joinedIds.has(selected.id)}
-                onJoin={async () => {
-                  await radar.joinAction(selected.id)
-                }}
-                onRefresh={radar.refresh}
-              />
-            )}
+            <Suspense fallback={<div className="py-6 text-xs font-bold text-ink-soft">Memuat…</div>}>
+              {mode === 'detail' && selected && (
+                <EventDetail
+                  key={selected.id}
+                  event={selected}
+                  joined={radar.joinedIds.has(selected.id)}
+                  onJoin={async () => {
+                    await radar.joinAction(selected.id)
+                  }}
+                  onRefresh={radar.refresh}
+                />
+              )}
 
-            {mode === 'signal' && radar.selectedSignal && (
-              <SatelliteSignalDetail
-                key={radar.selectedSignal.id}
-                signal={radar.selectedSignal}
-                linkedEvent={
-                  radar.allEvents.find(
-                    (ev) =>
-                      ev.ref_source === radar.selectedSignal?.source &&
-                      ev.ref_external_id === radar.selectedSignal?.externalId,
-                  ) ?? null
-                }
-                onOpenEvent={openDetail}
-                onCreateEvent={(s) => startCreateEvent(null, s)}
-                onModerated={async () => {
-                  radar.setSelectedSignal(null)
-                  setMode('list')
-                  await radar.refreshLayers()
-                }}
-              />
-            )}
+              {mode === 'signal' && radar.selectedSignal && (
+                <SatelliteSignalDetail
+                  key={radar.selectedSignal.id}
+                  signal={radar.selectedSignal}
+                  linkedEvent={
+                    radar.allEvents.find(
+                      (ev) =>
+                        ev.ref_source === radar.selectedSignal?.source &&
+                        ev.ref_external_id === radar.selectedSignal?.externalId,
+                    ) ?? null
+                  }
+                  onOpenEvent={openDetail}
+                  onCreateEvent={(s) => startCreateEvent(null, s)}
+                  onModerated={async () => {
+                    radar.setSelectedSignal(null)
+                    setMode('list')
+                    await radar.refreshLayers()
+                  }}
+                />
+              )}
 
-            {mode === 'list' && (
-              <EventListPanel
-                events={visibleEvents}
-                impactEvents={radar.events}
-                signals={visibleSignals}
-                query={query}
-                onQueryChange={setQuery}
-                autoFocus={focusSearch}
-                onOpen={openDetail}
-                onOpenSignal={openSignalDetail}
-              />
-            )}
+              {mode === 'list' && (
+                <EventListPanel
+                  events={visibleEvents}
+                  impactEvents={radar.events}
+                  signals={visibleSignals}
+                  query={query}
+                  onQueryChange={setQuery}
+                  autoFocus={focusSearch}
+                  onOpen={openDetail}
+                  onOpenSignal={openSignalDetail}
+                />
+              )}
 
-            {mode === 'orgs' && <OrgsPanel />}
-            {mode === 'profile' && <ProfilePanel />}
-            {mode === 'verify' && (
-              <VerificationRadarPanel
-                onCreateEvent={(report) => startCreateEvent(report)}
-                onCreateStandaloneEvent={() => startCreateEvent(null)}
-              />
-            )}
-            {mode === 'agency' && (
-              <AgencyInboxPanel
-                events={radar.allEvents}
-                onSelectEvent={openDetail}
-                onCreateEventFromReport={(report) => startCreateEvent(report)}
-                onRefresh={radar.refresh}
-              />
-            )}
-            {mode === 'admin' && (
-              <AdminPanel events={radar.allEvents} onRefreshEvents={radar.refresh} />
-            )}
+              {mode === 'orgs' && <OrgsPanel />}
+              {mode === 'profile' && <ProfilePanel />}
+              {mode === 'verify' && (
+                <VerificationRadarPanel
+                  onCreateEvent={(report) => startCreateEvent(report)}
+                  onCreateStandaloneEvent={() => startCreateEvent(null)}
+                />
+              )}
+              {mode === 'agency' && (
+                <AgencyInboxPanel
+                  events={radar.allEvents}
+                  onSelectEvent={openDetail}
+                  onCreateEventFromReport={(report) => startCreateEvent(report)}
+                  onRefresh={radar.refresh}
+                />
+              )}
+              {mode === 'admin' && (
+                <AdminPanel events={radar.allEvents} onRefreshEvents={radar.refresh} />
+              )}
+            </Suspense>
           </div>
         </motion.div>
       )}
@@ -587,36 +698,40 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
 
       {reportOpen && (
         <div className="absolute inset-0 z-[800] bg-canvas">
-          <QuickReportFlow
-            onClose={() => setReportOpen(false)}
-            onOpenVerification={() => {
-              setReportOpen(false)
-              openSheet('verify', true)
-            }}
-          />
+          <Suspense fallback={<div className="grid h-full place-items-center text-xs font-bold text-ink-soft">Memuat…</div>}>
+            <QuickReportFlow
+              onClose={() => setReportOpen(false)}
+              onOpenVerification={() => {
+                setReportOpen(false)
+                openSheet('verify', true)
+              }}
+            />
+          </Suspense>
         </div>
       )}
 
       {eventOpen && (
         <div className="absolute inset-0 z-[800] bg-canvas">
-          <CreateEventForm
-            key={draftReport?.id ?? draftSignal?.id ?? 'standalone'}
-            initialReport={draftReport}
-            initialSignal={draftSignal}
-            onClose={() => {
-              setDraftReport(null)
-              setDraftSignal(null)
-              setEventOpen(false)
-            }}
-            onCreated={async (id) => {
-              setDraftReport(null)
-              setDraftSignal(null)
-              setEventOpen(false)
-              radar.setFilter('all')
-              await radar.refresh()
-              openDetail(id)
-            }}
-          />
+          <Suspense fallback={<div className="grid h-full place-items-center text-xs font-bold text-ink-soft">Memuat…</div>}>
+            <CreateEventForm
+              key={draftReport?.id ?? draftSignal?.id ?? 'standalone'}
+              initialReport={draftReport}
+              initialSignal={draftSignal}
+              onClose={() => {
+                setDraftReport(null)
+                setDraftSignal(null)
+                setEventOpen(false)
+              }}
+              onCreated={async (id) => {
+                setDraftReport(null)
+                setDraftSignal(null)
+                setEventOpen(false)
+                radar.setFilter('all')
+                await radar.refresh()
+                openDetail(id)
+              }}
+            />
+          </Suspense>
         </div>
       )}
     </div>

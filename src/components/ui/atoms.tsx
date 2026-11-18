@@ -94,7 +94,7 @@ export function Orb({
               <path id={arcId} d="M 5,62 A 45,35 0 0,0 95,62" />
             </defs>
             <text
-              fill={tone === 'primary' ? 'rgba(255, 255, 255, 0.44)' : 'rgba(19, 36, 26, 0.36)'}
+              className={tone === 'primary' ? 'orb-mark-primary' : 'orb-mark'}
               fontSize={markSize}
               fontWeight="800"
               letterSpacing="-0.04em"
