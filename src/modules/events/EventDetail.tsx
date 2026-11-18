@@ -188,10 +188,10 @@ export default function EventDetail({
               onClick={() => (routeForEvent ? onClearRoute?.() : void onStartRoute())}
               aria-label="Arahkan ke lokasi"
               aria-pressed={Boolean(routeForEvent)}
-              className={`grid size-11 place-items-center rounded-full border transition-colors ${
+              className={`grid size-11 place-items-center rounded-full border-[1.5px] transition-colors ${
                 routeForEvent
-                  ? 'border-cobalt bg-cobalt text-white'
-                  : 'border-line bg-white text-ink hover:bg-canvas'
+                  ? 'border-leaf bg-leaf text-white'
+                  : 'border-dashed border-leaf/30 bg-white text-forest hover:bg-mint/30'
               } disabled:opacity-60`}
             >
               <Navigation className="size-4.5" />
@@ -202,7 +202,7 @@ export default function EventDetail({
               type="button"
               onClick={() => setQrOpen(true)}
               aria-label="QR Aksi"
-              className="grid size-11 place-items-center rounded-full border border-line bg-white text-ink transition-colors hover:bg-canvas"
+              className="grid size-11 place-items-center rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white text-forest transition-colors hover:bg-mint/30"
             >
               <QrCode className="size-4.5" />
             </button>
@@ -211,7 +211,7 @@ export default function EventDetail({
             type="button"
             onClick={() => void copyLink()}
             aria-label="Salin tautan event"
-            className="grid size-11 place-items-center rounded-full border border-line bg-white text-ink transition-colors hover:bg-canvas"
+            className="grid size-11 place-items-center rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white text-forest transition-colors hover:bg-mint/30"
           >
             {copied ? <Check className="size-5" strokeWidth={2.5} /> : <Link2 className="size-5" strokeWidth={2} />}
           </button>

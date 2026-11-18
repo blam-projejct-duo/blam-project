@@ -1,9 +1,11 @@
 @import '@fontsource-variable/plus-jakarta-sans';
+@import '@fontsource-variable/fredoka';
 @import 'tailwindcss';
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
 @theme {
   --font-sans: 'Plus Jakarta Sans Variable', system-ui, sans-serif;
+  --font-display: 'Fredoka Variable', 'Plus Jakarta Sans Variable', system-ui, sans-serif;
 
   --color-canvas: #f3f1ed;
   --color-surface: #ffffff;
@@ -46,20 +48,33 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
 button {
   font: inherit;
   cursor: pointer;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-cobalt);
+  outline: 2px solid var(--color-leaf);
   outline-offset: 2px;
 }
 
 .num {
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
+}
+
+.capsule-dashed {
+  border: 1.5px dashed rgba(47, 138, 87, 0.28);
+  background: rgba(246, 249, 245, 0.88);
 }
 
 .dashed-row+.dashed-row {
@@ -225,8 +240,9 @@ button {
 }
 
 .map-label {
-  font-size: 10px;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 600;
   line-height: 1;
   letter-spacing: 0.01em;
   white-space: nowrap;
@@ -245,17 +261,13 @@ button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  border: none;
   border-radius: 9999px;
-  background:
-    var(--gloss),
-    var(--contour) 100% 40% / cover no-repeat,
-    linear-gradient(135deg, rgba(61, 157, 104, 0.94) 0%, rgba(29, 92, 58, 0.96) 100%);
-  box-shadow:
-    0 2px 10px rgba(29, 92, 58, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.36);
+  background: linear-gradient(180deg, #359c63 0%, #247849 100%);
+  box-shadow: 0 2px 6px rgba(29, 92, 58, 0.16);
   color: #fff;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 600;
   transition: transform 120ms var(--ease-spring);
 }
 
@@ -269,11 +281,12 @@ button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 0;
+  border: 1.5px dashed rgba(47, 138, 87, 0.3);
   border-radius: 9999px;
-  background: var(--color-muted);
-  color: var(--color-ink);
-  font-weight: 700;
+  background: rgba(221, 238, 223, 0.5);
+  color: var(--color-forest);
+  font-family: var(--font-display);
+  font-weight: 600;
   transition: transform 120ms var(--ease-spring);
 }
 

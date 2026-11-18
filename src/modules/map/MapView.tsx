@@ -14,6 +14,7 @@ setWorkerUrl(maplibreWorkerUrl)
 
 const INDONESIA_CENTER: [number, number] = [117.5, -2.0]
 const DEFAULT_CENTER: [number, number] = [102.262, -3.8]
+const LOCATE_ZOOM = 17.2
 
 export interface MapPadding {
   bottom: number
@@ -166,7 +167,8 @@ export default function MapView({
     const map = mapRef.current
     if (!map) return
     const { bottom, right, left = 0 } = paddingRef.current
-    const duration = animate && !reducedMotion() ? 850 : 0
+    const farJump = Math.abs(map.getZoom() - zoom) > 6
+    const duration = animate && !reducedMotion() ? (farJump ? 1150 : 850) : 0
     map.flyTo({
       center: [lng, lat],
       zoom,
@@ -185,7 +187,7 @@ export default function MapView({
       style: createInitialMapStyle(styleRef.current),
       center: INDONESIA_CENTER,
       zoom: 4.3,
-      minZoom: 3.5,
+      minZoom: 2.5,
       maxZoom: 18,
       attributionControl: { compact: true },
     })
@@ -503,13 +505,14 @@ export default function MapView({
     if (locateSignal === 0) return
     const go = (lat: number, lng: number) => {
       meRef.current?.setLngLat([lng, lat])
-      focusOn(lat, lng, 13.5)
+      const currentZoom = mapRef.current?.getZoom() ?? 0
+      focusOn(lat, lng, Math.min(18, Math.max(currentZoom, LOCATE_ZOOM)))
     }
     if (!navigator.geolocation) return go(DEFAULT_CENTER[1], DEFAULT_CENTER[0])
     navigator.geolocation.getCurrentPosition(
       (p) => go(p.coords.latitude, p.coords.longitude),
       () => go(DEFAULT_CENTER[1], DEFAULT_CENTER[0]),
-      { timeout: 4000 },
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 6000 },
     )
   }, [locateSignal])
 

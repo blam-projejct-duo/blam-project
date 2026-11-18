@@ -420,7 +420,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             className="absolute inset-0 z-[510] cursor-default"
             onClick={() => setMenuOpen(false)}
           />
-          <div className="glass absolute top-[calc(env(safe-area-inset-top)+48px)] left-1/2 z-[520] flex w-[min(340px,calc(100%-32px))] -translate-x-1/2 flex-col gap-3 rounded-card bg-white/90 p-4 backdrop-blur-xl">
+          <div className="absolute top-[calc(env(safe-area-inset-top)+48px)] left-1/2 z-[520] flex w-[min(340px,calc(100%-32px))] -translate-x-1/2 flex-col gap-3 rounded-[24px] border-[1.5px] border-dashed border-leaf/30 bg-white/95 p-4 shadow-[0_8px_24px_rgba(19,36,26,0.12)] backdrop-blur-md">
             <div className="flex flex-wrap gap-2">
               {ECOSYSTEM_FILTERS.map((f) => {
                 const active = radar.filter === f.id
@@ -430,15 +430,16 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                     type="button"
                     onClick={() => radar.setFilter(f.id as Ecosystem | 'all')}
                     aria-pressed={active}
-                    className={`h-10 rounded-full px-4 text-[13px] font-bold ${active ? 'bg-ink text-white' : 'bg-muted text-ink'
-                      }`}
+                    className={`font-display h-10 rounded-full px-4 text-[13px] font-semibold transition-colors ${
+                      active ? 'bg-leaf text-white' : 'capsule-dashed text-ink hover:bg-mint/35'
+                    }`}
                   >
                     {f.label}
                   </button>
                 )
               })}
             </div>
-            <MapStyleSwitcher value={radar.style} onChange={radar.setStyle} className="!bg-muted/70 w-full [&>button]:flex-1" />
+            <MapStyleSwitcher value={radar.style} onChange={radar.setStyle} className="w-full [&>button]:flex-1" />
             <div className="flex flex-wrap gap-2">
               {LAYER_CHIPS.map((c) => {
                 const on = layers.has(c.layer)
@@ -448,9 +449,11 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                     type="button"
                     onClick={() => toggleLayer(c.layer)}
                     aria-pressed={on}
-                    className={`flex h-9 items-center gap-2 rounded-full px-3.5 text-[12px] font-bold ${on ? 'bg-ink text-white' : 'bg-muted text-ink'}`}
+                    className={`font-display flex h-9 items-center gap-2 rounded-full px-3.5 text-[12px] font-semibold transition-colors ${
+                      on ? 'bg-leaf text-white' : 'capsule-dashed text-ink hover:bg-mint/35'
+                    }`}
                   >
-                    <span className={`size-2 rounded-full ${c.dot}`} />
+                    <span className={`size-2 rounded-full ${c.dot} ${on ? 'ring-1 ring-white/80' : ''}`} />
                     {c.label}
                   </button>
                 )
@@ -459,7 +462,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             <button
               type="button"
               onClick={() => openSheet('orgs', true)}
-              className="flex h-10 items-center justify-center gap-2 rounded-full bg-white text-[13px] font-bold text-ink"
+              className="font-display flex h-10 items-center justify-center gap-2 rounded-full border-[1.5px] border-dashed border-leaf/35 bg-white text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
             >
               <Building2 className="size-4" /> Organisasi
             </button>
@@ -468,7 +471,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                 <button
                   type="button"
                   onClick={() => openSheet('verify', true)}
-                  className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-white text-[13px] font-bold text-ink"
+                  className="font-display flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full border-[1.5px] border-dashed border-leaf/35 bg-white text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
                 >
                   <CheckSquare className="size-4" /> Verifikasi
                 </button>
@@ -485,7 +488,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               <button
                 type="button"
                 onClick={() => openSheet('agency', true)}
-                className="flex h-10 items-center justify-center gap-2 rounded-full bg-white text-[13px] font-bold text-ink"
+                className="font-display flex h-10 items-center justify-center gap-2 rounded-full border-[1.5px] border-dashed border-leaf/35 bg-white text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
               >
                 <Shield className="size-4" /> Eskalasi
               </button>
@@ -494,7 +497,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               <button
                 type="button"
                 onClick={() => openSheet('admin', true)}
-                className="flex h-10 items-center justify-center gap-2 rounded-full bg-ink text-[13px] font-bold text-white"
+                className="font-display flex h-10 items-center justify-center gap-2 rounded-full bg-forest text-[13px] font-semibold text-white"
               >
                 <Shield className="size-4" /> Admin
               </button>
@@ -685,7 +688,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         className={`absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+20px)] z-[700] flex justify-center ${sheetOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
       >
         <Orb size={56} label="Tutup" onClick={closeSheet}>
-          <X className="size-6 text-ink-soft" strokeWidth={3} />
+          <X className="size-6 text-forest" strokeWidth={3} />
         </Orb>
       </motion.div>
 
