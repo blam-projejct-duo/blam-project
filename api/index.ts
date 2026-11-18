@@ -179,6 +179,11 @@ async function resolveAuth(
     return { profile: null, error: 'Gagal memuat profil pengguna dari database', status: 500 }
   }
 
+  const metaAvatar =
+    (userData.user.user_metadata?.avatar_url as string | undefined) ||
+    (userData.user.user_metadata?.picture as string | undefined) ||
+    null
+
   if (!prof) {
     const fallbackName =
       (userData.user.user_metadata?.full_name as string | undefined) ||
@@ -191,7 +196,7 @@ async function resolveAuth(
         id: userId,
         email: userData.user.email ?? null,
         full_name: fallbackName,
-        avatar_url: (userData.user.user_metadata?.avatar_url as string | undefined) ?? null,
+        avatar_url: metaAvatar,
         role: 'citizen',
       })
       .select('id, email, full_name, avatar_url, role, points')
@@ -202,6 +207,18 @@ async function resolveAuth(
       return { profile: null, error: 'Profil pengguna tidak ditemukan', status: 500 }
     }
     return { profile: created as AuthProfile }
+  }
+
+  if (!prof.avatar_url && metaAvatar) {
+    const { data: synced, error: syncErr } = await supa
+      .from('profiles')
+      .update({ avatar_url: metaAvatar })
+      .eq('id', userId)
+      .select('id, email, full_name, avatar_url, role, points')
+      .single()
+    if (!syncErr && synced) {
+      return { profile: synced as AuthProfile }
+    }
   }
 
   return { profile: prof as AuthProfile }
@@ -1105,6 +1122,67 @@ app.get('/auth/me', async (c) => {
     memberships: memRes.data ?? [],
     notifications: notifRes.data ?? [],
   })
+})
+
+app.patch('/auth/profile', async (c) => {
+  const { supa, error } = requireDb('AUTH_PROFILE_UPDATE')
+  if (!supa) return c.json({ error }, 503)
+
+  const auth = await resolveAuth(c, supa)
+  if (!auth.profile) return c.json({ error: auth.error }, auth.status ?? 401)
+
+  const body = (await c.req.json().catch(() => ({}))) as {
+    fullName?: string
+    imageBase64?: string
+    mimeType?: string
+  }
+
+  const updates: { full_name?: string; avatar_url?: string } = {}
+
+  if (typeof body.fullName === 'string') {
+    const cleanName = body.fullName.trim()
+    if (cleanName.length < 2) {
+      return c.json({ error: 'Nama lengkap minimal 2 karakter' }, 400)
+    }
+    updates.full_name = cleanName
+  }
+
+  if (typeof body.imageBase64 === 'string' && body.imageBase64.length > 0) {
+    if (!MIMES.includes(body.mimeType as (typeof MIMES)[number])) {
+      return c.json({ error: 'Format foto profil harus JPEG/PNG/WebP' }, 400)
+    }
+    if (body.imageBase64.length * 0.75 > MAX_IMAGE_BYTES) {
+      return c.json({ error: 'Foto profil terlalu besar (maks 1,5 MB)' }, 413)
+    }
+    const ext = body.mimeType === 'image/png' ? 'png' : body.mimeType === 'image/webp' ? 'webp' : 'jpg'
+    const storagePath = `avatars/${auth.profile.id}-${crypto.randomUUID()}.${ext}`
+    const up = await supa.storage.from('conservation-media').upload(storagePath, decodeBase64(body.imageBase64), {
+      contentType: body.mimeType as string,
+    })
+    if (up.error) {
+      log('error', 'AUTH_PROFILE_UPDATE', 'Gagal upload foto profil', { userId: auth.profile.id, error: up.error.message })
+      return c.json({ error: 'Gagal menyimpan foto profil' }, 500)
+    }
+    updates.avatar_url = supa.storage.from('conservation-media').getPublicUrl(storagePath).data.publicUrl
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return c.json({ error: 'Tidak ada perubahan profil yang dikirim' }, 400)
+  }
+
+  const { data: updated, error: updErr } = await supa
+    .from('profiles')
+    .update(updates)
+    .eq('id', auth.profile.id)
+    .select('id, email, full_name, avatar_url, role, points')
+    .single()
+
+  if (updErr || !updated) {
+    log('error', 'AUTH_PROFILE_UPDATE', 'Gagal update tabel profiles', { userId: auth.profile.id, error: updErr?.message })
+    return c.json({ error: 'Gagal memperbarui profil' }, 500)
+  }
+
+  return c.json({ ok: true, profile: updated })
 })
 
 app.patch('/notifications/:id/read', async (c) => {

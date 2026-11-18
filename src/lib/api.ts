@@ -92,6 +92,18 @@ export async function fetchMe(): Promise<{
   return apiFetch('/auth/me', { requireAuth: true })
 }
 
+export async function updateMyProfile(input: {
+  fullName?: string
+  imageBase64?: string
+  mimeType?: 'image/jpeg' | 'image/png' | 'image/webp'
+}): Promise<{ ok: boolean; profile: Profile }> {
+  return apiFetch('/auth/profile', {
+    method: 'PATCH',
+    requireAuth: true,
+    body: JSON.stringify(input),
+  })
+}
+
 export async function markNotificationRead(id: string): Promise<void> {
   await apiFetch(`/notifications/${id}/read`, { method: 'PATCH', requireAuth: true })
 }

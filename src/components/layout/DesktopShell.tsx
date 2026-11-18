@@ -511,9 +511,18 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           size={48}
           label={profile ? 'Profil' : 'Masuk'}
           onClick={() => openTab('Profil')}
-          className="text-sm font-extrabold"
+          className="overflow-hidden text-sm font-extrabold"
         >
-          {initials ?? <User className="size-5 text-ink-soft" />}
+          {profile?.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt={profile.full_name}
+              referrerPolicy="no-referrer"
+              className="size-full rounded-full object-cover"
+            />
+          ) : (
+            initials ?? <User className="size-5 text-ink-soft" />
+          )}
         </Orb>
         <Orb
           size={48}

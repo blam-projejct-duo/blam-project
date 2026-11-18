@@ -521,9 +521,18 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           size={38}
           label={profile ? 'Profil' : 'Masuk'}
           onClick={() => openSheet('profile', true)}
-          className="orb-avatar text-xs font-extrabold"
+          className="orb-avatar overflow-hidden text-xs font-extrabold"
         >
-          {initials ?? <GuestAvatarIcon />}
+          {profile?.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt={profile.full_name}
+              referrerPolicy="no-referrer"
+              className="size-full rounded-full object-cover"
+            />
+          ) : (
+            initials ?? <GuestAvatarIcon />
+          )}
         </Orb>
         <Orb
           size={38}
