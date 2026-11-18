@@ -553,6 +553,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               onClick={() => setReportOpen(true)}
               className="orb-primary"
             >
+              <span aria-hidden="true" className="orb-sheen" />
               <BlamNatureIcon />
             </Orb>
           </DockItem>

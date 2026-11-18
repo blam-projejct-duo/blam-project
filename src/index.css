@@ -78,32 +78,25 @@ button {
   display: grid;
   place-items: center;
   border-radius: 9999px;
-  border: 0.75px solid rgba(255, 255, 255, 0.85);
-  background: radial-gradient(120% 110% at 50% 24%, #ffffff 0%, #ffffff 56%, #eef2ee 84%, #e0e7e0 100%);
+  border: none;
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 66%, #eef2ee 92%, #e4eae4 100%);
   box-shadow:
-    0 -0.5px 2px rgba(255, 255, 255, 0.4),
-    0 0 2px rgba(255, 255, 255, 0.22),
-    0 2.5px 5px -1.5px rgba(19, 36, 26, 0.14),
-    0 1px 2px rgba(19, 36, 26, 0.08),
-    inset 0 2px 2px rgba(255, 255, 255, 0.98),
-    inset 0 -4px 5.5px rgba(19, 36, 26, 0.1),
-    inset 0 -1.5px 2px rgba(19, 36, 26, 0.06);
+    0 6px 14px -2px rgba(19, 36, 26, 0.22),
+    0 2px 4px rgba(19, 36, 26, 0.12),
+    inset 0 2px 2px #ffffff,
+    inset 0 -3.5px 4.5px rgba(19, 36, 26, 0.1);
   color: var(--color-forest);
   transition: transform 120ms var(--ease-spring);
 }
 
 [data-map-style='satelit'] .orb,
 [data-map-style='gelap'] .orb {
-  border-color: rgba(255, 255, 255, 0.52);
-  background: radial-gradient(120% 110% at 50% 24%, #ffffff 0%, #ffffff 55%, #edf1ed 84%, #dde4dd 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 65%, #edf1ed 92%, #e2e8e2 100%);
   box-shadow:
-    0 -0.5px 2px rgba(255, 255, 255, 0.24),
-    0 0 2px rgba(255, 255, 255, 0.14),
-    0 3px 6px -1.5px rgba(0, 0, 0, 0.25),
-    0 1px 2px rgba(0, 0, 0, 0.14),
-    inset 0 2px 2px rgba(255, 255, 255, 0.98),
-    inset 0 -4.5px 6px rgba(19, 36, 26, 0.12),
-    inset 0 -1.5px 2px rgba(19, 36, 26, 0.07);
+    0 7px 16px -2px rgba(0, 0, 0, 0.34),
+    0 2px 5px rgba(0, 0, 0, 0.2),
+    inset 0 2px 2px #ffffff,
+    inset 0 -4px 5px rgba(19, 36, 26, 0.11);
   color: var(--color-forest);
 }
 
@@ -117,36 +110,74 @@ button {
 .orb:active {
   transform: scale(0.95);
   box-shadow:
-    0 1px 4px rgba(19, 36, 26, 0.14),
-    inset 0 2px 4px rgba(19, 36, 26, 0.14);
+    0 2px 6px rgba(19, 36, 26, 0.2),
+    inset 0 2px 4px rgba(19, 36, 26, 0.16);
 }
 
 .orb-primary {
-  border: 0.75px solid rgba(255, 255, 255, 0.36);
+  border: none;
   color: #fff;
-  background: radial-gradient(125% 115% at 50% 22%, #59cf88 0%, #37a664 46%, #287d4d 78%, #1a5434 100%);
+  background: linear-gradient(180deg, #64e395 0%, #37b76b 54%, #1f824b 100%);
   box-shadow:
-    0 -0.5px 2px rgba(255, 255, 255, 0.32),
-    0 0 2px rgba(255, 255, 255, 0.16),
-    0 3px 6px -1.5px rgba(19, 36, 26, 0.22),
-    0 1px 2.5px rgba(29, 92, 58, 0.14),
-    inset 0 2px 2.5px rgba(255, 255, 255, 0.38),
-    inset 0 -4.5px 6px rgba(10, 42, 24, 0.24),
-    inset 0 -1.5px 2px rgba(10, 42, 24, 0.14);
+    0 7px 16px -2px rgba(19, 36, 26, 0.28),
+    0 2px 5px rgba(29, 92, 58, 0.18),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.45),
+    inset 0 -4px 5px rgba(12, 61, 33, 0.26);
 }
 
 [data-map-style='satelit'] .orb-primary,
 [data-map-style='gelap'] .orb-primary {
-  border-color: rgba(255, 255, 255, 0.28);
-  background: radial-gradient(125% 115% at 50% 22%, #59cf88 0%, #37a664 46%, #287d4d 78%, #1a5434 100%);
+  background: linear-gradient(180deg, #64e395 0%, #37b76b 54%, #1f824b 100%);
   box-shadow:
-    0 -0.5px 2px rgba(255, 255, 255, 0.22),
-    0 0 2px rgba(255, 255, 255, 0.12),
-    0 3.5px 7px -1.5px rgba(0, 0, 0, 0.28),
-    0 1px 2.5px rgba(0, 0, 0, 0.16),
-    inset 0 2px 2.5px rgba(255, 255, 255, 0.38),
-    inset 0 -5px 6.5px rgba(10, 42, 24, 0.28),
-    inset 0 -1.5px 2px rgba(10, 42, 24, 0.16);
+    0 8px 18px -2px rgba(0, 0, 0, 0.38),
+    0 2.5px 6px rgba(0, 0, 0, 0.24),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.45),
+    inset 0 -4px 5px rgba(12, 61, 33, 0.28);
+}
+
+.orb-sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: radial-gradient(85% 42% at 50% 10%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.orb-sheen::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(
+    112deg,
+    rgba(255, 255, 255, 0) 35%,
+    rgba(255, 255, 255, 0.14) 44%,
+    rgba(255, 255, 255, 0.56) 50%,
+    rgba(255, 255, 255, 0.14) 56%,
+    rgba(255, 255, 255, 0) 65%
+  );
+  transform: translateX(-115%);
+  animation: orb-sheen-sweep 3.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes orb-sheen-sweep {
+  0% {
+    transform: translateX(-115%);
+    opacity: 0;
+  }
+  7% {
+    opacity: 1;
+  }
+  35% {
+    transform: translateX(115%);
+    opacity: 1;
+  }
+  42%,
+  100% {
+    transform: translateX(115%);
+    opacity: 0;
+  }
 }
 
 .glass {
