@@ -86,11 +86,9 @@ const VECTOR_LAYER_IDS = [
   'park',
   'landuse-residential',
   'landcover-wood',
-  'water',
   'waterway',
   'building',
   'boundary-admin',
-  'boundary-country',
   'label-water',
   'label-village-town',
   'label-city',
@@ -99,6 +97,10 @@ const VECTOR_LAYER_IDS = [
 ] as const
 
 const SATELLITE_LAYER_IDS = ['satelit-backdrop', 'satelit-imagery', 'satelit-labels'] as const
+const SAT_BG = '#0f1d45'
+const SAT_WATER = '#1F3478'
+const SAT_BOUNDARY = 'rgba(255, 255, 255, 0.45)'
+const SAT_WATER_OPACITY = ['interpolate', ['linear'], ['zoom'], 2, 0.36, 9, 0.3, 13, 0.16] as never
 
 const TEXT_FIELD_EXPR = [
   'case',
@@ -155,21 +157,37 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         id: 'background',
         type: 'background',
         layout: { visibility: 'visible' },
-        paint: { 'background-color': isSat ? '#0b2234' : palette.background },
+        paint: { 'background-color': isSat ? SAT_BG : palette.background },
       },
       {
         id: 'satelit-backdrop',
         type: 'raster',
         source: 'esri-satelit-base',
         layout: { visibility: satVis },
-        paint: { 'raster-fade-duration': 0, 'raster-resampling': 'linear' },
+        paint: {
+          'raster-fade-duration': 0,
+          'raster-resampling': 'linear',
+          'raster-hue-rotate': 16,
+          'raster-saturation': -0.14,
+          'raster-contrast': 0.14,
+          'raster-brightness-min': 0,
+          'raster-brightness-max': 0.94,
+        },
       },
       {
         id: 'satelit-imagery',
         type: 'raster',
         source: 'esri-satelit',
         layout: { visibility: satVis },
-        paint: { 'raster-fade-duration': 150, 'raster-resampling': 'linear' },
+        paint: {
+          'raster-fade-duration': 150,
+          'raster-resampling': 'linear',
+          'raster-hue-rotate': 16,
+          'raster-saturation': -0.14,
+          'raster-contrast': 0.14,
+          'raster-brightness-min': 0,
+          'raster-brightness-max': 0.94,
+        },
       },
       {
         id: 'park',
@@ -216,13 +234,17 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         type: 'fill',
         source: 'openmaptiles',
         'source-layer': 'water',
-        layout: { visibility: vecVis },
+        layout: { visibility: 'visible' },
         filter: [
           'all',
           ['match', ['geometry-type'], ['MultiPolygon', 'Polygon'], true, false],
           ['!=', ['get', 'brunnel'], 'tunnel'],
         ],
-        paint: { 'fill-color': palette.water, 'fill-antialias': true },
+        paint: {
+          'fill-color': isSat ? SAT_WATER : palette.water,
+          'fill-opacity': isSat ? SAT_WATER_OPACITY : 1,
+          'fill-antialias': true,
+        },
       },
       {
         id: 'waterway',
@@ -386,7 +408,7 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         type: 'line',
         source: 'openmaptiles',
         'source-layer': 'boundary',
-        layout: { visibility: vecVis, 'line-cap': 'round', 'line-join': 'round' },
+        layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
         filter: [
           'all',
           ['==', ['get', 'admin_level'], 2],
@@ -394,7 +416,7 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
           ['!=', ['get', 'disputed'], 1],
         ],
         paint: {
-          'line-color': palette.boundary,
+          'line-color': isSat ? SAT_BOUNDARY : palette.boundary,
           'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.8, 10, 2],
         },
       },
@@ -515,7 +537,7 @@ export function applyMapStyle(map: MapLibreMap, style: MapStyle): void {
   for (const id of VECTOR_LAYER_IDS) {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vecVis)
   }
-  for (const id of ROAD_LAYER_IDS) {
+  for (const id of ['water', 'boundary-country', ...ROAD_LAYER_IDS]) {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible')
   }
 
@@ -530,7 +552,10 @@ export function applyMapStyle(map: MapLibreMap, style: MapStyle): void {
   map.setPaintProperty('road-motorway-inner', 'line-color', roadPalette.roadMotorwayInner)
 
   if (isSat) {
-    map.setPaintProperty('background', 'background-color', '#0b2234')
+    map.setPaintProperty('background', 'background-color', SAT_BG)
+    map.setPaintProperty('water', 'fill-color', SAT_WATER)
+    map.setPaintProperty('water', 'fill-opacity', SAT_WATER_OPACITY)
+    map.setPaintProperty('boundary-country', 'line-color', SAT_BOUNDARY)
     return
   }
 
@@ -540,6 +565,7 @@ export function applyMapStyle(map: MapLibreMap, style: MapStyle): void {
   map.setPaintProperty('landuse-residential', 'fill-color', palette.residential)
   map.setPaintProperty('landcover-wood', 'fill-color', palette.wood)
   map.setPaintProperty('water', 'fill-color', palette.water)
+  map.setPaintProperty('water', 'fill-opacity', 1)
   map.setPaintProperty('waterway', 'line-color', palette.waterway)
   map.setPaintProperty('building', 'fill-color', palette.building)
   map.setPaintProperty('building', 'fill-outline-color', palette.buildingOutline)

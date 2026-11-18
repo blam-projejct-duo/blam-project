@@ -23,7 +23,7 @@ const INDONESIA_BOUNDS: [[number, number], [number, number]] = [
 const DEFAULT_CENTER: [number, number] = [102.262, -3.8]
 const LOCATE_ZOOM = 17.2
 
-const WIPE_DURATION_MS = 920
+const WIPE_DURATION_MS = 760
 
 function indonesiaPalette(style: MapStyle) {
   return style === 'terang'
@@ -190,6 +190,47 @@ function buildRouteGeoJson(route: ActiveRoute | null) {
   }
 }
 
+function visualOffset(pad: MapPadding, topOffset = 44): [number, number] {
+  const left = pad.left ?? 0
+  const top = pad.bottom > 0 ? topOffset : 0
+  return [Math.round((left - pad.right) / 2), Math.round((top - pad.bottom) / 2)]
+}
+
+function fitBox(
+  map: MapLibreMap,
+  bounds: LngLatBounds | [[number, number], [number, number]],
+  pad: { top: number; bottom: number; left: number; right: number },
+  duration: number,
+  maxZoom = 15,
+): void {
+  const host = map.getContainer()
+  const h = host.clientHeight
+  const w = host.clientWidth
+  if (h <= 0 || w <= 0) return
+
+  const safeTop = Math.min(pad.top, Math.floor(h * 0.25))
+  const safeBottom = Math.min(pad.bottom, Math.max(0, h - safeTop - Math.min(180, Math.floor(h * 0.35))))
+  const safePad = {
+    top: safeTop,
+    bottom: safeBottom,
+    left: Math.min(pad.left, Math.floor(w * 0.2)),
+    right: Math.min(pad.right, Math.floor(w * 0.2)),
+  }
+
+  // Always clear stale persistent padding so cameraForBounds never double-subtracts it.
+  map.stop()
+  map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 })
+  const cam = map.cameraForBounds(bounds, { padding: safePad, maxZoom })
+  if (!cam?.center || cam.zoom === undefined) return
+
+  const farJump = Math.abs(map.getZoom() - cam.zoom) > 5
+  if (duration > 0 && farJump) {
+    map.flyTo({ center: cam.center, zoom: cam.zoom, bearing: 0, pitch: 0, duration, essential: true })
+  } else {
+    map.easeTo({ center: cam.center, zoom: cam.zoom, bearing: 0, pitch: 0, duration, essential: true })
+  }
+}
+
 export default function MapView({
   events,
   hazards,
@@ -232,6 +273,7 @@ export default function MapView({
   const radarBottomRef = useRef(0)
   const styleRef = useRef(style)
   const radarModeRef = useRef(radarMode)
+  const fitIndonesiaSignalRef = useRef(fitIndonesiaSignal)
 
   useEffect(() => {
     onSelectRef.current = onSelect
@@ -245,18 +287,19 @@ export default function MapView({
     selectedSignalRef.current = selectedSignal
     styleRef.current = style
     radarModeRef.current = radarMode
+    fitIndonesiaSignalRef.current = fitIndonesiaSignal
   })
 
   const focusOn = (lat: number, lng: number, zoom: number, animate = true) => {
     const map = mapRef.current
     if (!map) return
-    const { bottom, right, left = 0 } = paddingRef.current
     const farJump = Math.abs(map.getZoom() - zoom) > 6
     const duration = animate && !reducedMotion() ? (farJump ? 1150 : 850) : 0
+    map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 })
     map.flyTo({
       center: [lng, lat],
       zoom,
-      padding: { top: bottom > 0 ? 44 : 0, bottom, left, right },
+      offset: visualOffset(paddingRef.current),
       duration,
       essential: true,
     })
@@ -577,14 +620,14 @@ export default function MapView({
         const src = map.getSource('blam-hazards') as GeoJSONSource | undefined
         if (!src || !Number.isFinite(clusterId)) return
         const [lng, lat] = feat.geometry.coordinates as [number, number]
-        const { bottom, right, left = 0 } = paddingRef.current
         void src
           .getClusterExpansionZoom(clusterId)
           .then((zoom) => {
+            map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 })
             map.easeTo({
               center: [lng, lat],
               zoom: Math.min(zoom + 0.3, 12),
-              padding: { top: bottom > 0 ? 44 : 0, bottom, left, right },
+              offset: visualOffset(paddingRef.current),
               duration: reducedMotion() ? 0 : 600,
             })
           })
@@ -687,10 +730,12 @@ export default function MapView({
     const bounds = new LngLatBounds()
     for (const coord of activeRoute.coordinates) bounds.extend(coord)
     const { bottom, right, left = 0 } = paddingRef.current
-    map.fitBounds(bounds, {
-      padding: { top: 96, bottom: 56 + bottom, left: 56 + left, right: 56 + right },
-      duration: reducedMotion() ? 0 : 900,
-    })
+    fitBox(
+      map,
+      bounds,
+      { top: 96, bottom: 56 + bottom, left: 56 + left, right: 56 + right },
+      reducedMotion() ? 0 : 900,
+    )
   }, [activeRoute])
 
   useEffect(() => {
@@ -713,10 +758,12 @@ export default function MapView({
     const bounds = new LngLatBounds()
     for (const ev of eventsRef.current) bounds.extend([ev.lng, ev.lat])
     const { bottom, right, left = 0 } = paddingRef.current
-    map.fitBounds(bounds, {
-      padding: { top: 96, bottom: 48 + bottom, left: 48 + left, right: 48 + right },
-      duration: reducedMotion() ? 0 : 950,
-    })
+    fitBox(
+      map,
+      bounds,
+      { top: 96, bottom: 48 + bottom, left: 48 + left, right: 48 + right },
+      reducedMotion() ? 0 : 950,
+    )
   }, [fitAllSignal])
 
   useEffect(() => {
@@ -734,11 +781,11 @@ export default function MapView({
       }
     }
 
-    const entering = radarMode && !prevRadarRef.current
+    const wasRadar = prevRadarRef.current
+    const entering = radarMode && !wasRadar
     prevRadarRef.current = radarMode
 
     if (!radarMode) {
-      const wasRadar = prevRadarRef.current
       const prevBottom = radarBottomRef.current
       radarBottomRef.current = 0
       pendingWipeRef.current = false
@@ -754,10 +801,11 @@ export default function MapView({
         if (host && host.clientHeight > 0) {
           const visibleCenterY = Math.round(64 + Math.max(0, host.clientHeight - 64 - prevBottom) / 2)
           const visibleCenter = map.unproject([host.clientWidth / 2, visibleCenterY])
+          map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 })
           map.easeTo({
             center: visibleCenter,
-            padding: { top: 56, bottom: 84, left: paddingRef.current.left ?? 0, right: paddingRef.current.right },
-            duration: reducedMotion() ? 0 : 480,
+            offset: [0, -14],
+            duration: reducedMotion() ? 0 : 400,
           })
         }
       }
@@ -807,20 +855,16 @@ export default function MapView({
 
       setBaseTransition(map, 0)
       setIndonesiaLayers(map, 'blam-indonesia', false, styleRef.current)
-      setIndonesiaLayers(map, 'blam-indonesia-wipe', true, styleRef.current, -WIPE_SOFTNESS)
-      let shown = false
+      setIndonesiaLayers(map, 'blam-indonesia-wipe', true, styleRef.current, 0.05)
+      showWipeLayers(map)
       const start = performance.now()
 
       const tick = (now: number) => {
         if (!mapRef.current || !readyRef.current || !radarModeRef.current) return
         const raw = Math.min(1, (now - start) / WIPE_DURATION_MS)
         const eased = 1 - Math.pow(1 - raw, 2.2)
-        const u = eased * (1 + WIPE_SOFTNESS)
+        const u = 0.05 + eased * (1 + WIPE_SOFTNESS - 0.05)
         setIndonesiaLayers(map, 'blam-indonesia-wipe', true, styleRef.current, u)
-        if (!shown) {
-          showWipeLayers(map)
-          shown = true
-        }
         if (raw < 1) {
           wipeRafRef.current = requestAnimationFrame(tick)
         } else {
@@ -842,28 +886,34 @@ export default function MapView({
     }
     clearTimeout(wipeTimerRef.current)
 
-    const fitDuration = reducedMotion() ? 0 : 880
-    if (radarModeRef.current && pendingWipeRef.current) {
-      moveEndHandlerRef.current = runWipe
-      map.once('moveend', runWipe)
-      wipeTimerRef.current = window.setTimeout(runWipe, Math.max(0, fitDuration - 180))
-    }
-
-    map.fitBounds(INDONESIA_BOUNDS, {
-      padding: {
+    const fitDuration = reducedMotion() ? 0 : 650
+    fitBox(
+      map,
+      INDONESIA_BOUNDS,
+      {
         top: 64,
         bottom: bottom > 0 ? 24 + bottom : 88,
         left: 16 + left,
         right: 16 + right,
       },
-      duration: fitDuration,
-    })
+      fitDuration,
+      6,
+    )
+
+    // Register moveend AFTER fitBox's map.stop() so stopping a prior move never triggers wipe prematurely.
+    if (radarModeRef.current && pendingWipeRef.current) {
+      moveEndHandlerRef.current = runWipe
+      map.once('moveend', runWipe)
+      wipeTimerRef.current = window.setTimeout(runWipe, Math.max(0, fitDuration - 220))
+    }
   }, [fitIndonesiaSignal])
 
   useEffect(() => {
     if (locateSignal === 0) return
+    const fitAtStart = fitIndonesiaSignalRef.current
     const go = (lat: number, lng: number) => {
       meRef.current?.setLngLat([lng, lat])
+      if (fitIndonesiaSignalRef.current !== fitAtStart || radarModeRef.current) return
       const currentZoom = mapRef.current?.getZoom() ?? 0
       focusOn(lat, lng, Math.min(18, Math.max(currentZoom, LOCATE_ZOOM)))
     }
