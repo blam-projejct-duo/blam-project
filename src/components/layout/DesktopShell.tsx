@@ -21,7 +21,6 @@ import {
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Orb } from '../ui/atoms'
-import { mapEventTone } from '../../lib/constants'
 import AdminPanel from '../../modules/admin/AdminPanel'
 import AgencyInboxPanel from '../../modules/agency/AgencyInboxPanel'
 import { useAuth } from '../../modules/auth/AuthContext'
@@ -30,12 +29,14 @@ import EventDetail from '../../modules/events/EventDetail'
 import SatelliteSignalDetail from '../../modules/events/SatelliteSignalDetail'
 import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
 import MapView from '../../modules/map/MapView'
+import { filterRadarItems, LAYER_CHIPS } from '../../modules/map/radarFilters'
+import type { RadarLayer } from '../../modules/map/radarFilters'
 import type { Radar } from '../../modules/map/useRadar'
 import OrgsPanel from '../../modules/organizations/OrgsPanel'
 import ProfilePanel from '../../modules/profile/ProfilePanel'
 import QuickReportFlow from '../../modules/reports/QuickReportFlow'
 import VerificationRadarPanel from '../../modules/reports/VerificationRadarPanel'
-import type { CitizenReport, PinTone, SatelliteSignal } from '../../types'
+import type { CitizenReport, SatelliteSignal } from '../../types'
 import EventListPanel from './EventListPanel'
 
 type NavTab = 'Radar' | 'Lapor' | 'Dampak' | 'Org' | 'Verifikasi' | 'Event' | 'Eskalasi' | 'Admin'
@@ -43,11 +44,6 @@ type Tab = NavTab | 'Profil'
 
 const RAIL_W = 72
 const DRAWER_W = 392
-
-const TONE_CHIPS: { tone: PinTone; label: string; dot: string }[] = [
-  { tone: 'critical', label: 'Kritis', dot: 'bg-critical' },
-  { tone: 'progress', label: 'Titik Panas', dot: 'bg-progress' },
-]
 
 const NAV_ICON: Record<NavTab, ReactNode> = {
   Radar: <RadarIcon className="size-5" strokeWidth={2.25} />,
@@ -111,7 +107,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const [view, setView] = useState<'list' | 'detail'>(() => (radar.deepLinkedId ? 'detail' : 'list'))
   const [drawerOpen, setDrawerOpen] = useState(true)
   const [query, setQuery] = useState('')
-  const [tones, setTones] = useState<Set<PinTone>>(() => new Set(['critical']))
+  const [layers, setLayers] = useState<Set<RadarLayer>>(() => new Set())
   const [draftReport, setDraftReport] = useState<CitizenReport | null>(null)
   const [draftSignal, setDraftSignal] = useState<SatelliteSignal | null>(null)
 
@@ -131,33 +127,9 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     return base
   }, [canOrganize, profile?.role])
 
-  const visibleEvents = useMemo(
-    () =>
-      radar.events.filter(
-        (ev) =>
-          ev.status !== 'resolved' &&
-          ev.status !== 'cancelled' &&
-          (tones.size === 0 || tones.has(mapEventTone(ev))),
-      ),
-    [radar.events, tones],
-  )
-
-  const visibleHazards = useMemo(
-    () =>
-      tones.size === 0
-        ? radar.hazards
-        : radar.hazards.filter((h) => tones.has(h.severity === 'high' ? 'critical' : 'progress')),
-    [radar.hazards, tones],
-  )
-
-  const visibleSignals = useMemo(
-    () =>
-      tones.size === 0
-        ? radar.satelliteSignals
-        : radar.satelliteSignals.filter((s) =>
-            tones.has(s.kind === 'wildfire' || s.kind === 'volcano' || s.kind === 'flood' ? 'critical' : 'progress'),
-          ),
-    [radar.satelliteSignals, tones],
+  const { visibleEvents, visibleHazards, visibleSignals } = useMemo(
+    () => filterRadarItems(radar.events, radar.hazards, radar.satelliteSignals, layers),
+    [radar.events, radar.hazards, radar.satelliteSignals, layers],
   )
 
   const impactStats = useMemo(() => {
@@ -208,11 +180,11 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     setDrawerOpen(true)
   }
 
-  const toggleTone = (tone: PinTone) =>
-    setTones((prev) => {
+  const toggleLayer = (layer: RadarLayer) =>
+    setLayers((prev) => {
       const next = new Set(prev)
-      if (next.has(tone)) next.delete(tone)
-      else next.add(tone)
+      if (next.has(layer)) next.delete(layer)
+      else next.add(layer)
       return next
     })
 
@@ -281,7 +253,10 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           <header className="flex h-16 shrink-0 items-center gap-3 px-5">
             <button
               type="button"
-              onClick={() => setView('list')}
+              onClick={() => {
+                radar.setSelectedId(null)
+                setView('list')
+              }}
               aria-label="Kembali ke daftar"
               className="grid size-10 place-items-center rounded-full border border-line bg-canvas text-ink hover:bg-muted"
             >
@@ -309,7 +284,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           <h2 className="text-lg font-extrabold tracking-tight text-ink">Radar</h2>
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-ink-soft">
-              {radar.state === 'loading' ? 'Memuat…' : `${visibleEvents.length} titik`}
+              {radar.state === 'loading' ? 'Memuat…' : `${visibleEvents.length + visibleHazards.length} titik`}
             </span>
             {canOrganize && (
               <button
@@ -329,6 +304,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             signals={visibleSignals}
             query={query}
             onQueryChange={setQuery}
+            ecosystemFilter={radar.filter}
+            onEcosystemChange={radar.setFilter}
             showSearch={false}
             onOpen={openDetail}
             onOpenSignal={openSignalDetail}
@@ -365,6 +342,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           type="button"
           onClick={() => {
             radar.setSelectedSignal(null)
+            radar.setSelectedId(null)
             setTab('Radar')
             setView('list')
             setDrawerOpen(true)
@@ -523,8 +501,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         </label>
 
         <div className="pointer-events-auto flex flex-wrap gap-2">
-          {TONE_CHIPS.map((c) => (
-            <Chip key={c.tone} active={tones.has(c.tone)} onClick={() => toggleTone(c.tone)}>
+          {LAYER_CHIPS.map((c) => (
+            <Chip key={c.layer} active={layers.has(c.layer)} onClick={() => toggleLayer(c.layer)}>
               <span className={`size-2 rounded-full ${c.dot}`} />
               {c.label}
             </Chip>

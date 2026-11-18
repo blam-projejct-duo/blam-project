@@ -11,13 +11,15 @@ import {
 import { Suspense, lazy, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Orb } from '../../components/ui/atoms'
-import { ECOSYSTEM_FILTERS, mapEventTone } from '../../lib/constants'
+import { ECOSYSTEM_FILTERS } from '../../lib/constants'
 import { useAuth } from '../../modules/auth/AuthContext'
 import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
 import MapView from '../../modules/map/MapView'
+import { filterRadarItems, LAYER_CHIPS } from '../../modules/map/radarFilters'
+import type { RadarLayer } from '../../modules/map/radarFilters'
 import type { Radar } from '../../modules/map/useRadar'
 import EventListPanel from './EventListPanel'
-import type { CitizenReport, Ecosystem, PinTone, SatelliteSignal } from '../../types'
+import type { CitizenReport, Ecosystem, SatelliteSignal } from '../../types'
 
 const AdminPanel = lazy(() => import('../../modules/admin/AdminPanel'))
 const AgencyInboxPanel = lazy(() => import('../../modules/agency/AgencyInboxPanel'))
@@ -245,7 +247,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const [snap, setSnap] = useState<Snap>('half')
   const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [tones, setTones] = useState<Set<PinTone>>(() => new Set(['critical']))
+  const [layers, setLayers] = useState<Set<RadarLayer>>(() => new Set())
   const [focusSearch, setFocusSearch] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [eventOpen, setEventOpen] = useState(false)
@@ -354,41 +356,17 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
     profile && (profile.role === 'volunteer' || profile.role === 'agency' || profile.role === 'admin'),
   )
 
-  const toggleTone = (tone: PinTone) =>
-    setTones((prev) => {
+  const toggleLayer = (layer: RadarLayer) =>
+    setLayers((prev) => {
       const next = new Set(prev)
-      if (next.has(tone)) next.delete(tone)
-      else next.add(tone)
+      if (next.has(layer)) next.delete(layer)
+      else next.add(layer)
       return next
     })
 
-  const visibleEvents = useMemo(
-    () =>
-      radar.events.filter(
-        (ev) =>
-          ev.status !== 'resolved' &&
-          ev.status !== 'cancelled' &&
-          (tones.size === 0 || tones.has(mapEventTone(ev))),
-      ),
-    [radar.events, tones],
-  )
-
-  const visibleHazards = useMemo(
-    () =>
-      tones.size === 0
-        ? radar.hazards
-        : radar.hazards.filter((h) => tones.has(h.severity === 'high' ? 'critical' : 'progress')),
-    [radar.hazards, tones],
-  )
-
-  const visibleSignals = useMemo(
-    () =>
-      tones.size === 0
-        ? radar.satelliteSignals
-        : radar.satelliteSignals.filter((s) =>
-          tones.has(s.kind === 'wildfire' || s.kind === 'volcano' || s.kind === 'flood' ? 'critical' : 'progress'),
-        ),
-    [radar.satelliteSignals, tones],
+  const { visibleEvents, visibleHazards, visibleSignals } = useMemo(
+    () => filterRadarItems(radar.events, radar.hazards, radar.satelliteSignals, layers),
+    [radar.events, radar.hazards, radar.satelliteSignals, layers],
   )
 
   const selected = radar.selected
@@ -455,24 +433,19 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               })}
             </div>
             <MapStyleSwitcher value={radar.style} onChange={radar.setStyle} className="!bg-muted/70 w-full [&>button]:flex-1" />
-            <div className="flex gap-2">
-              {(
-                [
-                  ['critical', 'Kritis', 'bg-critical'],
-                  ['progress', 'Titik Panas', 'bg-progress'],
-                ] as const
-              ).map(([tone, label, dot]) => {
-                const on = tones.has(tone)
+            <div className="flex flex-wrap gap-2">
+              {LAYER_CHIPS.map((c) => {
+                const on = layers.has(c.layer)
                 return (
                   <button
-                    key={tone}
+                    key={c.layer}
                     type="button"
-                    onClick={() => toggleTone(tone)}
+                    onClick={() => toggleLayer(c.layer)}
                     aria-pressed={on}
-                    className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-full text-[13px] font-bold ${on ? 'bg-ink text-white' : 'bg-muted text-ink'}`}
+                    className={`flex h-9 items-center gap-2 rounded-full px-3.5 text-[12px] font-bold ${on ? 'bg-ink text-white' : 'bg-muted text-ink'}`}
                   >
-                    <span className={`size-2 rounded-full ${dot}`} />
-                    {label}
+                    <span className={`size-2 rounded-full ${c.dot}`} />
+                    {c.label}
                   </button>
                 )
               })}

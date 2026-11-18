@@ -1,15 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { fetchEvents, joinEvent } from '../../lib/api'
-import type { ConservationEvent, Ecosystem, MapStyle, SatelliteSignal } from '../../types'
+import type { Ecosystem, MapStyle, SatelliteSignal } from '../../types'
 import type { ZoomCommand } from './MapView'
 import { hazardToSignal } from './hotspotCluster'
 import { useNationalHazards } from './useNationalHazards'
 
 export type RadarLoadState = 'loading' | 'live' | 'error'
-
-const pickDefault = (list: ConservationEvent[]) =>
-  (list.find((ev) => ev.status === 'open') ?? list[0])?.id ?? null
 
 function readInitialEventParam(): string | null {
   if (typeof window === 'undefined') return null
@@ -59,12 +56,8 @@ export function useRadar(currentUserId?: string | null) {
   )
 
   const selected = useMemo(() => {
-    if (selectedId) {
-      const match = events.find((ev) => ev.id === selectedId)
-      if (match) return match
-    }
-    const defId = pickDefault(events)
-    return (defId ? events.find((ev) => ev.id === defId) : null) ?? events[0] ?? null
+    if (!selectedId) return null
+    return events.find((ev) => ev.id === selectedId) ?? null
   }, [events, selectedId])
 
   const selLat = selected?.lat ?? null
@@ -74,7 +67,15 @@ export function useRadar(currentUserId?: string | null) {
     [selLat, selLng],
   )
   const national = useNationalHazards(focus)
-  const hazards = national.hazards.credible
+  const hazards = useMemo(
+    () =>
+      filter === 'all'
+        ? national.hazards.credible
+        : national.hazards.credible.filter(
+            (h) => (h.kind === 'flood' ? 'watershed' : 'tropical_forest') === filter,
+          ),
+    [national.hazards.credible, filter],
+  )
 
   // Daftar Satelit hanya berisi kawasan kredibel (karhutla, gunung berapi, banjir, badai)
   const satelliteSignals = useMemo<SatelliteSignal[]>(() => hazards.map(hazardToSignal), [hazards])

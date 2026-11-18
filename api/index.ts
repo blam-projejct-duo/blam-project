@@ -2295,6 +2295,18 @@ app.get('/env/pulse', async (c) => {
   return c.json({ ...pulse, cached: false })
 })
 
+const IN_FLIGHT_LAYERS = new Map<string, Promise<unknown>>()
+
+function singleFlight<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const existing = IN_FLIGHT_LAYERS.get(key) as Promise<T> | undefined
+  if (existing) return existing
+  const promise = fn().finally(() => {
+    IN_FLIGHT_LAYERS.delete(key)
+  })
+  IN_FLIGHT_LAYERS.set(key, promise)
+  return promise
+}
+
 app.get('/env/layers', async (c) => {
   const latParam = c.req.query('lat')
   const lngParam = c.req.query('lng')
@@ -2312,13 +2324,15 @@ app.get('/env/layers', async (c) => {
   const nowIso = new Date().toISOString()
 
   let cachedHotspots: HotspotPoint[] | null = null
+  let staleHotspots: HotspotPoint[] | null = null
   let cachedEonet: EonetPoint[] | null = null
+  let staleEonet: EonetPoint[] | null = null
   let cachedSpecies: SpeciesPoint[] | null = null
   let falseHotspotIds = new Set<string>()
 
   if (supa) {
     const keys = forceRefresh
-      ? [FALSE_HOTSPOTS_CACHE_KEY]
+      ? [FALSE_HOTSPOTS_CACHE_KEY, firmsCacheKey, eonetCacheKey]
       : [firmsCacheKey, eonetCacheKey, speciesCacheKey, FALSE_HOTSPOTS_CACHE_KEY]
     const { data: cacheRows } = await supa
       .from('env_cache')
@@ -2330,12 +2344,14 @@ app.get('/env/layers', async (c) => {
         falseHotspotIds = new Set(row.payload_json.map(String))
         continue
       }
-      if (!row.expires_at || row.expires_at <= nowIso) continue
+      const isFresh = !forceRefresh && Boolean(row.expires_at && row.expires_at > nowIso)
       if (row.cache_key === firmsCacheKey && Array.isArray(row.payload_json)) {
-        cachedHotspots = row.payload_json as HotspotPoint[]
+        if (isFresh) cachedHotspots = row.payload_json as HotspotPoint[]
+        else staleHotspots = row.payload_json as HotspotPoint[]
       } else if (row.cache_key === eonetCacheKey && Array.isArray(row.payload_json)) {
-        cachedEonet = row.payload_json as EonetPoint[]
-      } else if (row.cache_key === speciesCacheKey && Array.isArray(row.payload_json)) {
+        if (isFresh) cachedEonet = row.payload_json as EonetPoint[]
+        else staleEonet = row.payload_json as EonetPoint[]
+      } else if (isFresh && row.cache_key === speciesCacheKey && Array.isArray(row.payload_json)) {
         cachedSpecies = row.payload_json as SpeciesPoint[]
       }
     }
@@ -2344,30 +2360,34 @@ app.get('/env/layers', async (c) => {
   const [firmsRes, eonetRes, speciesRes] = await Promise.all([
     cachedHotspots
       ? Promise.resolve(null)
-      : Promise.all([
-          fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_NOAA21_NRT'),
-          fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_NOAA20_NRT'),
-          fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_SNPP_NRT'),
-        ]).then((results) => {
-          const okResults = results.filter((r) => r.state === 'ok')
-          if (okResults.length === 0) {
-            return results.find((r) => r.state !== 'error') ?? results[0]
-          }
-          const merged = new Map<string, HotspotPoint>()
-          for (const res of okResults) {
-            for (const p of res.points) {
-              const key = `${p.acqDate || 'nd'}:${p.acqTime || 'nt'}:${Number(p.lat).toFixed(4)}:${Number(p.lng).toFixed(4)}`
-              const prev = merged.get(key)
-              if (!prev || p.frp > prev.frp) merged.set(key, p)
+      : singleFlight(firmsCacheKey, () =>
+          Promise.all([
+            fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_NOAA21_NRT'),
+            fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_NOAA20_NRT'),
+            fetchNasaFirmsArea('95,-11,141,6', 3, 'VIIRS_SNPP_NRT'),
+          ]).then((results) => {
+            const okResults = results.filter((r) => r.state === 'ok')
+            if (okResults.length === 0) {
+              return results.find((r) => r.state !== 'error') ?? results[0]
             }
-          }
-          return { count: merged.size, points: [...merged.values()], state: 'ok' as SourceState }
-        }),
-    cachedEonet ? Promise.resolve(null) : fetchNasaEonetReference(),
+            const merged = new Map<string, HotspotPoint>()
+            for (const res of okResults) {
+              for (const p of res.points) {
+                const key = `${p.acqDate || 'nd'}:${p.acqTime || 'nt'}:${Number(p.lat).toFixed(4)}:${Number(p.lng).toFixed(4)}`
+                const prev = merged.get(key)
+                if (!prev || p.frp > prev.frp) merged.set(key, p)
+              }
+            }
+            return { count: merged.size, points: [...merged.values()], state: 'ok' as SourceState }
+          }),
+        ),
+    cachedEonet ? Promise.resolve(null) : singleFlight(eonetCacheKey, () => fetchNasaEonetReference()),
     cachedSpecies ? Promise.resolve(null) : fetchInatSpeciesObservations(lat, lng, 55),
   ])
 
-  const normalizedHotspots = (cachedHotspots ?? firmsRes?.points ?? [])
+  const effectiveHotspots =
+    cachedHotspots ?? (firmsRes?.state === 'ok' ? firmsRes.points : (staleHotspots ?? []))
+  const normalizedHotspots = effectiveHotspots
     .map((h) => ({
       ...h,
       id:
@@ -2376,7 +2396,7 @@ app.get('/env/layers', async (c) => {
     }))
     .filter((h) => !falseHotspotIds.has(h.id))
   const hotspots = curateHotspotsForMap(normalizedHotspots, lat, lng, 320)
-  const eonet = cachedEonet ?? eonetRes?.points ?? []
+  const eonet = cachedEonet ?? (eonetRes?.state === 'ok' ? eonetRes.points : (staleEonet ?? []))
   const species = cachedSpecies ?? speciesRes?.species ?? []
 
   if (supa) {
@@ -2415,7 +2435,8 @@ app.get('/env/layers', async (c) => {
     }
   }
 
-  c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=1200')
+  const firmsOk = Boolean(cachedHotspots || firmsRes?.state === 'ok' || staleHotspots)
+  c.header('Cache-Control', firmsOk ? 'public, max-age=60, stale-while-revalidate=1200' : 'no-store')
   return c.json({
     hotspots,
     eonet,
