@@ -386,8 +386,8 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
       tones.size === 0
         ? radar.satelliteSignals
         : radar.satelliteSignals.filter((s) =>
-            tones.has(s.kind === 'wildfire' || s.kind === 'volcano' || s.kind === 'flood' ? 'critical' : 'progress'),
-          ),
+          tones.has(s.kind === 'wildfire' || s.kind === 'volcano' || s.kind === 'flood' ? 'critical' : 'progress'),
+        ),
     [radar.satelliteSignals, tones],
   )
 
@@ -418,12 +418,12 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
           aria-expanded={menuOpen}
-          className="pill-top flex h-[20px] items-center gap-1 rounded-full px-2 text-[8.5px] font-normal tracking-normal whitespace-nowrap transition-transform duration-120 active:scale-95"
+          className="pill-top flex h-[40px] items-center gap-0 rounded-full px-2 text-[6px] font-normal tracking-normal whitespace-nowrap transition-transform duration-120 active:scale-95"
         >
           <MapPillIcon />
-          {visibleEvents.length + visibleHazards.length} tampilan peta
+          <span className="-mx-1.5 inline-block scale-80">tampilan peta</span>
           <ChevronDown
-            className={`size-2 opacity-65 transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`}
+            className={`size-3 opacity-65 transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`}
           />
         </button>
       </div>
