@@ -4,10 +4,12 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { useEffect, useRef } from 'react'
 import { mapEventTone } from '../../lib/constants'
 import type { ConservationEvent, MapStyle, SatelliteSignal } from '../../types'
+import { useAuth } from '../auth/AuthContext'
 import type { ActiveRoute } from './directions'
 import { hazardToSignal, severityRank } from './hotspotCluster'
 import type { HazardPoint } from './hotspotCluster'
 import indonesiaBoundary from './indonesiaBoundary.json'
+import { registerHazardIcons, renderEventMarkerElement, syncUserMarkerElement } from './mapMarkers'
 import { applyMapStyle, createInitialMapStyle } from './mapStyles'
 import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from './radarFilters'
 
@@ -180,8 +182,10 @@ export default function MapView({
   const hostRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const readyRef = useRef(false)
+  const { profile } = useAuth()
   const markersRef = useRef<Map<string, MarkerEntry>>(new Map())
   const meRef = useRef<Marker | null>(null)
+  const meElRef = useRef<HTMLDivElement | null>(null)
   const popupRef = useRef<Popup | null>(null)
 
   const onSelectRef = useRef(onSelect)
@@ -241,7 +245,8 @@ export default function MapView({
     readyRef.current = false
 
     const meEl = document.createElement('div')
-    meEl.className = 'me-dot'
+    syncUserMarkerElement(meEl, null)
+    meElRef.current = meEl
     meRef.current = new Marker({ element: meEl, anchor: 'center' })
       .setLngLat(DEFAULT_CENTER)
       .addTo(map)
@@ -342,6 +347,8 @@ export default function MapView({
         },
       })
 
+      registerHazardIcons(map)
+
       // Kawasan radar: digabung otomatis saat zoom-out, terpecah saat zoom-in
       map.addSource('blam-hazards', {
         type: 'geojson',
@@ -354,30 +361,30 @@ export default function MapView({
           hasWildfire: ['max', ['case', ['==', ['get', 'kind'], 'wildfire'], 1, 0]],
           hasVolcano: ['max', ['case', ['==', ['get', 'kind'], 'volcano'], 1, 0]],
           hasFlood: ['max', ['case', ['==', ['get', 'kind'], 'flood'], 1, 0]],
+          hasStorm: ['max', ['case', ['==', ['get', 'kind'], 'storm'], 1, 0]],
         },
       })
       map.addLayer({
         id: 'blam-hazards-cluster',
-        type: 'circle',
+        type: 'symbol',
         source: 'blam-hazards',
         filter: ['has', 'point_count'],
-        paint: {
-          'circle-radius': ['step', ['get', 'point_count'], 15, 4, 19, 10, 24],
-          'circle-color': [
+        layout: {
+          'icon-image': [
             'case',
             ['==', ['get', 'hasWildfire'], 1],
-            '#DC2626',
+            'hazard-wildfire',
             ['==', ['get', 'hasVolcano'], 1],
-            '#7C3AED',
+            'hazard-volcano',
             ['==', ['get', 'hasFlood'], 1],
-            '#2563EB',
-            ['>=', ['get', 'sev'], 3],
-            '#2563EB',
-            '#F59E0B',
+            'hazard-flood',
+            ['==', ['get', 'hasStorm'], 1],
+            'hazard-storm',
+            'hazard-suspected',
           ],
-          'circle-opacity': 0.92,
-          'circle-stroke-color': '#FFFFFF',
-          'circle-stroke-width': 2,
+          'icon-size': ['step', ['get', 'point_count'], 1.12, 4, 1.28, 10, 1.45],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
         },
       })
       map.addLayer({
@@ -388,10 +395,16 @@ export default function MapView({
         layout: {
           'text-field': ['get', 'point_count_abbreviated'],
           'text-font': ['Noto Sans Bold'],
-          'text-size': 13,
+          'text-size': 11,
+          'text-offset': [1.05, -1.05],
           'text-allow-overlap': true,
+          'text-ignore-placement': true,
         },
-        paint: { 'text-color': '#FFFFFF' },
+        paint: {
+          'text-color': '#FFFFFF',
+          'text-halo-color': '#111827',
+          'text-halo-width': 2.2,
+        },
       })
       map.addLayer({
         id: 'blam-hazards-halo',
@@ -404,17 +417,17 @@ export default function MapView({
           'circle-opacity': 0.22,
         },
       })
+
       map.addLayer({
         id: 'blam-hazards-core',
-        type: 'circle',
+        type: 'symbol',
         source: 'blam-hazards',
         filter: ['!', ['has', 'point_count']],
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['get', 'sev'], 1, 5, 3, 9],
-          'circle-color': HAZARD_COLOR,
-          'circle-opacity': 0.95,
-          'circle-stroke-color': '#FFFFFF',
-          'circle-stroke-width': 2,
+        layout: {
+          'icon-image': ['concat', 'hazard-', ['get', 'kind']],
+          'icon-size': ['interpolate', ['linear'], ['get', 'sev'], 1, 0.72, 3, 0.96],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
         },
       })
       map.addLayer({
@@ -508,6 +521,12 @@ export default function MapView({
   }, [style])
 
   useEffect(() => {
+    if (meElRef.current) {
+      syncUserMarkerElement(meElRef.current, profile)
+    }
+  }, [profile])
+
+  useEffect(() => {
     const map = mapRef.current
     if (!map) return
     const markers = markersRef.current
@@ -526,19 +545,14 @@ export default function MapView({
       const existing = markers.get(ev.id)
 
       if (existing) {
-        existing.el.dataset.status = tone
-        existing.el.dataset.selected = String(selected)
+        renderEventMarkerElement(existing.el, ev, tone, selected)
         existing.wrapper.style.zIndex = selected ? '10' : '1'
         existing.marker.setLngLat([ev.lng, ev.lat])
       } else {
         // MapLibre owns the transform of the marker element; visuals live in a child.
         const wrapper = document.createElement('div')
         const el = document.createElement('div')
-        el.className = 'pin'
-        el.dataset.status = tone
-        el.dataset.selected = String(selected)
-        el.title = ev.title
-        el.style.cursor = 'pointer'
+        renderEventMarkerElement(el, ev, tone, selected)
         wrapper.style.zIndex = selected ? '10' : '1'
         wrapper.appendChild(el)
         el.addEventListener('click', (e) => {
