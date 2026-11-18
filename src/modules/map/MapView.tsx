@@ -4,10 +4,12 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { useEffect, useRef } from 'react'
 import { mapEventTone } from '../../lib/constants'
 import type { ConservationEvent, MapStyle, SatelliteSignal } from '../../types'
+import { useAuth } from '../auth/AuthContext'
 import type { ActiveRoute } from './directions'
 import { hazardToSignal, severityRank } from './hotspotCluster'
 import type { HazardPoint } from './hotspotCluster'
 import { getIndonesiaWipeSources, INDONESIA_GEOJSON, WIPE_SOFTNESS } from './indonesiaWipe'
+import { registerHazardIcons, renderEventMarkerElement, syncUserMarkerElement } from './mapMarkers'
 import { applyMapStyle, createInitialMapStyle } from './mapStyles'
 import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from './radarFilters'
 
@@ -207,8 +209,10 @@ export default function MapView({
   const hostRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const readyRef = useRef(false)
+  const { profile } = useAuth()
   const markersRef = useRef<Map<string, MarkerEntry>>(new Map())
   const meRef = useRef<Marker | null>(null)
+  const meElRef = useRef<HTMLDivElement | null>(null)
   const popupRef = useRef<Popup | null>(null)
   const wipeRafRef = useRef<number>(0)
   const wipeTimerRef = useRef<number>(0)
@@ -280,7 +284,8 @@ export default function MapView({
     readyRef.current = false
 
     const meEl = document.createElement('div')
-    meEl.className = 'me-dot'
+    syncUserMarkerElement(meEl, null)
+    meElRef.current = meEl
     meRef.current = new Marker({ element: meEl, anchor: 'center' })
       .setLngLat(DEFAULT_CENTER)
       .addTo(map)
@@ -408,6 +413,8 @@ export default function MapView({
         },
       })
 
+      registerHazardIcons(map)
+
       // Kawasan radar: digabung otomatis saat zoom-out, terpecah saat zoom-in
       map.addSource('blam-hazards', {
         type: 'geojson',
@@ -420,40 +427,40 @@ export default function MapView({
           hasWildfire: ['max', ['case', ['==', ['get', 'kind'], 'wildfire'], 1, 0]],
           hasVolcano: ['max', ['case', ['==', ['get', 'kind'], 'volcano'], 1, 0]],
           hasFlood: ['max', ['case', ['==', ['get', 'kind'], 'flood'], 1, 0]],
+          hasStorm: ['max', ['case', ['==', ['get', 'kind'], 'storm'], 1, 0]],
         },
       })
       map.addLayer({
         id: 'blam-hazards-cluster',
-        type: 'circle',
+        type: 'symbol',
         source: 'blam-hazards',
         filter: ['has', 'point_count'],
-        paint: {
-          'circle-radius': [
+        layout: {
+          'icon-image': [
+            'case',
+            ['==', ['get', 'hasWildfire'], 1],
+            'hazard-wildfire',
+            ['==', ['get', 'hasVolcano'], 1],
+            'hazard-volcano',
+            ['==', ['get', 'hasFlood'], 1],
+            'hazard-flood',
+            ['==', ['get', 'hasStorm'], 1],
+            'hazard-storm',
+            'hazard-suspected',
+          ],
+          'icon-size': [
             'interpolate',
             ['linear'],
             ['zoom'],
             2.5,
-            ['step', ['get', 'point_count'], 9, 4, 11, 10, 13.5],
+            ['step', ['get', 'point_count'], 0.58, 4, 0.68, 10, 0.78],
             5.5,
-            ['step', ['get', 'point_count'], 12, 4, 15, 10, 18],
+            ['step', ['get', 'point_count'], 0.78, 4, 0.9, 10, 1.04],
             8,
-            ['step', ['get', 'point_count'], 14, 4, 17, 10, 20],
+            ['step', ['get', 'point_count'], 0.96, 4, 1.12, 10, 1.28],
           ],
-          'circle-color': [
-            'case',
-            ['==', ['get', 'hasWildfire'], 1],
-            '#DC2626',
-            ['==', ['get', 'hasVolcano'], 1],
-            '#7C3AED',
-            ['==', ['get', 'hasFlood'], 1],
-            '#2563EB',
-            ['>=', ['get', 'sev'], 3],
-            '#2563EB',
-            '#F59E0B',
-          ],
-          'circle-opacity': 0.92,
-          'circle-stroke-color': '#FFFFFF',
-          'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 2.5, 1.5, 7, 2],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
         },
       })
       map.addLayer({
@@ -464,10 +471,16 @@ export default function MapView({
         layout: {
           'text-field': ['get', 'point_count_abbreviated'],
           'text-font': ['Noto Sans Bold'],
-          'text-size': ['interpolate', ['linear'], ['zoom'], 2.5, 9.5, 5.5, 11.5, 8, 13],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 2.5, 9, 5.5, 10.5, 8, 11.5],
+          'text-offset': [0.95, -0.95],
           'text-allow-overlap': true,
+          'text-ignore-placement': true,
         },
-        paint: { 'text-color': '#FFFFFF' },
+        paint: {
+          'text-color': '#FFFFFF',
+          'text-halo-color': '#111827',
+          'text-halo-width': 2.2,
+        },
       })
       map.addLayer({
         id: 'blam-hazards-halo',
@@ -490,27 +503,27 @@ export default function MapView({
           'circle-opacity': 0.22,
         },
       })
+
       map.addLayer({
         id: 'blam-hazards-core',
-        type: 'circle',
+        type: 'symbol',
         source: 'blam-hazards',
         filter: ['!', ['has', 'point_count']],
-        paint: {
-          'circle-radius': [
+        layout: {
+          'icon-image': ['concat', 'hazard-', ['get', 'kind']],
+          'icon-size': [
             'interpolate',
             ['linear'],
             ['zoom'],
             2.5,
-            ['interpolate', ['linear'], ['get', 'sev'], 1, 3, 3, 4.5],
+            ['interpolate', ['linear'], ['get', 'sev'], 1, 0.42, 3, 0.56],
             6,
-            ['interpolate', ['linear'], ['get', 'sev'], 1, 4, 3, 6.5],
+            ['interpolate', ['linear'], ['get', 'sev'], 1, 0.58, 3, 0.74],
             9,
-            ['interpolate', ['linear'], ['get', 'sev'], 1, 5, 3, 8.5],
+            ['interpolate', ['linear'], ['get', 'sev'], 1, 0.72, 3, 0.94],
           ],
-          'circle-color': HAZARD_COLOR,
-          'circle-opacity': 0.95,
-          'circle-stroke-color': '#FFFFFF',
-          'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 2.5, 1.2, 7, 2],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
         },
       })
       map.addLayer({
@@ -609,6 +622,12 @@ export default function MapView({
   }, [style])
 
   useEffect(() => {
+    if (meElRef.current) {
+      syncUserMarkerElement(meElRef.current, profile)
+    }
+  }, [profile])
+
+  useEffect(() => {
     const map = mapRef.current
     if (!map) return
     const markers = markersRef.current
@@ -627,19 +646,14 @@ export default function MapView({
       const existing = markers.get(ev.id)
 
       if (existing) {
-        existing.el.dataset.status = tone
-        existing.el.dataset.selected = String(selected)
+        renderEventMarkerElement(existing.el, ev, tone, selected)
         existing.wrapper.style.zIndex = selected ? '10' : '1'
         existing.marker.setLngLat([ev.lng, ev.lat])
       } else {
         // MapLibre owns the transform of the marker element; visuals live in a child.
         const wrapper = document.createElement('div')
         const el = document.createElement('div')
-        el.className = 'pin'
-        el.dataset.status = tone
-        el.dataset.selected = String(selected)
-        el.title = ev.title
-        el.style.cursor = 'pointer'
+        renderEventMarkerElement(el, ev, tone, selected)
         wrapper.style.zIndex = selected ? '10' : '1'
         wrapper.appendChild(el)
         el.addEventListener('click', (e) => {

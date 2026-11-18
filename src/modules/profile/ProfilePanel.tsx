@@ -1,11 +1,38 @@
-import { LogOut } from 'lucide-react'
+import { Camera, LogOut } from 'lucide-react'
+import { useRef, useState } from 'react'
+import type { ChangeEvent } from 'react'
 import { DashedRow, Pill } from '../../components/ui/atoms'
+import { updateMyProfile } from '../../lib/api'
 import { ROLE_LABEL } from '../../lib/constants'
+import { compressImage } from '../../lib/imageCompress'
 import { useAuth } from '../auth/AuthContext'
 import { AuthPanel } from '../auth/AuthModal'
 
 export default function ProfilePanel() {
-  const { isDemo, profile, memberships, notifications, openAuthModal, logout, readNotification } = useAuth()
+  const { isDemo, profile, memberships, notifications, openAuthModal, logout, readNotification, refreshMe } = useAuth()
+  const fileRef = useRef<HTMLInputElement | null>(null)
+  const [avatarBusy, setAvatarBusy] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
+
+  const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setAvatarError(null)
+    setAvatarBusy(true)
+    try {
+      const compressed = await compressImage(file)
+      await updateMyProfile({
+        imageBase64: compressed.base64,
+        mimeType: compressed.mimeType,
+      })
+      await refreshMe()
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : 'Gagal memperbarui foto profil')
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
 
   if (!profile) {
     return (
@@ -20,22 +47,72 @@ export default function ProfilePanel() {
     )
   }
 
+  const initial = profile.full_name?.slice(0, 1).toUpperCase() || 'W'
+
   return (
     <div className="flex flex-col gap-4">
       <section className="capsule-dashed rounded-[20px] p-5">
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <Pill>{ROLE_LABEL[profile.role]}</Pill>
-            <h2 className="mt-2 truncate text-[22px] font-bold text-ink">{profile.full_name}</h2>
-            {profile.email && <p className="truncate text-xs text-ink-soft">{profile.email}</p>}
+          <div className="flex min-w-0 items-center gap-3.5">
+            <div className="relative shrink-0">
+              <div className="flex size-14 items-center justify-center overflow-hidden rounded-full border border-line bg-canvas text-lg font-extrabold text-forest">
+                {profile.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.full_name}
+                    referrerPolicy="no-referrer"
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  initial
+                )}
+              </div>
+              <button
+                type="button"
+                disabled={avatarBusy}
+                onClick={() => fileRef.current?.click()}
+                aria-label="Ubah foto profil"
+                title="Ubah foto profil"
+                className="absolute -right-1 -bottom-1 flex size-6 items-center justify-center rounded-full border border-white bg-forest text-white shadow-sm transition-transform hover:scale-105 disabled:opacity-60"
+              >
+                <Camera className="size-3.5" />
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => void handleAvatarChange(e)}
+                className="hidden"
+              />
+            </div>
+
+            <div className="min-w-0">
+              <Pill>{ROLE_LABEL[profile.role]}</Pill>
+              <h2 className="mt-1.5 truncate text-[20px] font-bold text-ink">{profile.full_name}</h2>
+              {profile.email && <p className="truncate text-xs text-ink-soft">{profile.email}</p>}
+            </div>
           </div>
-          <div className="text-right">
+          <div className="shrink-0 text-right">
             <p className="num text-2xl text-forest">{profile.points}</p>
             <p className="text-[11px] font-bold text-ink-soft">Poin</p>
           </div>
         </div>
 
+        {avatarError && (
+          <p role="alert" className="mt-3 rounded-xl border border-line bg-white px-3 py-2 text-xs font-semibold text-critical">
+            {avatarError}
+          </p>
+        )}
+
         <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            disabled={avatarBusy}
+            onClick={() => fileRef.current?.click()}
+            className="font-display inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white px-3 text-xs font-semibold text-forest hover:bg-mint/30 disabled:opacity-60"
+          >
+            <Camera className="size-3.5" /> {avatarBusy ? 'Mengunggah…' : 'Edit Foto'}
+          </button>
           {isDemo && (
             <button
               type="button"
@@ -48,7 +125,7 @@ export default function ProfilePanel() {
           <button
             type="button"
             onClick={() => void logout()}
-            className={`font-display inline-flex h-10 items-center justify-center gap-1.5 rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white px-4 text-xs font-semibold text-ink-soft hover:text-forest ${isDemo ? '' : 'flex-1'}`}
+            className="font-display inline-flex h-10 items-center justify-center gap-1.5 rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white px-4 text-xs font-semibold text-ink-soft hover:text-forest"
           >
             <LogOut className="size-3.5" /> Keluar
           </button>
