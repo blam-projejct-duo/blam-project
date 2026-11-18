@@ -1,8 +1,9 @@
-import { Flame, Search, X } from 'lucide-react'
+import { ChevronDown, Flame, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
+import { ECOSYSTEM_FILTERS, EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
+import { formatSignalDate } from '../../modules/map/radarFilters'
 import { EcoBadge } from '../ui/atoms'
-import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
+import type { ConservationEvent, Ecosystem, HazardKind, SatelliteSignal } from '../../types'
 
 type ListTab = 'Disarankan' | 'Terbaru' | 'Dampak' | 'Satelit'
 
@@ -64,9 +65,10 @@ function SignalRow({
   onOpen: () => void
 }) {
   const sourceLabel = signal.source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'
+  const dateLabel = formatSignalDate(signal)
   const meta = linked
     ? `${sourceLabel} · Ada Event`
-    : `${sourceLabel} · ${signal.categoryLabel}${signal.date ? ` · ${signal.date}` : ''}`
+    : `${sourceLabel} · ${signal.categoryLabel}${dateLabel ? ` · ${dateLabel}` : ''}`
   const kind = signal.kind ?? 'suspected'
 
   return (
@@ -96,6 +98,8 @@ export default function EventListPanel({
   signals = [],
   query,
   onQueryChange,
+  ecosystemFilter,
+  onEcosystemChange,
   showSearch = true,
   autoFocus = false,
   onOpen,
@@ -106,13 +110,38 @@ export default function EventListPanel({
   signals?: SatelliteSignal[]
   query: string
   onQueryChange: (q: string) => void
+  ecosystemFilter?: Ecosystem | 'all'
+  onEcosystemChange?: (next: Ecosystem | 'all') => void
   showSearch?: boolean
   autoFocus?: boolean
   onOpen: (id: string) => void
   onOpenSignal?: (signal: SatelliteSignal) => void
 }) {
   const [tab, setTab] = useState<ListTab>('Disarankan')
+  const [filterOpen, setFilterOpen] = useState(false)
+  const filterWrapRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!filterOpen) return
+    const handlePointerDown = (e: PointerEvent) => {
+      if (!filterWrapRef.current?.contains(e.target as Node)) {
+        setFilterOpen(false)
+      }
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFilterOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [filterOpen])
+
+  const activeEcosystemLabel =
+    ECOSYSTEM_FILTERS.find((f) => f.id === ecosystemFilter)?.label ?? 'Semua'
 
   useEffect(() => {
     if (!autoFocus) return
@@ -180,21 +209,85 @@ export default function EventListPanel({
         </label>
       )}
 
-      <div role="tablist" className={`flex flex-wrap gap-1 ${showSearch ? 'mt-4' : ''}`}>
-        {TABS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => setTab(t)}
-            className={`h-11 rounded-full px-3.5 text-[14px] font-bold transition-colors ${
-              tab === t ? 'bg-canvas text-ink' : 'text-ink-soft'
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+      <div ref={filterWrapRef} className={`relative ${showSearch ? 'mt-4' : ''}`}>
+        <button
+          type="button"
+          aria-expanded={filterOpen}
+          aria-haspopup="listbox"
+          onClick={() => setFilterOpen((v) => !v)}
+          className="flex h-11 w-full items-center justify-between gap-2 rounded-full border border-line bg-canvas px-4 text-left transition-colors hover:bg-muted/70"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <SlidersHorizontal className="size-4 shrink-0 text-ink-soft" strokeWidth={2.25} />
+            <span className="truncate text-[13px] font-bold text-ink">
+              {tab}
+              {onEcosystemChange && ecosystemFilter && ecosystemFilter !== 'all'
+                ? ` · ${activeEcosystemLabel}`
+                : ''}
+            </span>
+          </span>
+          <ChevronDown
+            className={`size-4 shrink-0 text-ink-soft transition-transform duration-200 ${filterOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
+
+        {filterOpen && (
+          <div className="mt-2 flex flex-col gap-3 rounded-card border border-line bg-white p-3.5">
+            <div>
+              <p className="mb-2 text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
+                Tampilan Radar
+              </p>
+              <div role="tablist" className="grid grid-cols-2 gap-1.5">
+                {TABS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === t}
+                    onClick={() => {
+                      setTab(t)
+                      setFilterOpen(false)
+                    }}
+                    className={`h-9 rounded-full px-3 text-[13px] font-bold transition-colors ${
+                      tab === t ? 'bg-ink text-white' : 'bg-canvas text-ink hover:bg-muted'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {onEcosystemChange && (
+              <div className="border-t-[1.5px] border-dashed border-dash pt-3">
+                <p className="mb-2 text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
+                  Ekosistem
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {ECOSYSTEM_FILTERS.map((f) => {
+                    const active = ecosystemFilter === f.id
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => {
+                          onEcosystemChange(f.id)
+                          setFilterOpen(false)
+                        }}
+                        className={`h-8 rounded-full px-3 text-[12px] font-bold transition-colors ${
+                          active ? 'bg-ink text-white' : 'bg-canvas text-ink hover:bg-muted'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {rows.length > 0 && (
@@ -207,9 +300,20 @@ export default function EventListPanel({
 
       {shownSignals.length > 0 && onOpenSignal && (
         <div className={rows.length > 0 ? 'mt-4 border-t-[1.5px] border-dashed border-dash pt-3' : 'mt-2'}>
-          {rows.length > 0 && (
-            <p className="mb-1 text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">Sinyal Satelit</p>
-          )}
+          <div className="mb-1 flex items-center justify-between">
+            <p className="text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
+              {tab === 'Satelit' ? `Sinyal Satelit (${filteredSignals.length})` : 'Sinyal Satelit'}
+            </p>
+            {tab === 'Disarankan' && filteredSignals.length > shownSignals.length && (
+              <button
+                type="button"
+                onClick={() => setTab('Satelit')}
+                className="text-[11px] font-bold text-cobalt hover:underline"
+              >
+                Lihat semua ({filteredSignals.length})
+              </button>
+            )}
+          </div>
           <ul>
             {shownSignals.map((sig) => (
               <SignalRow

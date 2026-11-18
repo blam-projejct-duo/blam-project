@@ -11,6 +11,7 @@ import { Pill } from '../../components/ui/atoms'
 import { moderateHotspotAdmin } from '../../lib/api'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
+import { formatSignalDate } from '../map/radarFilters'
 import { formatPulseTiles, usePulse } from '../map/usePulse'
 
 const KIND_DOT_CLASS: Record<HazardKind, string> = {
@@ -117,7 +118,7 @@ export default function SatelliteSignalDetail({
           <MapPin className="size-3.5 shrink-0" strokeWidth={2.25} />
           <span>
             {signal.lat.toFixed(4)}, {signal.lng.toFixed(4)}
-            {signal.date ? ` · ${signal.date}` : ''}
+            {signal.date ? ` · ${formatSignalDate(signal)}` : ''}
           </span>
         </p>
 

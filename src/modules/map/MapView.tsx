@@ -7,9 +7,11 @@ import type { ConservationEvent, MapStyle, SatelliteSignal } from '../../types'
 import { hazardToSignal, severityRank } from './hotspotCluster'
 import type { HazardPoint } from './hotspotCluster'
 import { applyMapStyle, createInitialMapStyle } from './mapStyles'
+import { formatSignalDate } from './radarFilters'
 
 setWorkerUrl(maplibreWorkerUrl)
 
+const INDONESIA_CENTER: [number, number] = [117.5, -2.0]
 const DEFAULT_CENTER: [number, number] = [102.262, -3.8]
 
 export interface MapPadding {
@@ -93,7 +95,8 @@ function createHazardPopupNode(h: HazardPoint): HTMLDivElement {
   const meta = document.createElement('p')
   meta.className = 'text-[11px] font-semibold text-ink-soft'
   const src = h.source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'
-  meta.textContent = `${h.kindLabel} · ${src} · ${h.date || '-'}`
+  const dateLabel = formatSignalDate(h)
+  meta.textContent = `${h.kindLabel} · ${src}${dateLabel ? ` · ${dateLabel}` : ''}`
 
   root.append(title, meta)
   return root
@@ -156,8 +159,8 @@ export default function MapView({
     const map = new MapLibreMap({
       container: host,
       style: createInitialMapStyle(styleRef.current),
-      center: DEFAULT_CENTER,
-      zoom: 10.5,
+      center: INDONESIA_CENTER,
+      zoom: 4.3,
       minZoom: 3.5,
       maxZoom: 18,
       attributionControl: { compact: true },

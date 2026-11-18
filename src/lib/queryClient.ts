@@ -3,7 +3,7 @@ import type { QueryKey } from '@tanstack/react-query'
 
 export const CACHE_TTL_MS = 20 * 60 * 1000
 const MAX_PERSIST_MS = 24 * 60 * 60 * 1000
-const STORAGE_KEY = 'blam_query_cache_v4'
+const STORAGE_KEY = 'blam_query_cache_v5'
 const MAX_PULSE_ENTRIES = 30
 
 interface PersistedEntry {
@@ -65,6 +65,12 @@ function flushPersist(): void {
       if (q.state.status !== 'success' || q.state.data === undefined) continue
       if (!shouldPersistKey(q.queryKey)) continue
       if (now - q.state.dataUpdatedAt > MAX_PERSIST_MS) continue
+      if (q.queryKey[0] === 'layers') {
+        const layerData = q.state.data as { hotspots?: unknown[]; sources?: { nasaFirms?: string } } | undefined
+        if (layerData?.sources?.nasaFirms && layerData.sources.nasaFirms !== 'ok' && (layerData.hotspots?.length ?? 0) === 0) {
+          continue
+        }
+      }
 
       const entry: PersistedEntry = {
         queryKey: q.queryKey,
