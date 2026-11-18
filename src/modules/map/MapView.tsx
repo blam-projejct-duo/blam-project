@@ -187,6 +187,10 @@ export default function MapView({
       zoom: 4.3,
       minZoom: 3.5,
       maxZoom: 18,
+      maxTileCacheZoomLevels: 15,
+      refreshExpiredTiles: false,
+      cancelPendingTileRequestsWhileZooming: false,
+      fadeDuration: 150,
       attributionControl: { compact: true },
     })
 

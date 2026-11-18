@@ -83,7 +83,6 @@ const ROAD_LAYER_IDS = [
 ] as const
 
 const VECTOR_LAYER_IDS = [
-  'background',
   'park',
   'landuse-residential',
   'landcover-wood',
@@ -99,7 +98,7 @@ const VECTOR_LAYER_IDS = [
   'label-country',
 ] as const
 
-const SATELLITE_LAYER_IDS = ['satelit-imagery', 'satelit-labels'] as const
+const SATELLITE_LAYER_IDS = ['satelit-backdrop', 'satelit-imagery', 'satelit-labels'] as const
 
 const TEXT_FIELD_EXPR = [
   'case',
@@ -124,6 +123,15 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         url: 'https://tiles.openfreemap.org/planet',
         attribution: '&copy; OpenFreeMap &copy; OpenStreetMap',
       },
+      'esri-satelit-base': {
+        type: 'raster',
+        tiles: [
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        ],
+        tileSize: 256,
+        minzoom: 0,
+        maxzoom: 6,
+      },
       'esri-satelit': {
         type: 'raster',
         tiles: [
@@ -139,22 +147,29 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
           'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
         ],
         tileSize: 256,
-        maxzoom: 18,
+        maxzoom: 13,
       },
     },
     layers: [
       {
         id: 'background',
         type: 'background',
-        layout: { visibility: vecVis },
-        paint: { 'background-color': palette.background },
+        layout: { visibility: 'visible' },
+        paint: { 'background-color': isSat ? '#0b2234' : palette.background },
+      },
+      {
+        id: 'satelit-backdrop',
+        type: 'raster',
+        source: 'esri-satelit-base',
+        layout: { visibility: satVis },
+        paint: { 'raster-fade-duration': 0, 'raster-resampling': 'linear' },
       },
       {
         id: 'satelit-imagery',
         type: 'raster',
         source: 'esri-satelit',
         layout: { visibility: satVis },
-        paint: { 'raster-fade-duration': 120 },
+        paint: { 'raster-fade-duration': 150, 'raster-resampling': 'linear' },
       },
       {
         id: 'park',
@@ -514,7 +529,10 @@ export function applyMapStyle(map: MapLibreMap, style: MapStyle): void {
   map.setPaintProperty('road-motorway-casing', 'line-color', roadPalette.roadMotorwayCasing)
   map.setPaintProperty('road-motorway-inner', 'line-color', roadPalette.roadMotorwayInner)
 
-  if (isSat) return
+  if (isSat) {
+    map.setPaintProperty('background', 'background-color', '#0b2234')
+    return
+  }
 
   const palette = PALETTES[style]
   map.setPaintProperty('background', 'background-color', palette.background)

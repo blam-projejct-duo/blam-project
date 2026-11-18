@@ -283,6 +283,12 @@ button {
   background: var(--color-canvas);
 }
 
+[data-style='satelit'].maplibregl-map,
+[data-style='satelit'] .maplibregl-map {
+  background: #0b2234;
+}
+
+[data-style='gelap'].maplibregl-map,
 [data-style='gelap'] .maplibregl-map {
   background: #0f1419;
 }
