@@ -13,6 +13,7 @@ import { Pill } from '../../components/ui/atoms'
 import { moderateHotspotAdmin } from '../../lib/api'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
+import FundraisingSection from '../fundraising/FundraisingSection'
 import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from '../map/radarFilters'
 import { formatFloodPulseTiles, formatPulseTiles, usePulse } from '../map/usePulse'
 
@@ -180,6 +181,8 @@ export default function SatelliteSignalDetail({
           {error}
         </p>
       )}
+
+      <FundraisingSection signal={signal} />
 
       <div className="flex flex-col gap-2">
         {linkedEvent ? (

@@ -2865,5 +2865,308 @@ app.get('/env/layers', async (c) => {
   })
 })
 
+const FUNDRAISINGS_CACHE_KEY = 'fundraisings:v1'
+const FUNDRAISINGS_EXPIRY_MS = 1000 * 60 * 60 * 24 * 365 * 10
+const VALID_FUNDRAISING_SOURCES = new Set(['nasa_firms', 'nasa_eonet', 'open_meteo_flood', 'petabencana'])
+const VALID_HAZARD_KINDS = new Set(['wildfire', 'suspected', 'volcano', 'flood', 'storm', 'other'])
+
+interface StoredDonation {
+  id: string
+  fundraising_id: string
+  donor_id: string | null
+  donor_name: string
+  is_anonymous: boolean
+  amount: number
+  payment_method: 'qris' | 'mbanking'
+  bank_name: string | null
+  message: string | null
+  created_at: string
+}
+
+interface StoredFundraising {
+  id: string
+  ref_source: string
+  ref_external_id: string
+  hazard_kind: string
+  title: string
+  description: string
+  location_name: string
+  lat: number
+  lng: number
+  target_amount: number
+  collected_amount: number
+  status: 'active' | 'completed' | 'closed'
+  organizer_kind: 'organization' | 'agency' | 'admin'
+  organizer_name: string
+  organization_id: string | null
+  created_by: string | null
+  created_at: string
+  donations: StoredDonation[]
+}
+
+async function readFundraisings(supa: NonNullable<ReturnType<typeof getSupabaseAdmin>>): Promise<StoredFundraising[]> {
+  const { data, error } = await supa
+    .from('env_cache')
+    .select('payload_json')
+    .eq('cache_key', FUNDRAISINGS_CACHE_KEY)
+    .maybeSingle()
+
+  if (error) {
+    log('warn', 'FUNDRAISINGS_READ', 'Gagal membaca fundraisings dari env_cache', { error: error.message })
+    return []
+  }
+  return Array.isArray(data?.payload_json) ? (data.payload_json as StoredFundraising[]) : []
+}
+
+async function writeFundraisings(
+  supa: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  list: StoredFundraising[],
+): Promise<boolean> {
+  const nowIso = new Date().toISOString()
+  const { error } = await supa.from('env_cache').upsert({
+    cache_key: FUNDRAISINGS_CACHE_KEY,
+    payload_json: list,
+    fetched_at: nowIso,
+    expires_at: new Date(Date.now() + FUNDRAISINGS_EXPIRY_MS).toISOString(),
+  })
+  if (error) {
+    log('error', 'FUNDRAISINGS_WRITE', 'Gagal menyimpan fundraisings ke env_cache', { error: error.message })
+    return false
+  }
+  return true
+}
+
+app.get('/fundraisings', async (c) => {
+  const { supa, error } = requireDb('FUNDRAISINGS_LIST')
+  if (!supa) return c.json({ error }, 503)
+
+  const fundraisings = await readFundraisings(supa)
+  c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+  return c.json({ fundraisings })
+})
+
+app.post('/fundraisings', async (c) => {
+  const { supa, error } = requireDb('FUNDRAISING_CREATE')
+  if (!supa) return c.json({ error }, 503)
+
+  const auth = await resolveAuth(c, supa)
+  if (!auth.profile) return c.json({ error: auth.error }, auth.status ?? 401)
+
+  const body = await c.req.json().catch(() => null)
+  if (!body || typeof body !== 'object') {
+    return c.json({ error: 'Payload JSON tidak valid' }, 400)
+  }
+
+  const {
+    refSource,
+    refExternalId,
+    hazardKind = 'other',
+    title,
+    description = '',
+    locationName,
+    lat,
+    lng,
+    targetAmount,
+    organizationId,
+  } = body as Record<string, unknown>
+
+  const normalizedSource = typeof refSource === 'string' ? refSource.trim() : ''
+  const normalizedExtId = typeof refExternalId === 'string' ? refExternalId.trim().slice(0, 120) : ''
+  if (!VALID_FUNDRAISING_SOURCES.has(normalizedSource) || !normalizedExtId) {
+    return c.json({ error: 'Referensi titik radar tidak valid' }, 400)
+  }
+
+  const normalizedTitle = typeof title === 'string' ? title.trim() : ''
+  if (normalizedTitle.length < 4) {
+    return c.json({ error: 'Judul penggalangan dana minimal 4 karakter' }, 400)
+  }
+
+  const targetNum = Math.round(Number(targetAmount))
+  if (!Number.isFinite(targetNum) || targetNum < 10000) {
+    return c.json({ error: 'Target dana minimal Rp 10.000' }, 400)
+  }
+
+  const latN = Number(lat)
+  const lngN = Number(lng)
+  if (!Number.isFinite(latN) || !Number.isFinite(lngN) || Math.abs(latN) > 90 || Math.abs(lngN) > 180) {
+    return c.json({ error: 'Koordinat titik radar tidak valid' }, 400)
+  }
+
+  // Cek hak akses: admin, pemerintah (agency), atau anggota aktif organisasi
+  let organizerKind: 'organization' | 'agency' | 'admin' = 'organization'
+  let organizerName = auth.profile.full_name
+  let resolvedOrgId: string | null = null
+
+  if (auth.profile.role === 'admin') {
+    organizerKind = 'admin'
+    organizerName = `Admin · ${auth.profile.full_name}`
+  } else if (auth.profile.role === 'agency') {
+    organizerKind = 'agency'
+    const { data: memberships } = await supa
+      .from('organization_members')
+      .select('organization:organizations(id, name, type)')
+      .eq('user_id', auth.profile.id)
+      .eq('status', 'active')
+      .limit(1)
+    const orgRaw = memberships?.[0]?.organization as { id?: string; name?: string } | { id?: string; name?: string }[] | null | undefined
+    const org = Array.isArray(orgRaw) ? orgRaw[0] : orgRaw
+    resolvedOrgId = org?.id ?? null
+    organizerName = org?.name ?? `Pemerintah · ${auth.profile.full_name}`
+  } else {
+    const requestedOrgId = typeof organizationId === 'string' && organizationId.trim() ? organizationId.trim() : undefined
+    let memQuery = supa
+      .from('organization_members')
+      .select('organization:organizations(id, name, type)')
+      .eq('user_id', auth.profile.id)
+      .eq('status', 'active')
+    if (requestedOrgId) {
+      memQuery = memQuery.eq('organization_id', requestedOrgId)
+    }
+    const { data: memberships } = await memQuery.limit(1)
+    const orgRaw = memberships?.[0]?.organization as { id?: string; name?: string; type?: string } | { id?: string; name?: string; type?: string }[] | null | undefined
+    const org = Array.isArray(orgRaw) ? orgRaw[0] : orgRaw
+    if (!org?.id || !org?.name) {
+      return c.json(
+        { error: 'Hanya Organisasi, Pemerintah, atau Admin yang dapat membuat penggalangan dana' },
+        403,
+      )
+    }
+    organizerKind = org.type === 'agency' ? 'agency' : 'organization'
+    organizerName = org.name
+    resolvedOrgId = org.id
+  }
+
+  const list = await readFundraisings(supa)
+  const existing = list.find(
+    (item) =>
+      item.ref_source === normalizedSource &&
+      item.ref_external_id === normalizedExtId &&
+      item.status !== 'closed',
+  )
+  if (existing) {
+    return c.json({ error: 'Titik radar ini sudah memiliki penggalangan dana aktif' }, 409)
+  }
+
+  const normalizedKind =
+    typeof hazardKind === 'string' && VALID_HAZARD_KINDS.has(hazardKind) ? hazardKind : 'other'
+  const normalizedLocation =
+    typeof locationName === 'string' && locationName.trim()
+      ? locationName.trim().slice(0, 140)
+      : `${latN.toFixed(4)}, ${lngN.toFixed(4)}`
+
+  const newCampaign: StoredFundraising = {
+    id: crypto.randomUUID(),
+    ref_source: normalizedSource,
+    ref_external_id: normalizedExtId,
+    hazard_kind: normalizedKind,
+    title: normalizedTitle.slice(0, 140),
+    description: typeof description === 'string' ? description.trim().slice(0, 1200) : '',
+    location_name: normalizedLocation,
+    lat: latN,
+    lng: lngN,
+    target_amount: targetNum,
+    collected_amount: 0,
+    status: 'active',
+    organizer_kind: organizerKind,
+    organizer_name: organizerName,
+    organization_id: resolvedOrgId,
+    created_by: auth.profile.id,
+    created_at: new Date().toISOString(),
+    donations: [],
+  }
+
+  const ok = await writeFundraisings(supa, [newCampaign, ...list])
+  if (!ok) {
+    return c.json({ error: 'Gagal menyimpan penggalangan dana' }, 500)
+  }
+
+  return c.json({ ok: true, fundraising: newCampaign }, 201)
+})
+
+app.post('/fundraisings/:id/donate', async (c) => {
+  const { supa, error } = requireDb('FUNDRAISING_DONATE')
+  if (!supa) return c.json({ error }, 503)
+
+  const fundraisingId = c.req.param('id')
+  const body = await c.req.json().catch(() => null)
+  if (!body || typeof body !== 'object') {
+    return c.json({ error: 'Payload JSON tidak valid' }, 400)
+  }
+
+  const {
+    amount,
+    paymentMethod,
+    bankName,
+    isAnonymous = false,
+    donorName,
+    message,
+  } = body as Record<string, unknown>
+
+  const amountNum = Math.round(Number(amount))
+  if (!Number.isFinite(amountNum) || amountNum < 1000) {
+    return c.json({ error: 'Nominal donasi minimal Rp 1.000' }, 400)
+  }
+
+  const method = paymentMethod === 'mbanking' ? 'mbanking' : paymentMethod === 'qris' ? 'qris' : null
+  if (!method) {
+    return c.json({ error: 'Metode pembayaran harus QRIS atau m-Banking' }, 400)
+  }
+
+  const normalizedBank =
+    method === 'mbanking' && typeof bankName === 'string' && bankName.trim()
+      ? bankName.trim().slice(0, 40)
+      : null
+  if (method === 'mbanking' && !normalizedBank) {
+    return c.json({ error: 'Silakan pilih bank untuk metode m-Banking' }, 400)
+  }
+
+  const auth = await resolveAuth(c, supa)
+  const hideIdentity = Boolean(isAnonymous)
+  const rawDonorName = typeof donorName === 'string' ? donorName.trim().slice(0, 80) : ''
+  const resolvedDonorName = hideIdentity
+    ? 'Anonim'
+    : rawDonorName || auth.profile?.full_name || 'Warga Peduli'
+
+  const list = await readFundraisings(supa)
+  const idx = list.findIndex((item) => item.id === fundraisingId)
+  if (idx === -1) {
+    return c.json({ error: 'Penggalangan dana tidak ditemukan' }, 404)
+  }
+
+  const target = list[idx]
+  if (target.status === 'closed') {
+    return c.json({ error: 'Penggalangan dana ini sudah ditutup' }, 400)
+  }
+
+  const newDonation: StoredDonation = {
+    id: crypto.randomUUID(),
+    fundraising_id: target.id,
+    donor_id: hideIdentity ? null : (auth.profile?.id ?? null),
+    donor_name: resolvedDonorName,
+    is_anonymous: hideIdentity,
+    amount: amountNum,
+    payment_method: method,
+    bank_name: normalizedBank,
+    message: typeof message === 'string' && message.trim() ? message.trim().slice(0, 280) : null,
+    created_at: new Date().toISOString(),
+  }
+
+  const updatedCampaign: StoredFundraising = {
+    ...target,
+    collected_amount: target.collected_amount + amountNum,
+    donations: [newDonation, ...target.donations],
+  }
+
+  const nextList = [...list]
+  nextList[idx] = updatedCampaign
+
+  const ok = await writeFundraisings(supa, nextList)
+  if (!ok) {
+    return c.json({ error: 'Gagal mencatat donasi' }, 500)
+  }
+
+  return c.json({ ok: true, fundraising: updatedCampaign, donation: newDonation }, 201)
+})
+
 export { app }
 export default handle(app)

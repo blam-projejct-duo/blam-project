@@ -1,6 +1,7 @@
-import { ChevronDown, Droplets, Flame, Mountain, Search, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronDown, Droplets, Flame, HeartHandshake, Mountain, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ECOSYSTEM_FILTERS, EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
+import { findFundraisingForSignal, useFundraisings } from '../../modules/fundraising/useFundraisings'
 import { formatFloodRiskLabel, formatSignalSource } from '../../modules/map/radarFilters'
 import { DashedOutline, EcoBadge } from '../ui/atoms'
 import type { ConservationEvent, Ecosystem, HazardKind, SatelliteSignal } from '../../types'
@@ -59,10 +60,12 @@ const SIGNAL_DOT_COLOR: Record<HazardKind, string> = {
 function SignalRow({
   signal,
   linked,
+  hasFundraising,
   onOpen,
 }: {
   signal: SatelliteSignal
   linked: boolean
+  hasFundraising: boolean
   onOpen: () => void
 }) {
   const sourceLabel = formatSignalSource(signal.source)
@@ -86,6 +89,12 @@ function SignalRow({
           <span className="font-display block truncate text-[15px] font-semibold text-ink">{signal.title}</span>
           <span className="block truncate text-[13px] text-ink-soft">{meta}</span>
         </span>
+        {hasFundraising && (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-critical/10 px-2 py-0.5 text-[11px] font-extrabold text-critical">
+            <HeartHandshake className="size-3" />
+            Donasi
+          </span>
+        )}
         <span
           className={`size-2.5 shrink-0 rounded-full ${linked ? 'bg-resolved' : SIGNAL_DOT_COLOR[kind]}`}
           aria-label="Sinyal Satelit"
@@ -126,6 +135,7 @@ export default function EventListPanel({
 }) {
   const [tab, setTab] = useState<ListTab>('Utama')
   const [filterOpen, setFilterOpen] = useState(false)
+  const { fundraisings } = useFundraisings()
   const filterWrapRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -365,6 +375,7 @@ export default function EventListPanel({
                 key={sig.id}
                 signal={sig}
                 linked={linkedSet.has(sig.id)}
+                hasFundraising={Boolean(findFundraisingForSignal(fundraisings, sig))}
                 onOpen={() => onOpenSignal(sig)}
               />
             ))}
