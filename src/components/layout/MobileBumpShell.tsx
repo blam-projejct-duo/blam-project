@@ -272,15 +272,16 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   }, [])
 
   const peekPx = mode === 'radar' ? 248 : PEEK_PX
+  const halfPx = Math.round(H * (mode === 'radar' ? 0.5 : 0.58))
   const sheetH = Math.round(H * 0.9)
   const snapY = useMemo(
     () => ({
       full: 0,
-      half: sheetH - Math.round(H * 0.58),
+      half: sheetH - halfPx,
       peek: sheetH - peekPx,
       closed: H + 48,
     }),
-    [H, sheetH, peekPx],
+    [H, sheetH, halfPx, peekPx],
   )
   const targetKey = mode === null ? 'closed' : snap
 
@@ -333,7 +334,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
     setMenuOpen(false)
     setFocusSearch(false)
     setMode('radar')
-    setSnap('peek')
+    setSnap('half')
     radar.fitIndonesia()
   }
 
@@ -362,7 +363,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   }
 
   const sheetOpen = mode !== null
-  const padBottom = !sheetOpen ? 0 : snap === 'peek' ? peekPx : Math.round(H * 0.58)
+  const padBottom = !sheetOpen ? 0 : snap === 'peek' ? peekPx : halfPx
   const openCount = radar.events.filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled').length
   const unreadCount = notifications.filter((n) => !n.is_read).length
   const canOrganize = Boolean(

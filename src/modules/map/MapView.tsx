@@ -8,7 +8,7 @@ import { useAuth } from '../auth/AuthContext'
 import type { ActiveRoute } from './directions'
 import { hazardToSignal, severityRank } from './hotspotCluster'
 import type { HazardPoint } from './hotspotCluster'
-import indonesiaBoundary from './indonesiaBoundary.json'
+import { getIndonesiaWipeSources, INDONESIA_GEOJSON, WIPE_SOFTNESS } from './indonesiaWipe'
 import { registerHazardIcons, renderEventMarkerElement, syncUserMarkerElement } from './mapMarkers'
 import { applyMapStyle, createInitialMapStyle } from './mapStyles'
 import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from './radarFilters'
@@ -23,33 +23,60 @@ const INDONESIA_BOUNDS: [[number, number], [number, number]] = [
 const DEFAULT_CENTER: [number, number] = [102.262, -3.8]
 const LOCATE_ZOOM = 17.2
 
+const WIPE_DURATION_MS = 920
+
 function indonesiaPalette(style: MapStyle) {
   return style === 'terang'
     ? { fill: '#4664FF', glow: '#3B5BFF', outline: '#243AE6', fillPeak: 0.44, outlinePeak: 0.92 }
     : { fill: '#3B82F6', glow: '#60A5FA', outline: '#60A5FA', fillPeak: 0.4, outlinePeak: 0.94 }
 }
 
-function syncIndonesiaHighlight(map: MapLibreMap, active: boolean, style: MapStyle): void {
-  if (!map.getLayer('blam-indonesia-fill')) return
+function zoomOpacityExpr(peak: number, mid: number, wipeProgress?: number) {
+  const factor = (val: number) =>
+    wipeProgress === undefined
+      ? val
+      : ['*', val, ['min', 1, ['max', 0, ['/', ['-', wipeProgress, ['get', 'p']], WIPE_SOFTNESS]]]]
+  return ['interpolate', ['linear'], ['zoom'], 6.5, factor(peak), 11, factor(mid), 13.5, 0] as never
+}
+
+function setIndonesiaLayers(
+  map: MapLibreMap,
+  prefix: 'blam-indonesia' | 'blam-indonesia-wipe',
+  visible: boolean,
+  style: MapStyle,
+  wipeProgress?: number,
+): void {
+  const fillId = `${prefix}-fill`
+  if (!map.getLayer(fillId)) return
   const c = indonesiaPalette(style)
-  map.setPaintProperty('blam-indonesia-fill', 'fill-color', c.fill)
-  map.setPaintProperty(
-    'blam-indonesia-fill',
-    'fill-opacity',
-    active ? ['interpolate', ['linear'], ['zoom'], 6.5, c.fillPeak, 11, 0.14, 13.5, 0] : 0,
-  )
-  map.setPaintProperty('blam-indonesia-glow', 'line-color', c.glow)
-  map.setPaintProperty(
-    'blam-indonesia-glow',
-    'line-opacity',
-    active ? ['interpolate', ['linear'], ['zoom'], 6.5, 0.22, 11, 0.08, 13.5, 0] : 0,
-  )
-  map.setPaintProperty('blam-indonesia-outline', 'line-color', c.outline)
-  map.setPaintProperty(
-    'blam-indonesia-outline',
-    'line-opacity',
-    active ? ['interpolate', ['linear'], ['zoom'], 6.5, c.outlinePeak, 11, 0.45, 13.5, 0] : 0,
-  )
+  map.setPaintProperty(fillId, 'fill-color', c.fill)
+  map.setPaintProperty(fillId, 'fill-opacity', visible ? zoomOpacityExpr(c.fillPeak, 0.14, wipeProgress) : 0)
+  map.setPaintProperty(`${prefix}-glow`, 'line-color', c.glow)
+  map.setPaintProperty(`${prefix}-glow`, 'line-opacity', visible ? zoomOpacityExpr(0.22, 0.08, wipeProgress) : 0)
+  map.setPaintProperty(`${prefix}-outline`, 'line-color', c.outline)
+  map.setPaintProperty(`${prefix}-outline`, 'line-opacity', visible ? zoomOpacityExpr(c.outlinePeak, 0.45, wipeProgress) : 0)
+}
+
+function setBaseTransition(map: MapLibreMap, duration: number): void {
+  if (!map.getLayer('blam-indonesia-fill')) return
+  const tr = { duration }
+  map.setPaintProperty('blam-indonesia-fill', 'fill-opacity-transition', tr)
+  map.setPaintProperty('blam-indonesia-glow', 'line-opacity-transition', tr)
+  map.setPaintProperty('blam-indonesia-outline', 'line-opacity-transition', tr)
+}
+
+function hideWipeLayers(map: MapLibreMap): void {
+  for (const suffix of ['fill', 'glow', 'outline'] as const) {
+    const id = `blam-indonesia-wipe-${suffix}`
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none')
+  }
+}
+
+function showWipeLayers(map: MapLibreMap): void {
+  for (const suffix of ['fill', 'glow', 'outline'] as const) {
+    const id = `blam-indonesia-wipe-${suffix}`
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible')
+  }
 }
 
 export interface MapPadding {
@@ -187,6 +214,12 @@ export default function MapView({
   const meRef = useRef<Marker | null>(null)
   const meElRef = useRef<HTMLDivElement | null>(null)
   const popupRef = useRef<Popup | null>(null)
+  const wipeRafRef = useRef<number>(0)
+  const wipeTimerRef = useRef<number>(0)
+  const moveEndHandlerRef = useRef<(() => void) | null>(null)
+  const pendingWipeRef = useRef(false)
+  const wipeDoneRef = useRef(false)
+  const prevRadarRef = useRef(false)
 
   const onSelectRef = useRef(onSelect)
   const onSelectSignalRef = useRef(onSelectSignal)
@@ -194,6 +227,9 @@ export default function MapView({
   const eventsRef = useRef(events)
   const hazardsRef = useRef(hazards)
   const activeRouteRef = useRef(activeRoute)
+  const selectedIdRef = useRef(selectedId)
+  const selectedSignalRef = useRef(selectedSignal)
+  const radarBottomRef = useRef(0)
   const styleRef = useRef(style)
   const radarModeRef = useRef(radarMode)
 
@@ -201,9 +237,12 @@ export default function MapView({
     onSelectRef.current = onSelect
     onSelectSignalRef.current = onSelectSignal
     paddingRef.current = padding
+    if (radarMode && padding.bottom > 0) radarBottomRef.current = padding.bottom
     eventsRef.current = events
     hazardsRef.current = hazards
     activeRouteRef.current = activeRoute
+    selectedIdRef.current = selectedId
+    selectedSignalRef.current = selectedSignal
     styleRef.current = style
     radarModeRef.current = radarMode
   })
@@ -217,7 +256,7 @@ export default function MapView({
     map.flyTo({
       center: [lng, lat],
       zoom,
-      padding: { top: 0, bottom, left, right },
+      padding: { top: bottom > 0 ? 44 : 0, bottom, left, right },
       duration,
       essential: true,
     })
@@ -257,56 +296,83 @@ export default function MapView({
       const fillBefore = map.getLayer('building') ? 'building' : undefined
       const lineBefore = map.getLayer('satelit-labels') ? 'satelit-labels' : undefined
       const initialPalette = indonesiaPalette(styleRef.current)
+      const wipeSources = getIndonesiaWipeSources()
 
       map.addSource('blam-indonesia', {
         type: 'geojson',
-        data: indonesiaBoundary as unknown as Parameters<GeoJSONSource['setData']>[0],
+        data: INDONESIA_GEOJSON,
       })
-      map.addLayer(
-        {
-          id: 'blam-indonesia-fill',
-          type: 'fill',
-          source: 'blam-indonesia',
-          paint: {
-            'fill-color': initialPalette.fill,
-            'fill-opacity': 0,
-            'fill-opacity-transition': { duration: 300 },
+      map.addSource('blam-indonesia-wipe-fill', {
+        type: 'geojson',
+        data: wipeSources.fill,
+      })
+      map.addSource('blam-indonesia-wipe-line', {
+        type: 'geojson',
+        data: wipeSources.line,
+      })
+
+      const addHighlightSet = (
+        prefix: 'blam-indonesia' | 'blam-indonesia-wipe',
+        fillSource: string,
+        lineSource: string,
+        hiddenInitially: boolean,
+        fadeMs: number,
+        antialias: boolean,
+      ) => {
+        const vis = hiddenInitially ? 'none' : 'visible'
+        map.addLayer(
+          {
+            id: `${prefix}-fill`,
+            type: 'fill',
+            source: fillSource,
+            layout: { visibility: vis },
+            paint: {
+              'fill-antialias': antialias,
+              'fill-color': initialPalette.fill,
+              'fill-opacity': 0,
+              'fill-opacity-transition': { duration: fadeMs },
+            },
           },
-        },
-        fillBefore,
-      )
-      map.addLayer(
-        {
-          id: 'blam-indonesia-glow',
-          type: 'line',
-          source: 'blam-indonesia',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: {
-            'line-color': initialPalette.glow,
-            'line-width': ['interpolate', ['linear'], ['zoom'], 2, 4.5, 6, 6.5, 11, 3.5],
-            'line-blur': 3,
-            'line-opacity': 0,
-            'line-opacity-transition': { duration: 300 },
+          fillBefore,
+        )
+        map.addLayer(
+          {
+            id: `${prefix}-glow`,
+            type: 'line',
+            source: lineSource,
+            layout: { visibility: vis, 'line-cap': 'round', 'line-join': 'round' },
+            paint: {
+              'line-color': initialPalette.glow,
+              'line-width': ['interpolate', ['linear'], ['zoom'], 2, 4.5, 6, 6.5, 11, 3.5],
+              'line-blur': 3,
+              'line-opacity': 0,
+              'line-opacity-transition': { duration: fadeMs },
+            },
           },
-        },
-        lineBefore,
-      )
-      map.addLayer(
-        {
-          id: 'blam-indonesia-outline',
-          type: 'line',
-          source: 'blam-indonesia',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: {
-            'line-color': initialPalette.outline,
-            'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1.4, 6, 2.2, 11, 1.2],
-            'line-opacity': 0,
-            'line-opacity-transition': { duration: 300 },
+          lineBefore,
+        )
+        map.addLayer(
+          {
+            id: `${prefix}-outline`,
+            type: 'line',
+            source: lineSource,
+            layout: { visibility: vis, 'line-cap': 'round', 'line-join': 'round' },
+            paint: {
+              'line-color': initialPalette.outline,
+              'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1.4, 6, 2.2, 11, 1.2],
+              'line-opacity': 0,
+              'line-opacity-transition': { duration: fadeMs },
+            },
           },
-        },
-        lineBefore,
-      )
-      syncIndonesiaHighlight(map, radarModeRef.current, styleRef.current)
+          lineBefore,
+        )
+      }
+
+      addHighlightSet('blam-indonesia', 'blam-indonesia', 'blam-indonesia', false, 280, true)
+      addHighlightSet('blam-indonesia-wipe', 'blam-indonesia-wipe-fill', 'blam-indonesia-wipe-line', true, 0, false)
+      setIndonesiaLayers(map, 'blam-indonesia', radarModeRef.current, styleRef.current)
+      wipeDoneRef.current = radarModeRef.current
+      prevRadarRef.current = radarModeRef.current
 
       map.addSource('blam-route', {
         type: 'geojson',
@@ -382,7 +448,17 @@ export default function MapView({
             'hazard-storm',
             'hazard-suspected',
           ],
-          'icon-size': ['step', ['get', 'point_count'], 1.12, 4, 1.28, 10, 1.45],
+          'icon-size': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            2.5,
+            ['step', ['get', 'point_count'], 0.58, 4, 0.68, 10, 0.78],
+            5.5,
+            ['step', ['get', 'point_count'], 0.78, 4, 0.9, 10, 1.04],
+            8,
+            ['step', ['get', 'point_count'], 0.96, 4, 1.12, 10, 1.28],
+          ],
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
         },
@@ -395,8 +471,8 @@ export default function MapView({
         layout: {
           'text-field': ['get', 'point_count_abbreviated'],
           'text-font': ['Noto Sans Bold'],
-          'text-size': 11,
-          'text-offset': [1.05, -1.05],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 2.5, 9, 5.5, 10.5, 8, 11.5],
+          'text-offset': [0.95, -0.95],
           'text-allow-overlap': true,
           'text-ignore-placement': true,
         },
@@ -412,7 +488,17 @@ export default function MapView({
         source: 'blam-hazards',
         filter: ['!', ['has', 'point_count']],
         paint: {
-          'circle-radius': ['interpolate', ['linear'], ['get', 'sev'], 1, 12, 3, 22],
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            2.5,
+            ['interpolate', ['linear'], ['get', 'sev'], 1, 6, 3, 10],
+            6,
+            ['interpolate', ['linear'], ['get', 'sev'], 1, 9, 3, 15],
+            9,
+            ['interpolate', ['linear'], ['get', 'sev'], 1, 12, 3, 20],
+          ],
           'circle-color': HAZARD_COLOR,
           'circle-opacity': 0.22,
         },
@@ -425,7 +511,17 @@ export default function MapView({
         filter: ['!', ['has', 'point_count']],
         layout: {
           'icon-image': ['concat', 'hazard-', ['get', 'kind']],
-          'icon-size': ['interpolate', ['linear'], ['get', 'sev'], 1, 0.72, 3, 0.96],
+          'icon-size': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            2.5,
+            ['interpolate', ['linear'], ['get', 'sev'], 1, 0.42, 3, 0.56],
+            6,
+            ['interpolate', ['linear'], ['get', 'sev'], 1, 0.58, 3, 0.74],
+            9,
+            ['interpolate', ['linear'], ['get', 'sev'], 1, 0.72, 3, 0.94],
+          ],
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
         },
@@ -481,12 +577,14 @@ export default function MapView({
         const src = map.getSource('blam-hazards') as GeoJSONSource | undefined
         if (!src || !Number.isFinite(clusterId)) return
         const [lng, lat] = feat.geometry.coordinates as [number, number]
+        const { bottom, right, left = 0 } = paddingRef.current
         void src
           .getClusterExpansionZoom(clusterId)
           .then((zoom) => {
             map.easeTo({
               center: [lng, lat],
               zoom: Math.min(zoom + 0.3, 12),
+              padding: { top: bottom > 0 ? 44 : 0, bottom, left, right },
               duration: reducedMotion() ? 0 : 600,
             })
           })
@@ -501,6 +599,9 @@ export default function MapView({
 
     const markers = markersRef.current
     return () => {
+      cancelAnimationFrame(wipeRafRef.current)
+      clearTimeout(wipeTimerRef.current)
+      if (moveEndHandlerRef.current) map.off('moveend', moveEndHandlerRef.current)
       readyRef.current = false
       ro.disconnect()
       popupRef.current?.remove()
@@ -601,7 +702,8 @@ export default function MapView({
 
   useEffect(() => {
     if (!selectedSignal) return
-    focusOn(selectedSignal.lat, selectedSignal.lng, 9.5)
+    const currentZoom = mapRef.current?.getZoom() ?? 0
+    focusOn(selectedSignal.lat, selectedSignal.lng, Math.max(currentZoom, 9.5))
   }, [selectedSignal])
 
   useEffect(() => {
@@ -618,21 +720,145 @@ export default function MapView({
   }, [fitAllSignal])
 
   useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+
+    const clearPendingWipe = () => {
+      cancelAnimationFrame(wipeRafRef.current)
+      wipeRafRef.current = 0
+      clearTimeout(wipeTimerRef.current)
+      wipeTimerRef.current = 0
+      if (moveEndHandlerRef.current) {
+        map.off('moveend', moveEndHandlerRef.current)
+        moveEndHandlerRef.current = null
+      }
+    }
+
+    const entering = radarMode && !prevRadarRef.current
+    prevRadarRef.current = radarMode
+
+    if (!radarMode) {
+      const wasRadar = prevRadarRef.current
+      const prevBottom = radarBottomRef.current
+      radarBottomRef.current = 0
+      pendingWipeRef.current = false
+      wipeDoneRef.current = false
+      clearPendingWipe()
+      hideWipeLayers(map)
+      setIndonesiaLayers(map, 'blam-indonesia-wipe', false, style)
+      setBaseTransition(map, 280)
+      setIndonesiaLayers(map, 'blam-indonesia', false, style)
+
+      if (wasRadar && prevBottom > 0 && !selectedSignalRef.current && !selectedIdRef.current) {
+        const host = hostRef.current
+        if (host && host.clientHeight > 0) {
+          const visibleCenterY = Math.round(64 + Math.max(0, host.clientHeight - 64 - prevBottom) / 2)
+          const visibleCenter = map.unproject([host.clientWidth / 2, visibleCenterY])
+          map.easeTo({
+            center: visibleCenter,
+            padding: { top: 56, bottom: 84, left: paddingRef.current.left ?? 0, right: paddingRef.current.right },
+            duration: reducedMotion() ? 0 : 480,
+          })
+        }
+      }
+      return
+    }
+
+    if (!entering) {
+      if (wipeDoneRef.current && wipeRafRef.current === 0) {
+        setIndonesiaLayers(map, 'blam-indonesia', true, style)
+      }
+      return
+    }
+
+    clearPendingWipe()
+    wipeDoneRef.current = false
+    hideWipeLayers(map)
+    setIndonesiaLayers(map, 'blam-indonesia-wipe', false, style)
+    setBaseTransition(map, 0)
+    setIndonesiaLayers(map, 'blam-indonesia', false, style)
+
+    if (reducedMotion()) {
+      pendingWipeRef.current = false
+      wipeDoneRef.current = true
+      setIndonesiaLayers(map, 'blam-indonesia', true, style)
+      return
+    }
+
+    pendingWipeRef.current = true
+  }, [radarMode, style])
+
+  useEffect(() => {
     if (fitIndonesiaSignal === 0) return
     const map = mapRef.current
     if (!map) return
     const { bottom, right, left = 0 } = paddingRef.current
+
+    const runWipe = () => {
+      if (!mapRef.current || !readyRef.current) return
+      if (!pendingWipeRef.current || !radarModeRef.current) return
+      pendingWipeRef.current = false
+      clearTimeout(wipeTimerRef.current)
+      wipeTimerRef.current = 0
+      if (moveEndHandlerRef.current) {
+        map.off('moveend', moveEndHandlerRef.current)
+        moveEndHandlerRef.current = null
+      }
+
+      setBaseTransition(map, 0)
+      setIndonesiaLayers(map, 'blam-indonesia', false, styleRef.current)
+      setIndonesiaLayers(map, 'blam-indonesia-wipe', true, styleRef.current, -WIPE_SOFTNESS)
+      let shown = false
+      const start = performance.now()
+
+      const tick = (now: number) => {
+        if (!mapRef.current || !readyRef.current || !radarModeRef.current) return
+        const raw = Math.min(1, (now - start) / WIPE_DURATION_MS)
+        const eased = 1 - Math.pow(1 - raw, 2.2)
+        const u = eased * (1 + WIPE_SOFTNESS)
+        setIndonesiaLayers(map, 'blam-indonesia-wipe', true, styleRef.current, u)
+        if (!shown) {
+          showWipeLayers(map)
+          shown = true
+        }
+        if (raw < 1) {
+          wipeRafRef.current = requestAnimationFrame(tick)
+        } else {
+          wipeRafRef.current = 0
+          wipeDoneRef.current = true
+          setBaseTransition(map, 0)
+          setIndonesiaLayers(map, 'blam-indonesia', true, styleRef.current)
+          hideWipeLayers(map)
+          setIndonesiaLayers(map, 'blam-indonesia-wipe', false, styleRef.current)
+        }
+      }
+
+      wipeRafRef.current = requestAnimationFrame(tick)
+    }
+
+    if (moveEndHandlerRef.current) {
+      map.off('moveend', moveEndHandlerRef.current)
+      moveEndHandlerRef.current = null
+    }
+    clearTimeout(wipeTimerRef.current)
+
+    const fitDuration = reducedMotion() ? 0 : 880
+    if (radarModeRef.current && pendingWipeRef.current) {
+      moveEndHandlerRef.current = runWipe
+      map.once('moveend', runWipe)
+      wipeTimerRef.current = window.setTimeout(runWipe, Math.max(0, fitDuration - 180))
+    }
+
     map.fitBounds(INDONESIA_BOUNDS, {
-      padding: { top: 68, bottom: 28 + bottom, left: 16 + left, right: 16 + right },
-      duration: reducedMotion() ? 0 : 1050,
+      padding: {
+        top: 64,
+        bottom: bottom > 0 ? 24 + bottom : 88,
+        left: 16 + left,
+        right: 16 + right,
+      },
+      duration: fitDuration,
     })
   }, [fitIndonesiaSignal])
-
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !readyRef.current) return
-    syncIndonesiaHighlight(map, radarMode, style)
-  }, [radarMode, style])
 
   useEffect(() => {
     if (locateSignal === 0) return

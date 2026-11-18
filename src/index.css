@@ -338,13 +338,13 @@ button {
 }
 
 .me-dot {
-  width: 18px;
-  height: 18px;
+  width: 13px;
+  height: 13px;
   border-radius: 9999px;
   background: var(--color-leaf);
-  border: 3px solid #fff;
+  border: 2.5px solid #fff;
   box-shadow:
-    0 0 0 6px rgba(47, 138, 87, 0.18),
+    0 0 0 4px rgba(47, 138, 87, 0.18),
     0 2px 6px rgba(19, 36, 26, 0.2);
 }
 
