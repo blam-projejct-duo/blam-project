@@ -22,6 +22,7 @@ const INDONESIA_BOUNDS: [[number, number], [number, number]] = [
 ]
 const DEFAULT_CENTER: [number, number] = [102.262, -3.8]
 const LOCATE_ZOOM = 17.2
+const FLAT_MODE_ZOOM = 4.25
 
 const WIPE_DURATION_MS = 760
 
@@ -125,15 +126,24 @@ function computeGlobeMinZoom(w: number, h: number): number {
   return Math.min(4.0, Math.max(0.5, Number(z.toFixed(2))))
 }
 
-function lockFlatOrientation(map: MapLibreMap): void {
+function normalizeAngle(deg: number): number {
+  return ((deg + 540) % 360) - 180
+}
+
+function syncFlatRotationLock(map: MapLibreMap): void {
   map.setMinPitch(0)
   map.setMaxPitch(0)
-  map.dragRotate.disable()
   map.touchPitch.disable()
-  map.touchZoomRotate.disableRotation()
   map.keyboard.disableRotation()
-  if (map.getBearing() !== 0 || map.getPitch() !== 0) {
-    map.jumpTo({ bearing: 0, pitch: 0 })
+  if (map.getZoom() >= FLAT_MODE_ZOOM) {
+    map.dragRotate.enable({ around: 'center' })
+    map.touchZoomRotate.enableRotation()
+  } else {
+    map.dragRotate.disable()
+    map.touchZoomRotate.disableRotation()
+  }
+  if (map.getPitch() !== 0) {
+    map.jumpTo({ pitch: 0 })
   }
 }
 
@@ -297,6 +307,11 @@ export default function MapView({
   const styleRef = useRef(style)
   const radarModeRef = useRef(radarMode)
   const fitIndonesiaSignalRef = useRef(fitIndonesiaSignal)
+  const rotatingRef = useRef(false)
+  const rotatedGestureRef = useRef(false)
+  const internalBearingRef = useRef(false)
+  const prevZoomRef = useRef(4.3)
+  const zoomStartRef = useRef(4.3)
 
   useEffect(() => {
     onSelectRef.current = onSelect
@@ -317,7 +332,7 @@ export default function MapView({
     styleRef.current = style
     radarModeRef.current = radarMode
     fitIndonesiaSignalRef.current = fitIndonesiaSignal
-    if (mapRef.current) lockFlatOrientation(mapRef.current)
+    if (mapRef.current) syncFlatRotationLock(mapRef.current)
   })
 
   const focusOn = (lat: number, lng: number, zoom: number, animate = true) => {
@@ -329,6 +344,8 @@ export default function MapView({
     map.flyTo({
       center: [lng, lat],
       zoom,
+      bearing: 0,
+      pitch: 0,
       offset: visualOffset(paddingRef.current),
       duration,
       essential: true,
@@ -352,7 +369,8 @@ export default function MapView({
       maxPitch: 0,
       pitchWithRotate: false,
       rollEnabled: false,
-      dragRotate: false,
+      dragRotate: { around: 'center' },
+      touchZoomRotate: true,
       touchPitch: false,
       maxTileCacheZoomLevels: 15,
       refreshExpiredTiles: false,
@@ -361,7 +379,77 @@ export default function MapView({
       attributionControl: { compact: true },
     })
 
-    lockFlatOrientation(map)
+    syncFlatRotationLock(map)
+    prevZoomRef.current = map.getZoom()
+    zoomStartRef.current = map.getZoom()
+
+    map.on('rotatestart', (e) => {
+      if (!e.originalEvent || internalBearingRef.current) return
+      rotatingRef.current = true
+      rotatedGestureRef.current = true
+    })
+
+    map.on('rotateend', () => {
+      rotatingRef.current = false
+    })
+
+    map.on('zoomstart', () => {
+      const z = map.getZoom()
+      zoomStartRef.current = z
+      prevZoomRef.current = z
+      if (!rotatingRef.current) rotatedGestureRef.current = false
+    })
+
+    map.on('zoom', () => {
+      syncFlatRotationLock(map)
+      const z = map.getZoom()
+      const dz = z - prevZoomRef.current
+      prevZoomRef.current = z
+      if (internalBearingRef.current || rotatingRef.current || map.isZooming() || Math.abs(dz) < 1e-4) return
+
+      const b = normalizeAngle(map.getBearing())
+      if (Math.abs(b) <= 0.05) return
+
+      let nextB = b
+      if (z < FLAT_MODE_ZOOM) {
+        nextB = 0
+      } else if (dz < 0) {
+        const decayed = b * Math.pow(0.14, -dz)
+        nextB = Math.abs(decayed) < 0.8 ? 0 : decayed
+      } else {
+        const decayed = b * Math.pow(0.72, dz)
+        nextB = Math.abs(decayed) < 0.4 ? 0 : decayed
+      }
+
+      if (nextB !== b) {
+        internalBearingRef.current = true
+        try {
+          map.setBearing(nextB)
+        } finally {
+          internalBearingRef.current = false
+        }
+      }
+    })
+
+    map.on('zoomend', () => {
+      syncFlatRotationLock(map)
+      const wasRotating = rotatingRef.current || rotatedGestureRef.current
+      rotatedGestureRef.current = false
+      if (internalBearingRef.current || wasRotating) return
+
+      const b = normalizeAngle(map.getBearing())
+      if (Math.abs(b) <= 0.1) return
+
+      const netDz = map.getZoom() - zoomStartRef.current
+      if (map.getZoom() < FLAT_MODE_ZOOM || netDz < -0.04) {
+        map.easeTo({
+          bearing: 0,
+          pitch: 0,
+          duration: reducedMotion() ? 0 : 180,
+          essential: true,
+        })
+      }
+    })
 
     mapRef.current = map
     readyRef.current = false
@@ -982,8 +1070,26 @@ export default function MapView({
     if (!zoomCommand) return
     const map = mapRef.current
     if (!map) return
-    if (zoomCommand.dir > 0) map.zoomIn()
-    else map.zoomOut()
+    const duration = reducedMotion() ? 0 : 280
+    if (zoomCommand.dir > 0) {
+      const b = normalizeAngle(map.getBearing())
+      const nextB = Math.abs(b) < 0.8 ? 0 : b * 0.72
+      map.easeTo({
+        zoom: Math.min(map.getMaxZoom(), map.getZoom() + 1),
+        bearing: nextB,
+        pitch: 0,
+        duration,
+        essential: true,
+      })
+    } else {
+      map.easeTo({
+        zoom: Math.max(map.getMinZoom(), map.getZoom() - 1),
+        bearing: 0,
+        pitch: 0,
+        duration,
+        essential: true,
+      })
+    }
   }, [zoomCommand])
 
   return <div ref={hostRef} data-style={style} className="h-full w-full" />
