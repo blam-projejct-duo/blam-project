@@ -290,15 +290,21 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
     void anim.start({ y: snapY[targetKey], opacity: targetKey === 'closed' ? 0 : 1 }, SPRING)
   }, [anim, snapY, targetKey, H])
 
+  const { setSelectedId, setSelectedSignal, fitIndonesia } = radar
+
   const closeSheet = useCallback(() => {
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur()
+    }
+    if (mode === 'detail' || mode === 'signal') {
+      setSelectedId(null)
+      setSelectedSignal(null)
     }
     setFocusSearch(false)
     setMode(null)
     if (rootRef.current) rootRef.current.scrollTop = 0
     window.scrollTo(0, 0)
-  }, [])
+  }, [mode, setSelectedId, setSelectedSignal])
 
   useEffect(() => {
     if (mode === null) return
@@ -331,11 +337,13 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   }
 
   const openRadar = () => {
+    setSelectedId(null)
+    setSelectedSignal(null)
     setMenuOpen(false)
     setFocusSearch(false)
     setMode('radar')
     setSnap('half')
-    radar.fitIndonesia()
+    fitIndonesia()
   }
 
   const startCreateEvent = (report: CitizenReport | null = null, signal: SatelliteSignal | null = null) => {
