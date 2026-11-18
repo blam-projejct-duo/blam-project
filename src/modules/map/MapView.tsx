@@ -7,6 +7,7 @@ import type { ConservationEvent, MapStyle, SatelliteSignal } from '../../types'
 import type { ActiveRoute } from './directions'
 import { hazardToSignal, severityRank } from './hotspotCluster'
 import type { HazardPoint } from './hotspotCluster'
+import indonesiaBoundary from './indonesiaBoundary.json'
 import { applyMapStyle, createInitialMapStyle } from './mapStyles'
 import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from './radarFilters'
 
@@ -19,6 +20,35 @@ const INDONESIA_BOUNDS: [[number, number], [number, number]] = [
 ]
 const DEFAULT_CENTER: [number, number] = [102.262, -3.8]
 const LOCATE_ZOOM = 17.2
+
+function indonesiaPalette(style: MapStyle) {
+  return style === 'terang'
+    ? { fill: '#4664FF', glow: '#3B5BFF', outline: '#243AE6', fillPeak: 0.44, outlinePeak: 0.92 }
+    : { fill: '#3B82F6', glow: '#60A5FA', outline: '#60A5FA', fillPeak: 0.4, outlinePeak: 0.94 }
+}
+
+function syncIndonesiaHighlight(map: MapLibreMap, active: boolean, style: MapStyle): void {
+  if (!map.getLayer('blam-indonesia-fill')) return
+  const c = indonesiaPalette(style)
+  map.setPaintProperty('blam-indonesia-fill', 'fill-color', c.fill)
+  map.setPaintProperty(
+    'blam-indonesia-fill',
+    'fill-opacity',
+    active ? ['interpolate', ['linear'], ['zoom'], 6.5, c.fillPeak, 11, 0.14, 13.5, 0] : 0,
+  )
+  map.setPaintProperty('blam-indonesia-glow', 'line-color', c.glow)
+  map.setPaintProperty(
+    'blam-indonesia-glow',
+    'line-opacity',
+    active ? ['interpolate', ['linear'], ['zoom'], 6.5, 0.22, 11, 0.08, 13.5, 0] : 0,
+  )
+  map.setPaintProperty('blam-indonesia-outline', 'line-color', c.outline)
+  map.setPaintProperty(
+    'blam-indonesia-outline',
+    'line-opacity',
+    active ? ['interpolate', ['linear'], ['zoom'], 6.5, c.outlinePeak, 11, 0.45, 13.5, 0] : 0,
+  )
+}
 
 export interface MapPadding {
   bottom: number
@@ -219,27 +249,59 @@ export default function MapView({
     map.once('load', () => {
       readyRef.current = true
 
-      map.addSource('blam-radar-tint', {
+      const fillBefore = map.getLayer('building') ? 'building' : undefined
+      const lineBefore = map.getLayer('satelit-labels') ? 'satelit-labels' : undefined
+      const initialPalette = indonesiaPalette(styleRef.current)
+
+      map.addSource('blam-indonesia', {
         type: 'geojson',
-        data: {
-          type: 'Feature',
-          geometry: {
-            type: 'Polygon',
-            coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]],
+        data: indonesiaBoundary as unknown as Parameters<GeoJSONSource['setData']>[0],
+      })
+      map.addLayer(
+        {
+          id: 'blam-indonesia-fill',
+          type: 'fill',
+          source: 'blam-indonesia',
+          paint: {
+            'fill-color': initialPalette.fill,
+            'fill-opacity': 0,
+            'fill-opacity-transition': { duration: 300 },
           },
-          properties: {},
         },
-      })
-      map.addLayer({
-        id: 'blam-radar-tint',
-        type: 'fill',
-        source: 'blam-radar-tint',
-        paint: {
-          'fill-color': '#2563EB',
-          'fill-opacity': radarModeRef.current ? 0.28 : 0,
-          'fill-opacity-transition': { duration: 300 },
+        fillBefore,
+      )
+      map.addLayer(
+        {
+          id: 'blam-indonesia-glow',
+          type: 'line',
+          source: 'blam-indonesia',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': initialPalette.glow,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 2, 4.5, 6, 6.5, 11, 3.5],
+            'line-blur': 3,
+            'line-opacity': 0,
+            'line-opacity-transition': { duration: 300 },
+          },
         },
-      })
+        lineBefore,
+      )
+      map.addLayer(
+        {
+          id: 'blam-indonesia-outline',
+          type: 'line',
+          source: 'blam-indonesia',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': initialPalette.outline,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1.4, 6, 2.2, 11, 1.2],
+            'line-opacity': 0,
+            'line-opacity-transition': { duration: 300 },
+          },
+        },
+        lineBefore,
+      )
+      syncIndonesiaHighlight(map, radarModeRef.current, styleRef.current)
 
       map.addSource('blam-route', {
         type: 'geojson',
@@ -554,9 +616,9 @@ export default function MapView({
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !readyRef.current || !map.getLayer('blam-radar-tint')) return
-    map.setPaintProperty('blam-radar-tint', 'fill-opacity', radarMode ? 0.28 : 0)
-  }, [radarMode])
+    if (!map || !readyRef.current) return
+    syncIndonesiaHighlight(map, radarMode, style)
+  }, [radarMode, style])
 
   useEffect(() => {
     if (locateSignal === 0) return
