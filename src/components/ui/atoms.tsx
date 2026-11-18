@@ -51,9 +51,28 @@ export function EcoIcon({
   return <Icon className={className} strokeWidth={2} aria-label={ECOSYSTEM_LABEL[ecosystem]} />
 }
 
+export function DashedOutline({ rx = 19 }: { rx?: number }) {
+  return (
+    <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
+      <rect
+        x="0.75"
+        y="0.75"
+        rx={rx}
+        ry={rx}
+        fill="none"
+        stroke="rgba(47, 138, 87, 0.24)"
+        strokeWidth="1.5"
+        strokeDasharray="10 7"
+        strokeLinecap="round"
+        style={{ width: 'calc(100% - 1.5px)', height: 'calc(100% - 1.5px)' }}
+      />
+    </svg>
+  )
+}
+
 export function EcoBadge({ ecosystem }: { ecosystem: Ecosystem }) {
   return (
-    <span className="grid size-11 shrink-0 place-items-center rounded-[14px] border border-line bg-canvas text-ink-soft">
+    <span className="grid size-11 shrink-0 place-items-center rounded-[14px] border-[1.5px] border-leaf/30 bg-white text-forest">
       <EcoIcon ecosystem={ecosystem} />
     </span>
   )
@@ -120,7 +139,7 @@ export function Pill({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas px-3 py-1 text-xs font-bold text-ink ${className}`}
+      className={`font-display inline-flex items-center gap-1.5 rounded-full border-[1.5px] border-dashed border-leaf/30 bg-mint/35 px-3 py-1 text-xs font-semibold text-forest ${className}`}
     >
       {children}
     </span>
@@ -160,7 +179,7 @@ export function ModalShell({
             type="button"
             onClick={onClose}
             aria-label="Tutup"
-            className="grid size-10 place-items-center rounded-full border border-line bg-canvas text-ink hover:bg-muted"
+            className="grid size-10 place-items-center rounded-full border-[1.5px] border-dashed border-leaf/30 bg-canvas text-forest hover:bg-mint/40"
           >
             <X className="size-4" />
           </button>

@@ -64,7 +64,7 @@ export default function VerificationRadarPanel({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-extrabold tracking-tight text-ink">Verifikasi</h2>
+        <h2 className="text-[22px] font-bold tracking-tight text-ink">Verifikasi</h2>
         <button
           type="button"
           onClick={onCreateStandaloneEvent}
@@ -81,8 +81,10 @@ export default function VerificationRadarPanel({
             key={t.id}
             type="button"
             onClick={() => setFilter(t.id)}
-            className={`h-9 rounded-full px-3.5 text-xs font-bold transition-colors ${
-              filter === t.id ? 'bg-ink text-white' : 'border border-line bg-white text-ink-soft hover:text-ink'
+            className={`font-display h-9 rounded-full px-3.5 text-xs font-semibold transition-colors ${
+              filter === t.id
+                ? 'bg-leaf text-white'
+                : 'border-[1.5px] border-dashed border-leaf/30 bg-white text-ink-soft hover:text-forest'
             }`}
           >
             {t.label}
@@ -122,7 +124,7 @@ export default function VerificationRadarPanel({
             const canCreateEvent = r.status === 'verified' || r.status === 'escalated'
             const isPending = r.status === 'pending_verification' || r.status === 'escalated'
             return (
-              <article key={r.id} className="overflow-hidden rounded-[20px] border border-line bg-white">
+              <article key={r.id} className="capsule-dashed overflow-hidden rounded-[20px]">
                 {r.before_image_url && (
                   <div className="relative aspect-[16/9] w-full bg-muted">
                     <img src={r.before_image_url} alt={r.title} className="size-full object-cover" />

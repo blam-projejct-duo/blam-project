@@ -1,13 +1,13 @@
 import { ChevronDown, Droplets, Flame, Mountain, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ECOSYSTEM_FILTERS, EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
-import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from '../../modules/map/radarFilters'
-import { EcoBadge } from '../ui/atoms'
+import { formatFloodRiskLabel, formatSignalSource } from '../../modules/map/radarFilters'
+import { DashedOutline, EcoBadge } from '../ui/atoms'
 import type { ConservationEvent, Ecosystem, HazardKind, SatelliteSignal } from '../../types'
 
-type ListTab = 'Disarankan' | 'Terbaru' | 'Dampak' | 'Satelit'
+type ListTab = 'Utama' | 'Terbaru' | 'Dampak' | 'Satelit'
 
-const TABS: ListTab[] = ['Disarankan', 'Terbaru', 'Dampak', 'Satelit']
+const TABS: ListTab[] = ['Utama', 'Terbaru', 'Dampak', 'Satelit']
 const DOT = { critical: 'bg-critical', progress: 'bg-progress', resolved: 'bg-resolved' } as const
 const RANK = { open: 0, in_progress: 1, resolved: 2, cancelled: 3 } as const
 
@@ -21,11 +21,12 @@ function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListT
         : shortLocation(event.location_name)
 
   return (
-    <li className="dashed-row">
-      <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 py-3.5 text-left">
+    <li className="relative rounded-[20px] bg-[#f7faf6] transition-colors hover:bg-mint/30">
+      <DashedOutline rx={19} />
+      <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
         <EcoBadge ecosystem={event.ecosystem} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold text-ink">{event.title}</span>
+          <span className="font-display block truncate text-[15px] font-semibold text-ink">{event.title}</span>
           <span className="block truncate text-[13px] text-ink-soft">{meta}</span>
         </span>
         <span
@@ -66,23 +67,23 @@ function SignalRow({
 }) {
   const sourceLabel = formatSignalSource(signal.source)
   const riskLabel = formatFloodRiskLabel(signal)
-  const dateLabel = formatSignalDate(signal)
   const meta = linked
-    ? `${sourceLabel} · Ada Event`
-    : `${sourceLabel} · ${riskLabel ?? signal.categoryLabel}${dateLabel ? ` · ${dateLabel}` : ''}`
+    ? `${sourceLabel} · Ada Aksi`
+    : `${sourceLabel} · ${riskLabel ?? signal.categoryLabel}`
   const kind = signal.kind ?? 'suspected'
   const SignalIcon = kind === 'flood' ? Droplets : kind === 'volcano' ? Mountain : Flame
 
   return (
-    <li className="dashed-row">
-      <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 py-3.5 text-left">
+    <li className="relative rounded-[20px] bg-[#f7faf6] transition-colors hover:bg-mint/30">
+      <DashedOutline rx={19} />
+      <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
         <span
-          className={`grid size-11 shrink-0 place-items-center rounded-[14px] border border-line bg-canvas ${SIGNAL_TEXT_COLOR[kind]}`}
+          className={`grid size-11 shrink-0 place-items-center rounded-[14px] border-[1.5px] border-leaf/25 bg-white ${SIGNAL_TEXT_COLOR[kind]}`}
         >
           <SignalIcon className="size-5" strokeWidth={2} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold text-ink">{signal.title}</span>
+          <span className="font-display block truncate text-[15px] font-semibold text-ink">{signal.title}</span>
           <span className="block truncate text-[13px] text-ink-soft">{meta}</span>
         </span>
         <span
@@ -104,6 +105,8 @@ export default function EventListPanel({
   onEcosystemChange,
   showSearch = true,
   autoFocus = false,
+  title = 'Aksi',
+  onExpand,
   onOpen,
   onOpenSignal,
 }: {
@@ -116,10 +119,12 @@ export default function EventListPanel({
   onEcosystemChange?: (next: Ecosystem | 'all') => void
   showSearch?: boolean
   autoFocus?: boolean
+  title?: string
+  onExpand?: () => void
   onOpen: (id: string) => void
   onOpenSignal?: (signal: SatelliteSignal) => void
 }) {
-  const [tab, setTab] = useState<ListTab>('Disarankan')
+  const [tab, setTab] = useState<ListTab>('Utama')
   const [filterOpen, setFilterOpen] = useState(false)
   const filterWrapRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -189,78 +194,113 @@ export default function EventListPanel({
   }, [events, impactEvents, tab, query])
 
   const shownSignals =
-    tab === 'Satelit' ? filteredSignals : tab === 'Disarankan' && onOpenSignal ? filteredSignals.slice(0, 4) : []
+    tab === 'Satelit' ? filteredSignals : tab === 'Utama' && onOpenSignal ? filteredSignals.slice(0, 4) : []
 
   return (
     <div>
+      {!onEcosystemChange && (
+        <h2 className="mb-3 text-[22px] font-bold tracking-tight text-ink">{title}</h2>
+      )}
+
       {showSearch && (
-        <label className="flex h-12 items-center gap-2.5 rounded-full bg-canvas px-4">
-          <Search className="size-4.5 shrink-0 text-ink-soft" />
+        <label className="flex h-11 items-center gap-2.5 rounded-full bg-[#f3f6f2] px-4 transition-colors focus-within:bg-mint/35">
+          <Search className="size-4.5 shrink-0 text-leaf" />
           <input
             ref={searchRef}
             value={query}
+            onFocus={() => onExpand?.()}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Cari lokasi"
-            className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-soft"
+            placeholder="Cari"
+            className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none focus:outline-none focus-visible:outline-none placeholder:text-ink-soft"
           />
           {query && (
-            <button type="button" aria-label="Hapus" onClick={() => onQueryChange('')}>
+            <button
+              type="button"
+              aria-label="Hapus"
+              onClick={() => {
+                onExpand?.()
+                onQueryChange('')
+              }}
+            >
               <X className="size-4 text-ink-soft" />
             </button>
           )}
         </label>
       )}
 
-      <div ref={filterWrapRef} className={`relative ${showSearch ? 'mt-4' : ''}`}>
-        <button
-          type="button"
-          aria-expanded={filterOpen}
-          aria-haspopup="listbox"
-          onClick={() => setFilterOpen((v) => !v)}
-          className="flex h-11 w-full items-center justify-between gap-2 rounded-full border border-line bg-canvas px-4 text-left transition-colors hover:bg-muted/70"
-        >
-          <span className="flex min-w-0 items-center gap-2">
-            <SlidersHorizontal className="size-4 shrink-0 text-ink-soft" strokeWidth={2.25} />
-            <span className="truncate text-[13px] font-bold text-ink">
-              {tab}
-              {onEcosystemChange && ecosystemFilter && ecosystemFilter !== 'all'
-                ? ` · ${activeEcosystemLabel}`
-                : ''}
+      {!onEcosystemChange ? (
+        <div role="tablist" className={`flex items-center gap-1 overflow-x-auto ${showSearch ? 'mt-3' : ''}`}>
+          {TABS.map((t) => {
+            const active = tab === t
+            return (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => {
+                  onExpand?.()
+                  setTab(t)
+                }}
+                className={`font-display h-8 shrink-0 rounded-full px-3 text-[12px] whitespace-nowrap transition-colors ${
+                  active
+                    ? 'bg-mint/70 font-semibold text-forest'
+                    : 'font-medium text-ink-soft hover:text-forest'
+                }`}
+              >
+                {t}
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <div ref={filterWrapRef} className={`relative ${showSearch ? 'mt-4' : ''}`}>
+          <button
+            type="button"
+            aria-expanded={filterOpen}
+            aria-haspopup="listbox"
+            onClick={() => setFilterOpen((v) => !v)}
+            className="capsule-dashed flex h-11 w-full items-center justify-between gap-2 rounded-full px-4 text-left transition-colors hover:bg-mint/25"
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <SlidersHorizontal className="size-4 shrink-0 text-leaf" strokeWidth={2.25} />
+              <span className="font-display truncate text-[13px] font-semibold text-ink">
+                {tab}
+                {ecosystemFilter && ecosystemFilter !== 'all' ? ` · ${activeEcosystemLabel}` : ''}
+              </span>
             </span>
-          </span>
-          <ChevronDown
-            className={`size-4 shrink-0 text-ink-soft transition-transform duration-200 ${filterOpen ? 'rotate-180' : ''}`}
-          />
-        </button>
+            <ChevronDown
+              className={`size-4 shrink-0 text-ink-soft transition-transform duration-200 ${filterOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
 
-        {filterOpen && (
-          <div className="mt-2 flex flex-col gap-3 rounded-card border border-line bg-white p-3.5">
-            <div>
-              <p className="mb-2 text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
-                Tampilan Radar
-              </p>
-              <div role="tablist" className="grid grid-cols-2 gap-1.5">
-                {TABS.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === t}
-                    onClick={() => {
-                      setTab(t)
-                      setFilterOpen(false)
-                    }}
-                    className={`h-9 rounded-full px-3 text-[13px] font-bold transition-colors ${
-                      tab === t ? 'bg-ink text-white' : 'bg-canvas text-ink hover:bg-muted'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
+          {filterOpen && (
+            <div className="capsule-dashed mt-2 flex flex-col gap-3 rounded-[20px] bg-white p-3.5">
+              <div>
+                <p className="mb-2 text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
+                  Tampilan Radar
+                </p>
+                <div role="tablist" className="grid grid-cols-2 gap-1.5">
+                  {TABS.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      role="tab"
+                      aria-selected={tab === t}
+                      onClick={() => {
+                        setTab(t)
+                        setFilterOpen(false)
+                      }}
+                      className={`font-display h-9 rounded-full px-3 text-[13px] font-semibold transition-colors ${
+                        tab === t ? 'bg-leaf text-white' : 'capsule-dashed text-ink hover:bg-mint/30'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {onEcosystemChange && (
               <div className="border-t-[1.5px] border-dashed border-dash pt-3">
                 <p className="mb-2 text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
                   Ekosistem
@@ -277,8 +317,8 @@ export default function EventListPanel({
                           onEcosystemChange(f.id)
                           setFilterOpen(false)
                         }}
-                        className={`h-8 rounded-full px-3 text-[12px] font-bold transition-colors ${
-                          active ? 'bg-ink text-white' : 'bg-canvas text-ink hover:bg-muted'
+                        className={`font-display h-8 rounded-full px-3 text-[12px] font-semibold transition-colors ${
+                          active ? 'bg-leaf text-white' : 'capsule-dashed text-ink hover:bg-mint/30'
                         }`}
                       >
                         {f.label}
@@ -287,13 +327,13 @@ export default function EventListPanel({
                   })}
                 </div>
               </div>
-            )}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {rows.length > 0 && (
-        <ul className="mt-2">
+        <ul className="mt-3 flex flex-col gap-2.5">
           {rows.map((ev) => (
             <EventRow key={ev.id} event={ev} tab={tab} onOpen={() => onOpen(ev.id)} />
           ))}
@@ -301,22 +341,25 @@ export default function EventListPanel({
       )}
 
       {shownSignals.length > 0 && onOpenSignal && (
-        <div className={rows.length > 0 ? 'mt-4 border-t-[1.5px] border-dashed border-dash pt-3' : 'mt-2'}>
-          <div className="mb-1 flex items-center justify-between">
-            <p className="text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
-              {tab === 'Satelit' ? `Sinyal Satelit (${filteredSignals.length})` : 'Sinyal Satelit'}
+        <div className={rows.length > 0 ? 'mt-4 border-t-[1.5px] border-dashed border-dash pt-3.5' : 'mt-3'}>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="font-display text-[11px] font-semibold tracking-wider text-ink-soft uppercase">
+              {tab === 'Satelit' ? `Satelit (${filteredSignals.length})` : 'Satelit'}
             </p>
-            {tab === 'Disarankan' && filteredSignals.length > shownSignals.length && (
+            {tab === 'Utama' && filteredSignals.length > shownSignals.length && (
               <button
                 type="button"
-                onClick={() => setTab('Satelit')}
-                className="text-[11px] font-bold text-cobalt hover:underline"
+                onClick={() => {
+                  onExpand?.()
+                  setTab('Satelit')
+                }}
+                className="font-display text-[11px] font-semibold text-leaf hover:underline"
               >
                 Lihat semua ({filteredSignals.length})
               </button>
             )}
           </div>
-          <ul>
+          <ul className="flex flex-col gap-2.5">
             {shownSignals.map((sig) => (
               <SignalRow
                 key={sig.id}

@@ -27,6 +27,7 @@ export function useRadar(currentUserId?: string | null) {
   const [routeLoading, setRouteLoading] = useState(false)
   const [routeError, setRouteError] = useState<string | null>(null)
   const [fitAllSignal, setFitAllSignal] = useState(0)
+  const [fitIndonesiaSignal, setFitIndonesiaSignal] = useState(0)
   const [locateSignal, setLocateSignal] = useState(0)
   const [zoomCommand, setZoomCommand] = useState<ZoomCommand | null>(null)
 
@@ -232,9 +233,11 @@ export function useRadar(currentUserId?: string | null) {
     joinedIds,
     joinAction,
     fitAll: () => setFitAllSignal((n) => n + 1),
+    fitIndonesia: () => setFitIndonesiaSignal((n) => n + 1),
     locate: () => setLocateSignal((n) => n + 1),
     zoom: (dir: 1 | -1) => setZoomCommand((c) => ({ id: (c?.id ?? 0) + 1, dir })),
     fitAllSignal,
+    fitIndonesiaSignal,
     locateSignal,
     zoomCommand,
   }

@@ -10,10 +10,10 @@ export default function ProfilePanel() {
   if (!profile) {
     return (
       <div className="flex flex-col gap-4">
-        <h2 className="text-xl font-extrabold tracking-tight text-ink">
+        <h2 className="text-[22px] font-bold tracking-tight text-ink">
           {isDemo ? 'Peran Demo' : 'Masuk'}
         </h2>
-        <div className="rounded-[20px] border border-line bg-white p-5">
+        <div className="capsule-dashed rounded-[20px] p-5">
           <AuthPanel />
         </div>
       </div>
@@ -22,15 +22,15 @@ export default function ProfilePanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="rounded-[20px] border border-line bg-white p-5">
+      <section className="capsule-dashed rounded-[20px] p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <Pill>{ROLE_LABEL[profile.role]}</Pill>
-            <h2 className="mt-2 truncate text-xl font-extrabold text-ink">{profile.full_name}</h2>
+            <h2 className="mt-2 truncate text-[22px] font-bold text-ink">{profile.full_name}</h2>
             {profile.email && <p className="truncate text-xs text-ink-soft">{profile.email}</p>}
           </div>
           <div className="text-right">
-            <p className="num text-2xl text-ink">{profile.points}</p>
+            <p className="num text-2xl text-forest">{profile.points}</p>
             <p className="text-[11px] font-bold text-ink-soft">Poin</p>
           </div>
         </div>
@@ -40,7 +40,7 @@ export default function ProfilePanel() {
             <button
               type="button"
               onClick={openAuthModal}
-              className="h-10 flex-1 rounded-full border border-line bg-canvas text-xs font-bold text-ink"
+              className="font-display h-10 flex-1 rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white text-xs font-semibold text-forest hover:bg-mint/30"
             >
               Ganti Peran
             </button>
@@ -48,15 +48,15 @@ export default function ProfilePanel() {
           <button
             type="button"
             onClick={() => void logout()}
-            className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-4 text-xs font-bold text-ink-soft ${isDemo ? '' : 'flex-1'}`}
+            className={`font-display inline-flex h-10 items-center justify-center gap-1.5 rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white px-4 text-xs font-semibold text-ink-soft hover:text-forest ${isDemo ? '' : 'flex-1'}`}
           >
             <LogOut className="size-3.5" /> Keluar
           </button>
         </div>
       </section>
 
-      <section className="rounded-[20px] border border-line bg-white p-4">
-        <p className="text-xs font-extrabold text-ink-soft uppercase">Organisasi ({memberships.length})</p>
+      <section className="capsule-dashed rounded-[20px] p-4">
+        <p className="font-display text-xs font-semibold text-ink-soft uppercase">Organisasi ({memberships.length})</p>
         {memberships.length === 0 ? (
           <p className="mt-2 text-xs font-medium text-ink-soft">Kosong</p>
         ) : (
@@ -76,8 +76,8 @@ export default function ProfilePanel() {
         )}
       </section>
 
-      <section className="rounded-[20px] border border-line bg-white p-4">
-        <p className="text-xs font-extrabold text-ink-soft uppercase">Notifikasi ({notifications.length})</p>
+      <section className="capsule-dashed rounded-[20px] p-4">
+        <p className="font-display text-xs font-semibold text-ink-soft uppercase">Notifikasi ({notifications.length})</p>
         {notifications.length === 0 ? (
           <p className="mt-2 text-xs font-medium text-ink-soft">Kosong</p>
         ) : (

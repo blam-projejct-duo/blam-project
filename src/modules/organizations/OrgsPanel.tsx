@@ -8,7 +8,7 @@ import type { OrgType } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 
 const field =
-  'h-11 w-full rounded-full border border-line bg-canvas px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-cobalt focus:bg-white focus:outline-none'
+  'h-11 w-full rounded-full border-[1.5px] border-dashed border-leaf/30 bg-canvas px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-leaf focus:bg-white focus:outline-none'
 
 export default function OrgsPanel() {
   const queryClient = useQueryClient()
@@ -93,7 +93,7 @@ export default function OrgsPanel() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-extrabold tracking-tight text-ink">Organisasi</h2>
+        <h2 className="text-[22px] font-bold tracking-tight text-ink">Organisasi</h2>
         <button
           type="button"
           onClick={() => (profile ? setShowCreate((v) => !v) : openAuthModal())}
@@ -105,7 +105,7 @@ export default function OrgsPanel() {
       </div>
 
       {showCreate && (
-        <div className="flex flex-col gap-3 rounded-[20px] border border-line bg-white p-4">
+        <div className="capsule-dashed flex flex-col gap-3 rounded-[20px] p-4">
           <input className={field} placeholder="Nama organisasi" value={name} onChange={(e) => setName(e.target.value)} />
           <div className="flex gap-2">
             {(['community', 'agency'] as const).map((t) => (
@@ -113,8 +113,10 @@ export default function OrgsPanel() {
                 key={t}
                 type="button"
                 onClick={() => setType(t)}
-                className={`h-10 flex-1 rounded-full border text-xs font-bold ${
-                  type === t ? 'border-ink bg-ink text-white' : 'border-line bg-canvas text-ink'
+                className={`font-display h-10 flex-1 rounded-full text-xs font-semibold transition-colors ${
+                  type === t
+                    ? 'bg-leaf text-white'
+                    : 'border-[1.5px] border-dashed border-leaf/30 bg-white text-ink hover:bg-mint/30'
                 }`}
               >
                 {t === 'community' ? 'Komunitas' : 'Instansi'}
@@ -153,7 +155,7 @@ export default function OrgsPanel() {
             const lead = isLeadOf(org.id)
             const members = org.members ?? []
             return (
-              <section key={org.id} className="rounded-[20px] border border-line bg-white p-4">
+              <section key={org.id} className="capsule-dashed rounded-[20px] p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
