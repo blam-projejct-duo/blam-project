@@ -21,7 +21,7 @@ export function useRadar(currentUserId?: string | null) {
   const queryClient = useQueryClient()
   const [deepLinkedId] = useState<string | null>(readInitialEventParam)
   const [filter, setFilterState] = useState<Ecosystem | 'all'>('all')
-  const [style, setStyle] = useState<MapStyle>('terang')
+  const [style, setStyle] = useState<MapStyle>('satelit')
   const [selectedId, setSelectedIdState] = useState<string | null>(() => readInitialEventParam())
   const [selectedSignal, setSelectedSignalState] = useState<SatelliteSignal | null>(null)
   const [fitAllSignal, setFitAllSignal] = useState(0)
