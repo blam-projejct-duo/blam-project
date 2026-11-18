@@ -18,25 +18,26 @@ import {
   User,
   X,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Orb } from '../ui/atoms'
 import { mapEventTone } from '../../lib/constants'
-import AdminPanel from '../../modules/admin/AdminPanel'
-import AgencyInboxPanel from '../../modules/agency/AgencyInboxPanel'
 import { useAuth } from '../../modules/auth/AuthContext'
-import CreateEventForm from '../../modules/events/CreateEventForm'
-import EventDetail from '../../modules/events/EventDetail'
-import SatelliteSignalDetail from '../../modules/events/SatelliteSignalDetail'
 import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
 import MapView from '../../modules/map/MapView'
 import type { Radar } from '../../modules/map/useRadar'
-import OrgsPanel from '../../modules/organizations/OrgsPanel'
-import ProfilePanel from '../../modules/profile/ProfilePanel'
-import QuickReportFlow from '../../modules/reports/QuickReportFlow'
-import VerificationRadarPanel from '../../modules/reports/VerificationRadarPanel'
 import type { CitizenReport, PinTone, SatelliteSignal } from '../../types'
 import EventListPanel from './EventListPanel'
+
+const AdminPanel = lazy(() => import('../../modules/admin/AdminPanel'))
+const AgencyInboxPanel = lazy(() => import('../../modules/agency/AgencyInboxPanel'))
+const CreateEventForm = lazy(() => import('../../modules/events/CreateEventForm'))
+const EventDetail = lazy(() => import('../../modules/events/EventDetail'))
+const SatelliteSignalDetail = lazy(() => import('../../modules/events/SatelliteSignalDetail'))
+const OrgsPanel = lazy(() => import('../../modules/organizations/OrgsPanel'))
+const ProfilePanel = lazy(() => import('../../modules/profile/ProfilePanel'))
+const QuickReportFlow = lazy(() => import('../../modules/reports/QuickReportFlow'))
+const VerificationRadarPanel = lazy(() => import('../../modules/reports/VerificationRadarPanel'))
 
 type NavTab = 'Radar' | 'Lapor' | 'Dampak' | 'Org' | 'Verifikasi' | 'Event' | 'Eskalasi' | 'Admin'
 type Tab = NavTab | 'Profil'
@@ -406,91 +407,93 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         className={`absolute inset-y-0 z-[600] flex flex-col border-r border-line transition-transform duration-300 ease-[var(--ease-spring)] ${tab === 'Radar' ? 'bg-white' : 'bg-canvas'
           } ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        {tab === 'Radar' && radarBody()}
+        <Suspense fallback={<div className="p-5 text-xs font-bold text-ink-soft">Memuat panel…</div>}>
+          {tab === 'Radar' && radarBody()}
 
-        {tab === 'Lapor' && (
-          <QuickReportFlow
-            onClose={() => setTab('Radar')}
-            onOpenVerification={() => openTab('Verifikasi')}
-          />
-        )}
-
-        {tab === 'Event' && (
-          <CreateEventForm
-            key={draftReport?.id ?? draftSignal?.id ?? 'standalone'}
-            initialReport={draftReport}
-            initialSignal={draftSignal}
-            onClose={() => {
-              setDraftReport(null)
-              setDraftSignal(null)
-              setTab('Radar')
-            }}
-            onCreated={async (id) => {
-              setDraftReport(null)
-              setDraftSignal(null)
-              radar.setFilter('all')
-              await radar.refresh()
-              openDetail(id)
-            }}
-          />
-        )}
-
-        {tab === 'Verifikasi' && (
-          <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <VerificationRadarPanel
-              onCreateEvent={(report) => startCreateEvent(report)}
-              onCreateStandaloneEvent={() => startCreateEvent(null)}
+          {tab === 'Lapor' && (
+            <QuickReportFlow
+              onClose={() => setTab('Radar')}
+              onOpenVerification={() => openTab('Verifikasi')}
             />
-          </div>
-        )}
+          )}
 
-        {tab === 'Dampak' && (
-          <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <h2 className="mb-4 text-xl font-extrabold tracking-tight text-ink">Dampak</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                ['Event', impactStats.total],
-                ['Pulih', impactStats.resolved],
-                ['Sampah (kg)', impactStats.wasteKg],
-                ['Bibit', impactStats.trees],
-              ].map(([label, val]) => (
-                <div key={label} className="rounded-card border border-line bg-white p-5">
-                  <p className="num text-3xl text-ink">{val}</p>
-                  <p className="mt-1 text-xs font-bold text-ink-soft">{label}</p>
-                </div>
-              ))}
+          {tab === 'Event' && (
+            <CreateEventForm
+              key={draftReport?.id ?? draftSignal?.id ?? 'standalone'}
+              initialReport={draftReport}
+              initialSignal={draftSignal}
+              onClose={() => {
+                setDraftReport(null)
+                setDraftSignal(null)
+                setTab('Radar')
+              }}
+              onCreated={async (id) => {
+                setDraftReport(null)
+                setDraftSignal(null)
+                radar.setFilter('all')
+                await radar.refresh()
+                openDetail(id)
+              }}
+            />
+          )}
+
+          {tab === 'Verifikasi' && (
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <VerificationRadarPanel
+                onCreateEvent={(report) => startCreateEvent(report)}
+                onCreateStandaloneEvent={() => startCreateEvent(null)}
+              />
             </div>
-          </div>
-        )}
+          )}
 
-        {tab === 'Org' && (
-          <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <OrgsPanel />
-          </div>
-        )}
+          {tab === 'Dampak' && (
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <h2 className="mb-4 text-xl font-extrabold tracking-tight text-ink">Dampak</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  ['Event', impactStats.total],
+                  ['Pulih', impactStats.resolved],
+                  ['Sampah (kg)', impactStats.wasteKg],
+                  ['Bibit', impactStats.trees],
+                ].map(([label, val]) => (
+                  <div key={label} className="rounded-card border border-line bg-white p-5">
+                    <p className="num text-3xl text-ink">{val}</p>
+                    <p className="mt-1 text-xs font-bold text-ink-soft">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-        {tab === 'Eskalasi' && (
-          <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <AgencyInboxPanel
-              events={radar.allEvents}
-              onSelectEvent={openDetail}
-              onCreateEventFromReport={(report) => startCreateEvent(report)}
-              onRefresh={radar.refresh}
-            />
-          </div>
-        )}
+          {tab === 'Org' && (
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <OrgsPanel />
+            </div>
+          )}
 
-        {tab === 'Admin' && (
-          <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <AdminPanel events={radar.allEvents} onRefreshEvents={radar.refresh} />
-          </div>
-        )}
+          {tab === 'Eskalasi' && (
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <AgencyInboxPanel
+                events={radar.allEvents}
+                onSelectEvent={openDetail}
+                onCreateEventFromReport={(report) => startCreateEvent(report)}
+                onRefresh={radar.refresh}
+              />
+            </div>
+          )}
 
-        {tab === 'Profil' && (
-          <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <ProfilePanel />
-          </div>
-        )}
+          {tab === 'Admin' && (
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <AdminPanel events={radar.allEvents} onRefreshEvents={radar.refresh} />
+            </div>
+          )}
+
+          {tab === 'Profil' && (
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <ProfilePanel />
+            </div>
+          )}
+        </Suspense>
       </aside>
 
       <button

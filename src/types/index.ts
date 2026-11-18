@@ -221,6 +221,17 @@ export interface EnvLayers {
   }
 }
 
+export interface NationalHazardsResponse {
+  hotspots: HotspotPoint[]
+  eonet: EonetPoint[]
+  fetchedAt: string
+  cached: boolean
+  sources: {
+    nasaFirms: string
+    nasaEonet: string
+  }
+}
+
 export interface EnvPulse {
   aqi: number | null
   pm25: number | null
