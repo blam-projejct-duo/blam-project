@@ -1,7 +1,7 @@
 import { ChevronDown, Droplets, Flame, Mountain, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ECOSYSTEM_FILTERS, EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
-import { formatSignalDate, formatSignalSource } from '../../modules/map/radarFilters'
+import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from '../../modules/map/radarFilters'
 import { EcoBadge } from '../ui/atoms'
 import type { ConservationEvent, Ecosystem, HazardKind, SatelliteSignal } from '../../types'
 
@@ -65,10 +65,11 @@ function SignalRow({
   onOpen: () => void
 }) {
   const sourceLabel = formatSignalSource(signal.source)
+  const riskLabel = formatFloodRiskLabel(signal)
   const dateLabel = formatSignalDate(signal)
   const meta = linked
     ? `${sourceLabel} · Ada Event`
-    : `${sourceLabel} · ${signal.categoryLabel}${dateLabel ? ` · ${dateLabel}` : ''}`
+    : `${sourceLabel} · ${riskLabel ?? signal.categoryLabel}${dateLabel ? ` · ${dateLabel}` : ''}`
   const kind = signal.kind ?? 'suspected'
   const SignalIcon = kind === 'flood' ? Droplets : kind === 'volcano' ? Mountain : Flame
 

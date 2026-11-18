@@ -46,6 +46,18 @@ export function formatSignalSource(source: string): string {
   return source
 }
 
+export function formatFloodRiskLabel(item: {
+  kind?: HazardKind
+  source?: string
+  severity?: 'high' | 'medium' | 'low'
+}): string | null {
+  if (item.kind !== 'flood') return null
+  if (item.source === 'open_meteo_flood') {
+    return item.severity === 'high' ? 'Risiko Tinggi' : 'Risiko Sedang'
+  }
+  return 'Sedang Banjir'
+}
+
 /**
  * NASA EONET volcano events stay `status=open` for ongoing eruptive episodes,
  * so their geometry date is the episode start date rather than a daily log.

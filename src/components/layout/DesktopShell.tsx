@@ -2,7 +2,6 @@ import {
   Bell,
   Building2,
   CalendarPlus,
-  Camera,
   CheckSquare,
   ChevronLeft,
   ChevronRight,
@@ -34,12 +33,11 @@ import type { RadarLayer } from '../../modules/map/radarFilters'
 import type { Radar } from '../../modules/map/useRadar'
 import OrgsPanel from '../../modules/organizations/OrgsPanel'
 import ProfilePanel from '../../modules/profile/ProfilePanel'
-import QuickReportFlow from '../../modules/reports/QuickReportFlow'
 import VerificationRadarPanel from '../../modules/reports/VerificationRadarPanel'
 import type { CitizenReport, SatelliteSignal } from '../../types'
 import EventListPanel from './EventListPanel'
 
-type NavTab = 'Radar' | 'Lapor' | 'Dampak' | 'Org' | 'Verifikasi' | 'Event' | 'Eskalasi' | 'Admin'
+type NavTab = 'Radar' | 'Dampak' | 'Org' | 'Verifikasi' | 'Event' | 'Eskalasi' | 'Admin'
 type Tab = NavTab | 'Profil'
 
 const RAIL_W = 72
@@ -47,7 +45,6 @@ const DRAWER_W = 392
 
 const NAV_ICON: Record<NavTab, ReactNode> = {
   Radar: <RadarIcon className="size-5" strokeWidth={2.25} />,
-  Lapor: <Camera className="size-5" strokeWidth={2.25} />,
   Dampak: <Sprout className="size-5" strokeWidth={2.25} />,
   Org: <Building2 className="size-5" strokeWidth={2.25} />,
   Verifikasi: <CheckSquare className="size-5" strokeWidth={2.25} />,
@@ -120,7 +117,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   )
 
   const navTabs = useMemo<NavTab[]>(() => {
-    const base: NavTab[] = ['Radar', 'Lapor', 'Dampak', 'Org']
+    const base: NavTab[] = ['Radar', 'Dampak', 'Org']
     if (canOrganize) base.push('Verifikasi', 'Event')
     if (profile?.role === 'agency') base.push('Eskalasi')
     if (profile?.role === 'admin') base.push('Admin')
@@ -367,7 +364,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               key={label}
               label={label}
               active={tab === label && drawerOpen}
-              primary={label === 'Lapor'}
               onClick={() => openTab(label)}
             >
               {NAV_ICON[label]}
@@ -392,13 +388,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           } ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         {tab === 'Radar' && radarBody()}
-
-        {tab === 'Lapor' && (
-          <QuickReportFlow
-            onClose={() => setTab('Radar')}
-            onOpenVerification={() => openTab('Verifikasi')}
-          />
-        )}
 
         {tab === 'Event' && (
           <CreateEventForm

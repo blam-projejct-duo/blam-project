@@ -288,6 +288,10 @@ function eonetToHazard(e: EonetPoint): HazardPoint {
         : kind === 'storm'
             ? 'medium'
             : 'high'
+    const title =
+        kind === 'flood' && e.title && !e.title.toLowerCase().includes('sedang banjir')
+            ? `Sedang Banjir · ${e.title}`
+            : e.title || KIND_LABEL[kind]
     return {
         id: `nasa_eonet:${e.id}`,
         kind,
@@ -295,7 +299,7 @@ function eonetToHazard(e: EonetPoint): HazardPoint {
         source: 'nasa_eonet',
         externalId: e.id,
         memberIds: [e.id],
-        title: e.title || KIND_LABEL[kind],
+        title,
         lat: e.lat,
         lng: e.lng,
         date: e.date,
@@ -393,6 +397,7 @@ export function hazardToSignal(h: HazardPoint): SatelliteSignal {
         frp: h.maxFrp > 0 ? h.maxFrp : undefined,
         ecosystem: h.kind === 'flood' ? 'watershed' : 'tropical_forest',
         kind: h.kind,
+        severity: h.severity,
         reason: h.reason,
         pointCount: h.pointCount,
         totalFrp: h.totalFrp,

@@ -1,11 +1,23 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Camera, Check, ImagePlus, LocateFixed, ShieldCheck, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import {
+  ArrowLeft,
+  Camera,
+  Check,
+  ImagePlus,
+  LocateFixed,
+  MapPin,
+  Mic,
+  ShieldCheck,
+  Square,
+  Trash2,
+  X,
+} from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ReportStatusPill } from '../../components/ui/atoms'
-import { verifyAndCreateReport } from '../../lib/api'
+import { reverseGeocode, verifyAndCreateReport } from '../../lib/api'
 import type { VerifyReportResult } from '../../lib/api'
-import { compressImage, haversineDistanceKm } from '../../lib/imageCompress'
+import { compressImage } from '../../lib/imageCompress'
 import type { CompressedImage } from '../../lib/imageCompress'
 import type { Ecosystem } from '../../types'
 import { useAuth } from '../auth/AuthContext'
@@ -16,58 +28,119 @@ interface Props {
   onOpenVerification?: () => void
 }
 
-const ECOS: { id: Ecosystem; label: string }[] = [
-  { id: 'coastal_mangrove', label: 'Mangrove' },
-  { id: 'tropical_forest', label: 'Hutan' },
-  { id: 'watershed', label: 'Muara' },
-]
+const INCIDENTS = ['Sampah', 'Banjir', 'Kebakaran', 'Lainnya'] as const
+type IncidentType = (typeof INCIDENTS)[number]
 
-const field =
-  'h-12 w-full rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-ink focus:outline-none'
+const INCIDENT_ECOSYSTEM: Record<IncidentType, Ecosystem> = {
+  Sampah: 'coastal_mangrove',
+  Banjir: 'watershed',
+  Kebakaran: 'tropical_forest',
+  Lainnya: 'coastal_mangrove',
+}
+
+interface VoiceNote {
+  base64: string
+  mimeType: string
+  previewUrl: string
+  seconds: number
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const res = typeof reader.result === 'string' ? reader.result : ''
+      const comma = res.indexOf(',')
+      resolve(comma >= 0 ? res.slice(comma + 1) : res)
+    }
+    reader.onerror = () => reject(new Error('Gagal membaca rekaman suara'))
+    reader.readAsDataURL(blob)
+  })
+}
+
+function formatSeconds(sec: number): string {
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
 
 export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerification }: Props) {
   const queryClient = useQueryClient()
   const { profile, refreshMe } = useAuth()
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
-  const [eco, setEco] = useState<Ecosystem>('coastal_mangrove')
-  const [place, setPlace] = useState('')
-  const [lat, setLat] = useState('')
-  const [lng, setLng] = useState('')
-  const [deviceGps, setDeviceGps] = useState<{ lat: number; lng: number } | null>(null)
+  const [incident, setIncident] = useState<IncidentType>('Sampah')
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [region, setRegion] = useState<{ name: string; detail: string; fullAddress: string } | null>(null)
   const [gpsBusy, setGpsBusy] = useState(false)
   const [note, setNote] = useState('')
   const [anon, setAnon] = useState(false)
   const [photo, setPhoto] = useState<CompressedImage | null>(null)
+  const [voice, setVoice] = useState<VoiceNote | null>(null)
+  const [recording, setRecording] = useState(false)
+  const [recordSeconds, setRecordSeconds] = useState(0)
   const [result, setResult] = useState<VerifyReportResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
 
-  const latN = Number(lat)
-  const lngN = Number(lng)
-  const coordsOk = lat !== '' && lng !== '' && Number.isFinite(latN) && Number.isFinite(lngN) && Math.abs(latN) <= 90 && Math.abs(lngN) <= 180
-  const step1Ok = place.trim().length > 2 && coordsOk
+  const fileRef = useRef<HTMLInputElement>(null)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const step1Ok = Boolean(coords && region?.fullAddress)
   const canVerify = profile && (profile.role === 'volunteer' || profile.role === 'agency' || profile.role === 'admin')
 
-  const useGps = () => {
-    if (!navigator.geolocation) return setError('GPS tidak tersedia di perangkat ini')
-    setGpsBusy(true)
+  const stopRecordingStream = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    for (const track of streamRef.current?.getTracks() ?? []) {
+      track.stop()
+    }
+    streamRef.current = null
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      stopRecordingStream()
+    }
+  }, [stopRecordingStream])
+
+  const locateUser = useCallback((showBusy = true) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setError('GPS tidak tersedia di perangkat ini.')
+      return
+    }
+    if (showBusy) setGpsBusy(true)
+    setError(null)
     navigator.geolocation.getCurrentPosition(
       (p) => {
         const dLat = p.coords.latitude
         const dLng = p.coords.longitude
-        setDeviceGps({ lat: dLat, lng: dLng })
-        setLat(dLat.toFixed(5))
-        setLng(dLng.toFixed(5))
-        setGpsBusy(false)
-        setError(null)
+        setCoords({ lat: dLat, lng: dLng })
+        void reverseGeocode(dLat, dLng)
+          .then((geo) => {
+            setRegion({ name: geo.name, detail: geo.detail, fullAddress: geo.fullAddress })
+          })
+          .catch(() => {
+            const fallback = `Lokasi (${dLat.toFixed(4)}, ${dLng.toFixed(4)})`
+            setRegion({ name: 'Lokasi GPS', detail: `${dLat.toFixed(4)}, ${dLng.toFixed(4)}`, fullAddress: fallback })
+          })
+          .finally(() => {
+            setGpsBusy(false)
+          })
       },
       () => {
         setGpsBusy(false)
-        setError('Izin lokasi ditolak. Isi koordinat manual.')
+        setError('Hidupkan & izinkan lokasi GPS di browser untuk mengambil koordinat serta wilayah otomatis.')
       },
-      { enableHighAccuracy: true, timeout: 8000 },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
     )
-  }
+  }, [])
+
+  useEffect(() => {
+    locateUser(false)
+  }, [locateUser])
 
   const pickFile = async (file?: File) => {
     if (!file) return
@@ -80,25 +153,106 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
     }
   }
 
+  const startVoice = async () => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setError('Perekam suara tidak didukung di browser ini.')
+      return
+    }
+    setError(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : MediaRecorder.isTypeSupported('audio/mp4')
+            ? 'audio/mp4'
+            : ''
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+      recorderRef.current = recorder
+      const chunks: BlobPart[] = []
+      let elapsed = 0
+
+      recorder.ondataavailable = (ev) => {
+        if (ev.data.size > 0) chunks.push(ev.data)
+      }
+      recorder.onstop = async () => {
+        stopRecordingStream()
+        setRecording(false)
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' })
+        if (blob.size === 0) return
+        if (blob.size > 1.45 * 1024 * 1024) {
+          setError('Rekaman suara terlalu panjang (maks 1,5 MB). Rekam lebih singkat.')
+          return
+        }
+        try {
+          const base64 = await blobToBase64(blob)
+          const previewUrl = URL.createObjectURL(blob)
+          setVoice((prev) => {
+            if (prev) URL.revokeObjectURL(prev.previewUrl)
+            return {
+              base64,
+              mimeType: (recorder.mimeType || 'audio/webm').split(';')[0],
+              previewUrl,
+              seconds: Math.max(1, elapsed),
+            }
+          })
+        } catch {
+          setError('Gagal memproses rekaman suara.')
+        }
+      }
+
+      setRecordSeconds(0)
+      setRecording(true)
+      recorder.start()
+      timerRef.current = setInterval(() => {
+        elapsed += 1
+        setRecordSeconds(elapsed)
+        if (elapsed >= 45 && recorder.state === 'recording') {
+          recorder.stop()
+        }
+      }, 1000)
+    } catch {
+      stopRecordingStream()
+      setRecording(false)
+      setError('Izin mikrofon ditolak. Aktifkan izin mikrofon atau lewati laporan suara.')
+    }
+  }
+
+  const stopVoice = () => {
+    if (recorderRef.current && recorderRef.current.state === 'recording') {
+      recorderRef.current.stop()
+    }
+  }
+
+  const removeVoice = () => {
+    setVoice((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl)
+      return null
+    })
+  }
+
   const scan = async () => {
-    if (!photo) return
+    if (!photo || !coords || !region) return
+    if (recording) stopVoice()
     setStep(3)
     setResult(null)
     setError(null)
-    const locationMismatch = deviceGps
-      ? haversineDistanceKm(deviceGps.lat, deviceGps.lng, latN, lngN) > 5
-      : false
 
     try {
       const r = await verifyAndCreateReport({
         imageBase64: photo.base64,
         mimeType: photo.mimeType,
-        ecosystem: eco,
+        ecosystem: INCIDENT_ECOSYSTEM[incident],
+        incidentType: incident,
         description: note.trim(),
-        locationName: place.trim(),
-        lat: latN,
-        lng: lngN,
-        locationMismatch,
+        audioBase64: voice?.base64,
+        audioMimeType: voice?.mimeType,
+        locationName: region.fullAddress,
+        lat: coords.lat,
+        lng: coords.lng,
+        locationMismatch: false,
         isAnonymous: profile ? anon : true,
       })
       setResult(r)
@@ -137,7 +291,10 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
         </button>
         <div className="flex gap-1.5" aria-label={`Langkah ${step} dari 4`}>
           {[1, 2, 3, 4].map((n) => (
-            <span key={n} className={`h-1.5 rounded-full transition-all ${n === step ? 'w-6 bg-ink' : n < step ? 'w-1.5 bg-ink' : 'w-1.5 bg-line'}`} />
+            <span
+              key={n}
+              className={`h-1.5 rounded-full transition-all ${n === step ? 'w-6 bg-ink' : n < step ? 'w-1.5 bg-ink' : 'w-1.5 bg-line'}`}
+            />
           ))}
         </div>
         <span className="size-12" />
@@ -146,45 +303,143 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
         {step === 1 && (
           <section className="flex flex-col gap-4">
-            <h2 className="text-2xl font-extrabold tracking-tight">Lokasi</h2>
-            <div className="flex gap-2">
-              {ECOS.map((e) => (
-                <button
-                  key={e.id}
-                  type="button"
-                  aria-pressed={eco === e.id}
-                  onClick={() => setEco(e.id)}
-                  className={`h-12 flex-1 rounded-full border text-sm font-bold ${eco === e.id ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink'}`}
-                >
-                  {e.label}
-                </button>
-              ))}
+            <h2 className="text-2xl font-extrabold tracking-tight">Lokasi &amp; Kejadian</h2>
+
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs font-extrabold tracking-wide text-ink-soft uppercase">Kejadian Cepat</p>
+              <div className="grid grid-cols-2 gap-2">
+                {INCIDENTS.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    aria-pressed={incident === item}
+                    onClick={() => setIncident(item)}
+                    className={`h-11 rounded-full border text-sm font-bold transition-colors ${
+                      incident === item ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink'
+                    }`}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
             </div>
-            <input className={field} placeholder="Nama lokasi" value={place} onChange={(e) => setPlace(e.target.value)} maxLength={120} />
-            <div className="flex gap-2">
-              <input className={field} inputMode="decimal" placeholder="Lat" value={lat} onChange={(e) => setLat(e.target.value)} />
-              <input className={field} inputMode="decimal" placeholder="Lng" value={lng} onChange={(e) => setLng(e.target.value)} />
+
+            <div className="rounded-card border border-line bg-white p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 text-xs font-extrabold tracking-wide text-ink-soft uppercase">
+                    <MapPin className="size-3.5 text-emerald" /> Wilayah Otomatis
+                  </p>
+                  {region ? (
+                    <>
+                      <p className="mt-1.5 text-sm font-extrabold text-ink">{region.name}</p>
+                      <p className="text-xs font-medium text-ink-soft">{region.detail}</p>
+                    </>
+                  ) : (
+                    <p className="mt-1.5 text-xs font-semibold text-ink-soft">
+                      {gpsBusy ? 'Mengambil lokasi GPS & wilayah…' : 'Lokasi GPS belum aktif'}
+                    </p>
+                  )}
+                </div>
+                {coords && (
+                  <span className="num shrink-0 rounded-full bg-canvas px-2.5 py-1 text-[11px] font-bold text-ink-soft">
+                    {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => locateUser(true)}
+                disabled={gpsBusy}
+                className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-full border border-line bg-canvas text-xs font-bold text-ink hover:bg-muted disabled:opacity-60"
+              >
+                <LocateFixed className="size-4" />
+                {gpsBusy ? 'Mencari Lokasi…' : coords ? 'Perbarui Lokasi GPS' : 'Hidupkan Lokasi GPS'}
+              </button>
             </div>
-            <button type="button" onClick={useGps} disabled={gpsBusy} className="flex h-12 items-center justify-center gap-2 rounded-full border border-line bg-white text-sm font-bold text-ink disabled:opacity-60">
-              <LocateFixed className="size-4" /> {gpsBusy ? 'Mencari…' : 'GPS saya'}
-            </button>
           </section>
         )}
 
         {step === 2 && (
           <section className="flex flex-col gap-4">
-            <h2 className="text-2xl font-extrabold tracking-tight">Foto</h2>
-            <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => void pickFile(e.target.files?.[0])} />
-            <button type="button" onClick={() => fileRef.current?.click()} className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-card border-[1.5px] border-dashed border-dash bg-white text-ink-soft">
+            <h2 className="text-2xl font-extrabold tracking-tight">Foto &amp; Keterangan</h2>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              onChange={(e) => void pickFile(e.target.files?.[0])}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-card border-[1.5px] border-dashed border-dash bg-white text-ink-soft"
+            >
               {photo ? (
                 <img src={photo.previewUrl} alt="Foto laporan" className="size-full object-cover" />
               ) : (
                 <span className="flex flex-col items-center gap-2 text-sm font-bold">
-                  <ImagePlus className="size-8" /> Ambil / pilih foto
+                  <ImagePlus className="size-8" /> Ambil / pilih foto tempat
                 </span>
               )}
             </button>
-            <input className={field} placeholder="Catatan kondisi atau aksi" value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
+
+            <textarea
+              rows={2}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={300}
+              placeholder="Deskripsi kondisi (opsional)"
+              className="w-full resize-none rounded-card border border-line bg-white px-4 py-3 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-ink focus:outline-none"
+            />
+
+            <div className="rounded-card border border-line bg-white p-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-extrabold tracking-wide text-ink-soft uppercase">
+                  Laporan Suara (Opsional)
+                </span>
+                {recording && (
+                  <span className="num text-xs font-bold text-critical">Merekam · {formatSeconds(recordSeconds)}</span>
+                )}
+              </div>
+
+              {!voice ? (
+                <button
+                  type="button"
+                  onClick={() => (recording ? stopVoice() : void startVoice())}
+                  className={`mt-2.5 flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-bold transition-colors ${
+                    recording
+                      ? 'bg-critical text-white'
+                      : 'border border-line bg-canvas text-ink hover:bg-muted'
+                  }`}
+                >
+                  {recording ? (
+                    <>
+                      <Square className="size-4 fill-current" /> Berhenti Merekam
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="size-4" /> Rekam Suara
+                    </>
+                  )}
+                </button>
+              ) : (
+                <div className="mt-2.5 flex items-center gap-2">
+                  <audio controls src={voice.previewUrl} className="h-9 min-w-0 flex-1" />
+                  <button
+                    type="button"
+                    onClick={removeVoice}
+                    aria-label="Hapus rekaman suara"
+                    className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-canvas text-ink-soft hover:text-critical"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             <label className="flex h-12 items-center justify-between rounded-full border border-line bg-white px-4 text-sm font-bold">
               Lapor anonim
               <input
@@ -205,7 +460,11 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
               <div className="relative aspect-[4/3] w-full overflow-hidden rounded-card bg-muted">
                 <img src={photo.previewUrl} alt="" className="size-full object-cover" />
                 {scanning && (
-                  <motion.div className="absolute inset-x-0 top-0 h-1 bg-ink" animate={{ y: [0, 250, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }} />
+                  <motion.div
+                    className="absolute inset-x-0 top-0 h-1 bg-ink"
+                    animate={{ y: [0, 250, 0] }}
+                    transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }}
+                  />
                 )}
               </div>
             )}
@@ -225,7 +484,9 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
             <span className="grid size-20 place-items-center rounded-full border border-line bg-white text-emerald">
               <Check className="size-10" strokeWidth={3} />
             </span>
-            <h2 className="text-2xl font-extrabold tracking-tight">Merci!{result.pointsAwarded ? ` +${result.pointsAwarded}` : ''}</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight">
+              Merci!{result.pointsAwarded ? ` +${result.pointsAwarded}` : ''}
+            </h2>
             <div className="w-full rounded-card border border-line bg-white p-5 text-left">
               <div className="flex items-center justify-between gap-2">
                 <ReportStatusPill status={result.status ?? 'pending_verification'} />
@@ -250,20 +511,40 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
           </section>
         )}
 
-        {error && <p role="alert" className="mt-4 rounded-card border border-line bg-white px-4 py-3 text-sm font-semibold text-ink">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-4 rounded-card border border-line bg-white px-4 py-3 text-sm font-semibold text-ink">
+            {error}
+          </p>
+        )}
       </div>
 
       <footer className="shrink-0 px-5 pt-2 pb-[calc(env(safe-area-inset-bottom)+20px)]">
         {step === 1 && (
-          <button type="button" disabled={!step1Ok} onClick={() => setStep(2)} className="btn-primary h-13 w-full text-[15px] disabled:opacity-40">Lanjutkan</button>
+          <button
+            type="button"
+            disabled={!step1Ok}
+            onClick={() => setStep(2)}
+            className="btn-primary h-13 w-full text-[15px] disabled:opacity-40"
+          >
+            Lanjutkan
+          </button>
         )}
         {step === 2 && (
-          <button type="button" disabled={!photo} onClick={() => void scan()} className="btn-primary h-13 w-full text-[15px] disabled:opacity-40">
+          <button
+            type="button"
+            disabled={!photo || recording}
+            onClick={() => void scan()}
+            className="btn-primary h-13 w-full text-[15px] disabled:opacity-40"
+          >
             <Camera className="size-5" /> Pindai
           </button>
         )}
         {step === 3 && (result || error) && (
-          <button type="button" onClick={() => (result && !result.isValid ? setStep(2) : void scan())} className="btn-primary h-13 w-full text-[15px]">
+          <button
+            type="button"
+            onClick={() => (result && !result.isValid ? setStep(2) : void scan())}
+            className="btn-primary h-13 w-full text-[15px]"
+          >
             {result && !result.isValid ? 'Ganti foto' : 'Coba lagi'}
           </button>
         )}

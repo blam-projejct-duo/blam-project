@@ -13,8 +13,8 @@ import { Pill } from '../../components/ui/atoms'
 import { moderateHotspotAdmin } from '../../lib/api'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
-import { formatSignalDate, formatSignalSource } from '../map/radarFilters'
-import { formatPulseTiles, usePulse } from '../map/usePulse'
+import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from '../map/radarFilters'
+import { formatFloodPulseTiles, formatPulseTiles, usePulse } from '../map/usePulse'
 
 const KIND_DOT_CLASS: Record<HazardKind, string> = {
   wildfire: 'bg-critical',
@@ -96,7 +96,8 @@ export default function SatelliteSignalDetail({
 
   const kind = signal.kind ?? 'suspected'
   const SignalIcon = kind === 'flood' ? Droplets : kind === 'volcano' ? Mountain : Flame
-  const pulseTiles = formatPulseTiles(pulse)
+  const floodRisk = formatFloodRiskLabel(signal)
+  const pulseTiles = kind === 'flood' ? formatFloodPulseTiles(pulse) : formatPulseTiles(pulse)
 
   return (
     <div className="flex flex-col gap-5">
@@ -131,6 +132,16 @@ export default function SatelliteSignalDetail({
             {formatSignalSource(signal.source)}
           </Pill>
           <Pill>{signal.categoryLabel}</Pill>
+          {floodRisk && (
+            <Pill>
+              <span
+                className={`size-2 rounded-full ${
+                  signal.severity === 'high' ? 'bg-critical' : 'bg-progress'
+                }`}
+              />
+              {floodRisk}
+            </Pill>
+          )}
         </div>
       </header>
 

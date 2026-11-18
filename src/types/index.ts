@@ -179,6 +179,7 @@ export interface SatelliteSignal {
   frp?: number
   ecosystem: Ecosystem
   kind?: HazardKind
+  severity?: 'high' | 'medium' | 'low'
   reason?: string
   pointCount?: number
   totalFrp?: number

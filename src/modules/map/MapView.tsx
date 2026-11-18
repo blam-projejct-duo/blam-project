@@ -8,7 +8,7 @@ import type { ActiveRoute } from './directions'
 import { hazardToSignal, severityRank } from './hotspotCluster'
 import type { HazardPoint } from './hotspotCluster'
 import { applyMapStyle, createInitialMapStyle } from './mapStyles'
-import { formatSignalDate, formatSignalSource } from './radarFilters'
+import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from './radarFilters'
 
 setWorkerUrl(maplibreWorkerUrl)
 
@@ -97,8 +97,9 @@ function createHazardPopupNode(h: HazardPoint): HTMLDivElement {
   const meta = document.createElement('p')
   meta.className = 'text-[11px] font-semibold text-ink-soft'
   const src = formatSignalSource(h.source)
+  const riskLabel = formatFloodRiskLabel(h)
   const dateLabel = formatSignalDate(h)
-  meta.textContent = `${h.kindLabel} · ${src}${dateLabel ? ` · ${dateLabel}` : ''}`
+  meta.textContent = `${riskLabel ?? h.kindLabel} · ${src}${dateLabel ? ` · ${dateLabel}` : ''}`
 
   root.append(title, meta)
   return root
