@@ -6,7 +6,6 @@ import type {
   EnvPulse,
   EventStatus,
   EventVisibility,
-  NationalHazardsResponse,
   NotificationItem,
   Organization,
   OrganizationMember,
@@ -324,17 +323,6 @@ export async function fetchPulse(lat: number, lng: number, signal?: AbortSignal)
 }
 
 
-
-export async function fetchNationalHazards(signal?: AbortSignal): Promise<NationalHazardsResponse> {
-  const data = await apiFetch<NationalHazardsResponse>('/env/hazards', { signal })
-  console.info('[Blam:HazardsAPI]', {
-    hotspots: data.hotspots.length,
-    eonet: data.eonet.length,
-    cached: data.cached,
-    sources: data.sources,
-  })
-  return data
-}
 
 export async function fetchEnvLayers(lat: number, lng: number, signal?: AbortSignal): Promise<EnvLayers> {
   const data = await apiFetch<EnvLayers>(`/env/layers?lat=${lat}&lng=${lng}`, { signal })

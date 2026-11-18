@@ -32,7 +32,7 @@ export default defineConfig({
             options: {
               cacheName: 'blam-satellite-tiles-v1',
               expiration: {
-                maxEntries: 500,
+                maxEntries: 200,
                 maxAgeSeconds: 60 * 60 * 24 * 30,
               },
               cacheableResponse: {
@@ -55,12 +55,12 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: /^https:\/\/tiles\.openfreemap\.org\/(planet|tiles\/|.*\.(?:pbf|mvt|json))/i,
+            urlPattern: /^https:\/\/tiles\.openfreemap\.org\/(planet|.*\.pbf)/i,
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'blam-vector-tiles-v1',
               expiration: {
-                maxEntries: 500,
+                maxEntries: 300,
                 maxAgeSeconds: 60 * 60 * 24,
               },
               cacheableResponse: {

@@ -67,7 +67,13 @@ export function useRadar(currentUserId?: string | null) {
     return (defId ? events.find((ev) => ev.id === defId) : null) ?? events[0] ?? null
   }, [events, selectedId])
 
-  const national = useNationalHazards()
+  const selLat = selected?.lat ?? null
+  const selLng = selected?.lng ?? null
+  const focus = useMemo(
+    () => (selLat !== null && selLng !== null ? { lat: selLat, lng: selLng } : null),
+    [selLat, selLng],
+  )
+  const national = useNationalHazards(focus)
   const hazards = national.hazards.credible
 
   // Daftar Satelit hanya berisi kawasan kredibel (karhutla, gunung berapi, banjir, badai)
@@ -83,10 +89,7 @@ export function useRadar(currentUserId?: string | null) {
   }, [])
 
   const refreshLayers = useCallback(async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['hazards'] }),
-      queryClient.invalidateQueries({ queryKey: ['layers'] }),
-    ])
+    await queryClient.invalidateQueries({ queryKey: ['layers'] })
   }, [queryClient])
 
   const setFilter = useCallback(

@@ -2,20 +2,15 @@ import { LngLatBounds, Map as MapLibreMap, Marker, Popup, setWorkerUrl } from 'm
 import type { GeoJSONSource } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { useEffect, useRef } from 'react'
+import { mapEventTone } from '../../lib/constants'
 import type { ConservationEvent, MapStyle, SatelliteSignal } from '../../types'
-import { hazardToSignal } from './hotspotCluster'
+import { hazardToSignal, severityRank } from './hotspotCluster'
 import type { HazardPoint } from './hotspotCluster'
-import {
-  applyMapStyle,
-  buildEventGeoJson,
-  buildHazardGeoJson,
-  createInitialMapStyle,
-} from './mapStyles'
+import { applyMapStyle, createInitialMapStyle } from './mapStyles'
 
 setWorkerUrl(maplibreWorkerUrl)
 
 const DEFAULT_CENTER: [number, number] = [102.262, -3.8]
-const INDONESIA_OVERVIEW: [number, number] = [117.5, -2.5]
 
 export interface MapPadding {
   bottom: number
@@ -43,7 +38,49 @@ interface Props {
   zoomCommand?: ZoomCommand | null
 }
 
+interface MarkerEntry {
+  marker: Marker
+  wrapper: HTMLDivElement
+  el: HTMLDivElement
+}
+
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+const HAZARD_COLOR = [
+  'match',
+  ['get', 'kind'],
+  'wildfire',
+  '#EF4444',
+  'suspected',
+  '#F59E0B',
+  'volcano',
+  '#7C3AED',
+  'flood',
+  '#2563EB',
+  'storm',
+  '#0891B2',
+  '#F59E0B',
+] as never
+
+function buildHazardGeoJson(list: HazardPoint[]) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: list.map((h) => ({
+      type: 'Feature' as const,
+      properties: {
+        id: h.id,
+        kind: h.kind,
+        kindLabel: h.kindLabel,
+        sev: severityRank(h.severity),
+        n: h.pointCount,
+      },
+      geometry: {
+        type: 'Point' as const,
+        coordinates: [h.lng, h.lat],
+      },
+    })),
+  }
+}
 
 function createHazardPopupNode(h: HazardPoint): HTMLDivElement {
   const root = document.createElement('div')
@@ -77,6 +114,8 @@ export default function MapView({
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
+  const readyRef = useRef(false)
+  const markersRef = useRef<Map<string, MarkerEntry>>(new Map())
   const meRef = useRef<Marker | null>(null)
   const popupRef = useRef<Popup | null>(null)
 
@@ -85,11 +124,7 @@ export default function MapView({
   const paddingRef = useRef(padding)
   const eventsRef = useRef(events)
   const hazardsRef = useRef(hazards)
-  const selectedIdRef = useRef(selectedId)
   const styleRef = useRef(style)
-  const appliedStyleRef = useRef<MapStyle>(style)
-  const hadInitialFocusRef = useRef(false)
-  const lastFocusedIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     onSelectRef.current = onSelect
@@ -97,7 +132,6 @@ export default function MapView({
     paddingRef.current = padding
     eventsRef.current = events
     hazardsRef.current = hazards
-    selectedIdRef.current = selectedId
     styleRef.current = style
   })
 
@@ -106,14 +140,6 @@ export default function MapView({
     if (!map) return
     const { bottom, right, left = 0 } = paddingRef.current
     const duration = animate && !reducedMotion() ? 850 : 0
-    if (duration === 0) {
-      map.jumpTo({
-        center: [lng, lat],
-        zoom,
-        padding: { top: 0, bottom, left, right },
-      })
-      return
-    }
     map.flyTo({
       center: [lng, lat],
       zoom,
@@ -127,111 +153,151 @@ export default function MapView({
     const host = hostRef.current
     if (!host) return
 
-    const initialEv = selectedIdRef.current
-      ? eventsRef.current.find((x) => x.id === selectedIdRef.current)
-      : undefined
-    const initialCenter: [number, number] = initialEv
-      ? [initialEv.lng, initialEv.lat]
-      : INDONESIA_OVERVIEW
-    const initialZoom = initialEv ? 10.5 : 4.5
-
-    if (initialEv) {
-      hadInitialFocusRef.current = true
-      lastFocusedIdRef.current = initialEv.id
-    }
-
     const map = new MapLibreMap({
       container: host,
-      style: createInitialMapStyle(
-        styleRef.current,
-        hazardsRef.current,
-        eventsRef.current,
-        selectedIdRef.current,
-      ),
-      center: initialCenter,
-      zoom: initialZoom,
+      style: createInitialMapStyle(styleRef.current),
+      center: DEFAULT_CENTER,
+      zoom: 10.5,
       minZoom: 3.5,
       maxZoom: 18,
-      fadeDuration: 0,
-      cancelPendingTileRequestsWhileZooming: true,
-      maxTileCacheSize: 512,
       attributionControl: { compact: true },
     })
 
-    const { bottom, right, left = 0 } = paddingRef.current
-    map.setPadding({ top: 0, bottom, left, right })
-
     mapRef.current = map
-    appliedStyleRef.current = styleRef.current
+    readyRef.current = false
 
     const meEl = document.createElement('div')
     meEl.className = 'me-dot'
     meRef.current = new Marker({ element: meEl, anchor: 'center' })
-      .setLngLat(initialEv ? [initialEv.lng, initialEv.lat] : DEFAULT_CENTER)
+      .setLngLat(DEFAULT_CENTER)
       .addTo(map)
 
-    const syncSources = () => {
-      const hazardSrc = map.getSource('blam-hazards') as GeoJSONSource | undefined
-      hazardSrc?.setData(buildHazardGeoJson(hazardsRef.current))
-      const eventSrc = map.getSource('blam-events') as GeoJSONSource | undefined
-      eventSrc?.setData(buildEventGeoJson(eventsRef.current, selectedIdRef.current))
-    }
+    map.once('load', () => {
+      readyRef.current = true
 
-    map.once('style.load', syncSources)
-    map.once('load', syncSources)
-
-    const interactiveLayers = ['blam-events-pin', 'blam-hazards-core', 'blam-hazards-cluster'] as const
-    const setPointer = (on: boolean) => {
-      map.getCanvas().style.cursor = on ? 'pointer' : ''
-    }
-    for (const layerId of interactiveLayers) {
-      map.on('mouseenter', layerId, () => setPointer(true))
-      map.on('mouseleave', layerId, () => setPointer(false))
-    }
-
-    const openHazard = (id: unknown) => {
-      const hz = hazardsRef.current.find((x) => x.id === id)
-      if (!hz) return
-      if (onSelectSignalRef.current) {
-        onSelectSignalRef.current(hazardToSignal(hz))
-        return
-      }
-      popupRef.current?.remove()
-      popupRef.current = new Popup({
-        closeButton: false,
-        maxWidth: '250px',
-        className: 'blam-popup',
-        offset: 10,
+      // Kawasan radar: digabung otomatis saat zoom-out, terpecah saat zoom-in
+      map.addSource('blam-hazards', {
+        type: 'geojson',
+        data: buildHazardGeoJson(hazardsRef.current),
+        cluster: true,
+        clusterRadius: 48,
+        clusterMaxZoom: 8,
+        clusterProperties: {
+          sev: ['max', ['get', 'sev']],
+          hasWildfire: ['max', ['case', ['==', ['get', 'kind'], 'wildfire'], 1, 0]],
+          hasVolcano: ['max', ['case', ['==', ['get', 'kind'], 'volcano'], 1, 0]],
+        },
       })
-        .setLngLat([hz.lng, hz.lat])
-        .setDOMContent(createHazardPopupNode(hz))
-        .addTo(map)
-    }
+      map.addLayer({
+        id: 'blam-hazards-cluster',
+        type: 'circle',
+        source: 'blam-hazards',
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-radius': ['step', ['get', 'point_count'], 15, 4, 19, 10, 24],
+          'circle-color': [
+            'case',
+            ['==', ['get', 'hasWildfire'], 1],
+            '#DC2626',
+            ['==', ['get', 'hasVolcano'], 1],
+            '#7C3AED',
+            ['>=', ['get', 'sev'], 3],
+            '#2563EB',
+            '#F59E0B',
+          ],
+          'circle-opacity': 0.92,
+          'circle-stroke-color': '#FFFFFF',
+          'circle-stroke-width': 2,
+        },
+      })
+      map.addLayer({
+        id: 'blam-hazards-cluster-count',
+        type: 'symbol',
+        source: 'blam-hazards',
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': ['Noto Sans Bold'],
+          'text-size': 13,
+          'text-allow-overlap': true,
+        },
+        paint: { 'text-color': '#FFFFFF' },
+      })
+      map.addLayer({
+        id: 'blam-hazards-halo',
+        type: 'circle',
+        source: 'blam-hazards',
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['get', 'sev'], 1, 12, 3, 22],
+          'circle-color': HAZARD_COLOR,
+          'circle-opacity': 0.22,
+        },
+      })
+      map.addLayer({
+        id: 'blam-hazards-core',
+        type: 'circle',
+        source: 'blam-hazards',
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['get', 'sev'], 1, 5, 3, 9],
+          'circle-color': HAZARD_COLOR,
+          'circle-opacity': 0.95,
+          'circle-stroke-color': '#FFFFFF',
+          'circle-stroke-width': 2,
+        },
+      })
+      map.addLayer({
+        id: 'blam-hazards-label',
+        type: 'symbol',
+        source: 'blam-hazards',
+        minzoom: 5,
+        filter: ['!', ['has', 'point_count']],
+        layout: {
+          'text-field': ['get', 'kindLabel'],
+          'text-font': ['Noto Sans Bold'],
+          'text-size': 11,
+          'text-offset': [0, 1.7],
+          'text-anchor': 'top',
+        },
+        paint: {
+          'text-color': '#111827',
+          'text-halo-color': '#FFFFFF',
+          'text-halo-width': 1.5,
+        },
+      })
 
-    map.on('click', (e) => {
-      const available = interactiveLayers.filter((id) => Boolean(map.getLayer(id)))
-      if (available.length === 0) return
-      const hits = map.queryRenderedFeatures(e.point, { layers: available })
-      const top = hits[0]
-      if (!top) return
-
-      const layerId = top.layer.id
-      if (layerId === 'blam-events-pin') {
-        const eventId = top.properties?.id
-        if (typeof eventId === 'string') onSelectRef.current(eventId)
-        return
+      const setPointer = (on: boolean) => {
+        map.getCanvas().style.cursor = on ? 'pointer' : ''
+      }
+      for (const layerId of ['blam-hazards-cluster', 'blam-hazards-core'] as const) {
+        map.on('mouseenter', layerId, () => setPointer(true))
+        map.on('mouseleave', layerId, () => setPointer(false))
       }
 
-      if (layerId === 'blam-hazards-core') {
-        openHazard(top.properties?.id)
-        return
+      const openHazard = (id: unknown) => {
+        const hz = hazardsRef.current.find((x) => x.id === id)
+        if (!hz) return
+        if (onSelectSignalRef.current) {
+          onSelectSignalRef.current(hazardToSignal(hz))
+          return
+        }
+        popupRef.current?.remove()
+        popupRef.current = new Popup({ closeButton: false, maxWidth: '250px', className: 'blam-popup', offset: 10 })
+          .setLngLat([hz.lng, hz.lat])
+          .setDOMContent(createHazardPopupNode(hz))
+          .addTo(map)
       }
 
-      if (layerId === 'blam-hazards-cluster' && top.geometry.type === 'Point') {
-        const clusterId = Number(top.properties?.cluster_id)
+      map.on('click', 'blam-hazards-core', (e) => openHazard(e.features?.[0]?.properties?.id))
+
+      map.on('click', 'blam-hazards-cluster', (e) => {
+        const feat = e.features?.[0]
+        if (!feat || feat.geometry.type !== 'Point') return
+        const clusterId = Number(feat.properties?.cluster_id)
         const src = map.getSource('blam-hazards') as GeoJSONSource | undefined
         if (!src || !Number.isFinite(clusterId)) return
-        const [lng, lat] = top.geometry.coordinates as [number, number]
+        const [lng, lat] = feat.geometry.coordinates as [number, number]
         void src
           .getClusterExpansionZoom(clusterId)
           .then((zoom) => {
@@ -242,16 +308,22 @@ export default function MapView({
             })
           })
           .catch(() => undefined)
-      }
+      })
+
+      applyMapStyle(map, styleRef.current)
     })
 
     const ro = new ResizeObserver(() => map.resize())
     ro.observe(host)
 
+    const markers = markersRef.current
     return () => {
+      readyRef.current = false
       ro.disconnect()
       popupRef.current?.remove()
       popupRef.current = null
+      for (const entry of markers.values()) entry.marker.remove()
+      markers.clear()
       meRef.current?.remove()
       meRef.current = null
       map.remove()
@@ -261,47 +333,73 @@ export default function MapView({
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || style === appliedStyleRef.current) return
-    const apply = () => {
-      applyMapStyle(map, style)
-      appliedStyleRef.current = style
-    }
-    if (map.isStyleLoaded()) {
-      apply()
-    } else {
-      map.once('style.load', apply)
-    }
+    if (!map || !readyRef.current) return
+    applyMapStyle(map, style)
   }, [style])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    const src = map.getSource('blam-events') as GeoJSONSource | undefined
-    src?.setData(buildEventGeoJson(events, selectedId))
+    const markers = markersRef.current
+    const ids = new Set(events.map((ev) => ev.id))
+
+    for (const [id, entry] of markers) {
+      if (!ids.has(id)) {
+        entry.marker.remove()
+        markers.delete(id)
+      }
+    }
+
+    for (const ev of events) {
+      const selected = ev.id === selectedId
+      const tone = mapEventTone(ev)
+      const existing = markers.get(ev.id)
+
+      if (existing) {
+        existing.el.dataset.status = tone
+        existing.el.dataset.selected = String(selected)
+        existing.wrapper.style.zIndex = selected ? '10' : '1'
+        existing.marker.setLngLat([ev.lng, ev.lat])
+      } else {
+        // MapLibre owns the transform of the marker element; visuals live in a child.
+        const wrapper = document.createElement('div')
+        const el = document.createElement('div')
+        el.className = 'pin'
+        el.dataset.status = tone
+        el.dataset.selected = String(selected)
+        el.title = ev.title
+        el.style.cursor = 'pointer'
+        wrapper.style.zIndex = selected ? '10' : '1'
+        wrapper.appendChild(el)
+        el.addEventListener('click', (e) => {
+          e.stopPropagation()
+          onSelectRef.current(ev.id)
+        })
+
+        const marker = new Marker({ element: wrapper, anchor: 'center' })
+          .setLngLat([ev.lng, ev.lat])
+          .addTo(map)
+        markers.set(ev.id, { marker, wrapper, el })
+      }
+    }
   }, [events, selectedId])
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
+    if (!map || !readyRef.current) return
     const src = map.getSource('blam-hazards') as GeoJSONSource | undefined
     src?.setData(buildHazardGeoJson(hazards))
   }, [hazards])
 
   useEffect(() => {
     if (!selectedId || selectedSignal) return
-    if (lastFocusedIdRef.current === selectedId) return
     const ev = eventsRef.current.find((x) => x.id === selectedId)
-    if (!ev) return
-    const animate = hadInitialFocusRef.current
-    hadInitialFocusRef.current = true
-    lastFocusedIdRef.current = selectedId
-    focusOn(ev.lat, ev.lng, 10.5, animate)
+    if (ev) focusOn(ev.lat, ev.lng, 10.5)
   }, [selectedId, selectedSignal])
 
   useEffect(() => {
     if (!selectedSignal) return
-    hadInitialFocusRef.current = true
-    focusOn(selectedSignal.lat, selectedSignal.lng, 9.5, true)
+    focusOn(selectedSignal.lat, selectedSignal.lng, 9.5)
   }, [selectedSignal])
 
   useEffect(() => {
@@ -321,7 +419,7 @@ export default function MapView({
     if (locateSignal === 0) return
     const go = (lat: number, lng: number) => {
       meRef.current?.setLngLat([lng, lat])
-      focusOn(lat, lng, 13.5, true)
+      focusOn(lat, lng, 13.5)
     }
     if (!navigator.geolocation) return go(DEFAULT_CENTER[1], DEFAULT_CENTER[0])
     navigator.geolocation.getCurrentPosition(

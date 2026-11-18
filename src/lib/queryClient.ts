@@ -18,7 +18,7 @@ interface PersistedStore {
 
 function shouldPersistKey(key: QueryKey): boolean {
   const head = key[0]
-  return head === 'events' || head === 'orgs' || head === 'pulse' || head === 'layers' || head === 'hazards'
+  return head === 'events' || head === 'orgs' || head === 'pulse' || head === 'layers'
 }
 
 export const queryClient = new QueryClient({
