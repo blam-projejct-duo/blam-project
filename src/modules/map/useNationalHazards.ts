@@ -16,9 +16,9 @@ const EMPTY_EONET: EonetPoint[] = []
  */
 export function useNationalHazards() {
   const query = useQuery({
-    queryKey: ['hazards', 'id'],
+    queryKey: ['hazards', 'id', 'v2'],
     queryFn: ({ signal }) => fetchNationalHazards(signal),
-    staleTime: CACHE_TTL_MS,
+    staleTime: (q) => (q.state.data?.hotspots?.length ? CACHE_TTL_MS : 0),
   })
 
   const hotspots = query.data?.hotspots ?? EMPTY_HOTSPOTS

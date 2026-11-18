@@ -431,18 +431,18 @@ function curateHotspotsForMap(rows: HotspotPoint[], centerLat: number, centerLng
   return [...local, ...regional].slice(0, limit)
 }
 
-function curateNationalHotspots(rows: HotspotPoint[], limit = 600): HotspotPoint[] {
+function curateNationalHotspots(rows: HotspotPoint[], limit = 1500): HotspotPoint[] {
   const bestByCell = new Map<string, HotspotPoint>()
   const confRank = (c: string) => (c === 'h' ? 2 : c === 'n' ? 1 : 0)
   const isBetter = (next: HotspotPoint, cur: HotspotPoint) =>
     confRank(next.confidence) > confRank(cur.confidence) ||
     (confRank(next.confidence) === confRank(cur.confidence) && next.frp > cur.frp)
 
-  // ~4.4 km cell preserves multi-point clusters within FIRE_MERGE_KM (15 km) nationwide
+  // ~440 m cell deduplicates overlapping satellite passes while keeping multi-point clusters intact
   for (const h of rows) {
     if (h.confidence === 'l') continue
     if (isStaticNonWildfireAnomaly(h.lat, h.lng)) continue
-    const cellKey = `${(Math.round(h.lat * 25) / 25).toFixed(2)},${(Math.round(h.lng * 25) / 25).toFixed(2)}`
+    const cellKey = `${(Math.round(h.lat * 250) / 250).toFixed(3)},${(Math.round(h.lng * 250) / 250).toFixed(3)}`
     const cur = bestByCell.get(cellKey)
     if (!cur || isBetter(h, cur)) bestByCell.set(cellKey, h)
   }
@@ -2377,7 +2377,7 @@ async function loadNationalHazardSources(
         continue
       }
       if (!row.expires_at || row.expires_at <= nowIso) continue
-      if (row.cache_key === FIRMS_CACHE_KEY && Array.isArray(row.payload_json)) {
+      if (row.cache_key === FIRMS_CACHE_KEY && Array.isArray(row.payload_json) && row.payload_json.length > 0) {
         cachedHotspots = row.payload_json as HotspotPoint[]
       } else if (row.cache_key === EONET_CACHE_KEY && Array.isArray(row.payload_json)) {
         cachedEonet = row.payload_json as EonetPoint[]
@@ -2409,12 +2409,14 @@ async function persistHazardSources(
           h.id ||
           `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${Number(h.lat).toFixed(4)}:${Number(h.lng).toFixed(4)}`,
       }))
-    await supa.from('env_cache').upsert({
-      cache_key: FIRMS_CACHE_KEY,
-      payload_json: credibleHotspots,
-      fetched_at: nowIso,
-      expires_at: expiresAt,
-    })
+    if (credibleHotspots.length > 0) {
+      await supa.from('env_cache').upsert({
+        cache_key: FIRMS_CACHE_KEY,
+        payload_json: credibleHotspots,
+        fetched_at: nowIso,
+        expires_at: expiresAt,
+      })
+    }
   }
   if (!cachedEonet && eonetRes?.state === 'ok') {
     await supa.from('env_cache').upsert({
@@ -2440,7 +2442,7 @@ app.get('/env/hazards', async (c) => {
   ])
 
   const normalizedHotspots = normalizeHotspots(cachedHotspots ?? firmsRes?.points ?? [], falseHotspotIds)
-  const hotspots = curateNationalHotspots(normalizedHotspots, 600)
+  const hotspots = curateNationalHotspots(normalizedHotspots, 1500)
   const eonet = cachedEonet ?? eonetRes?.points ?? []
 
   await persistHazardSources(supa, nowIso, cachedHotspots, cachedEonet, firmsRes, eonetRes)
