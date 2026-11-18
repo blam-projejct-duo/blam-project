@@ -6,7 +6,6 @@ import {
   CheckSquare,
   ChevronDown,
   Shield,
-  X,
 } from 'lucide-react'
 import { Suspense, lazy, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -32,7 +31,7 @@ const QuickReportFlow = lazy(() => import('../../modules/reports/QuickReportFlow
 const VerificationRadarPanel = lazy(() => import('../../modules/reports/VerificationRadarPanel'))
 
 type Snap = 'peek' | 'half' | 'full'
-type Mode = 'detail' | 'signal' | 'list' | 'orgs' | 'profile' | 'verify' | 'agency' | 'admin' | null
+type Mode = 'detail' | 'signal' | 'radar' | 'list' | 'orgs' | 'profile' | 'verify' | 'agency' | 'admin' | null
 
 const SPRING = { type: 'spring', stiffness: 350, damping: 30 } as const
 const PEEK_PX = 214
@@ -272,15 +271,16 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
     return () => ro.disconnect()
   }, [])
 
+  const peekPx = mode === 'radar' ? 248 : PEEK_PX
   const sheetH = Math.round(H * 0.9)
   const snapY = useMemo(
     () => ({
       full: 0,
       half: sheetH - Math.round(H * 0.58),
-      peek: sheetH - PEEK_PX,
+      peek: sheetH - peekPx,
       closed: H + 48,
     }),
-    [H, sheetH],
+    [H, sheetH, peekPx],
   )
   const targetKey = mode === null ? 'closed' : snap
 
@@ -329,6 +329,14 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
     setSnap(full || search ? 'full' : 'half')
   }
 
+  const openRadar = () => {
+    setMenuOpen(false)
+    setFocusSearch(false)
+    setMode('radar')
+    setSnap('peek')
+    radar.fitIndonesia()
+  }
+
   const startCreateEvent = (report: CitizenReport | null = null, signal: SatelliteSignal | null = null) => {
     setMenuOpen(false)
     setDraftReport(report)
@@ -338,7 +346,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
 
   const onDragEnd = (_: unknown, info: PanInfo) => {
     const projected = snapY[snap] + info.offset.y + info.velocity.y * 0.2
-    if (projected > snapY.peek + 70) {
+    if (projected > snapY.peek + 48) {
       closeSheet()
       return
     }
@@ -354,7 +362,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   }
 
   const sheetOpen = mode !== null
-  const padBottom = !sheetOpen ? 0 : snap === 'peek' ? PEEK_PX : Math.round(H * 0.58)
+  const padBottom = !sheetOpen ? 0 : snap === 'peek' ? peekPx : Math.round(H * 0.58)
   const openCount = radar.events.filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled').length
   const unreadCount = notifications.filter((n) => !n.is_read).length
   const canOrganize = Boolean(
@@ -394,7 +402,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         style={radar.style}
         padding={{ bottom: padBottom, right: 0 }}
         fitAllSignal={radar.fitAllSignal}
+        fitIndonesiaSignal={radar.fitIndonesiaSignal}
         locateSignal={radar.locateSignal}
+        radarMode={mode === 'radar' || mode === 'signal'}
       />
 
       <div className="absolute top-[calc(env(safe-area-inset-top)+14px)] left-1/2 z-[500] -translate-x-1/2">
@@ -545,7 +555,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         </div>
         <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex items-end justify-center gap-6 pb-[calc(env(safe-area-inset-bottom)+14px)]`}>
           <DockItem label="Jelajah">
-            <Orb size={56} label="Jelajah" watermark="RADAR" onClick={radar.fitAll}>
+            <Orb size={56} label="Jelajah" watermark="RADAR" onClick={openRadar}>
               <RadarCompassIcon />
             </Orb>
           </DockItem>
@@ -601,7 +611,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           </div>
 
           <div
-            className={`min-h-0 flex-1 px-5 pb-32 ${snap === 'full' ? 'overflow-y-auto' : 'overflow-hidden'}`}
+            className={`min-h-0 flex-1 px-5 pb-8 ${snap === 'full' ? 'overflow-y-auto' : 'overflow-hidden'}`}
           >
             <Suspense fallback={<div className="py-6 text-xs font-bold text-ink-soft">Memuat…</div>}>
               {mode === 'detail' && selected && (
@@ -637,9 +647,24 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                   onCreateEvent={(s) => startCreateEvent(null, s)}
                   onModerated={async () => {
                     radar.setSelectedSignal(null)
-                    setMode('list')
+                    setMode('radar')
                     await radar.refreshLayers()
                   }}
+                />
+              )}
+
+              {mode === 'radar' && (
+                <EventListPanel
+                  events={visibleEvents}
+                  impactEvents={radar.events}
+                  signals={visibleSignals}
+                  query={query}
+                  onQueryChange={setQuery}
+                  autoFocus={focusSearch}
+                  title="Jelajah"
+                  onExpand={() => setSnap('full')}
+                  onOpen={openDetail}
+                  onOpenSignal={openSignalDetail}
                 />
               )}
 
@@ -651,6 +676,8 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                   query={query}
                   onQueryChange={setQuery}
                   autoFocus={focusSearch}
+                  title="Aksi"
+                  onExpand={() => setSnap('full')}
                   onOpen={openDetail}
                   onOpenSignal={openSignalDetail}
                 />
@@ -679,18 +706,6 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           </div>
         </motion.div>
       )}
-
-      <motion.div
-        initial={false}
-        animate={{ y: sheetOpen ? 0 : 100, opacity: sheetOpen ? 1 : 0 }}
-        transition={SPRING}
-        inert={!sheetOpen}
-        className={`absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+20px)] z-[700] flex justify-center ${sheetOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
-      >
-        <Orb size={56} label="Tutup" onClick={closeSheet}>
-          <X className="size-6 text-forest" strokeWidth={3} />
-        </Orb>
-      </motion.div>
 
       {reportOpen && (
         <div className="absolute inset-0 z-[800] bg-canvas">

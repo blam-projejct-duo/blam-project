@@ -13,6 +13,10 @@ import { formatSignalDate } from './radarFilters'
 setWorkerUrl(maplibreWorkerUrl)
 
 const INDONESIA_CENTER: [number, number] = [117.5, -2.0]
+const INDONESIA_BOUNDS: [[number, number], [number, number]] = [
+  [94.8, -11.2],
+  [141.2, 6.2],
+]
 const DEFAULT_CENTER: [number, number] = [102.262, -3.8]
 const LOCATE_ZOOM = 17.2
 
@@ -39,7 +43,9 @@ interface Props {
   style: MapStyle
   padding: MapPadding
   fitAllSignal: number
+  fitIndonesiaSignal?: number
   locateSignal: number
+  radarMode?: boolean
   zoomCommand?: ZoomCommand | null
 }
 
@@ -135,7 +141,9 @@ export default function MapView({
   style,
   padding,
   fitAllSignal,
+  fitIndonesiaSignal = 0,
   locateSignal,
+  radarMode = false,
   zoomCommand,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -152,6 +160,7 @@ export default function MapView({
   const hazardsRef = useRef(hazards)
   const activeRouteRef = useRef(activeRoute)
   const styleRef = useRef(style)
+  const radarModeRef = useRef(radarMode)
 
   useEffect(() => {
     onSelectRef.current = onSelect
@@ -161,6 +170,7 @@ export default function MapView({
     hazardsRef.current = hazards
     activeRouteRef.current = activeRoute
     styleRef.current = style
+    radarModeRef.current = radarMode
   })
 
   const focusOn = (lat: number, lng: number, zoom: number, animate = true) => {
@@ -187,7 +197,7 @@ export default function MapView({
       style: createInitialMapStyle(styleRef.current),
       center: INDONESIA_CENTER,
       zoom: 4.3,
-      minZoom: 1,
+      minZoom: 1.8,
       maxZoom: 18,
       attributionControl: { compact: true },
     })
@@ -203,6 +213,28 @@ export default function MapView({
 
     map.once('load', () => {
       readyRef.current = true
+
+      map.addSource('blam-radar-tint', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]],
+          },
+          properties: {},
+        },
+      })
+      map.addLayer({
+        id: 'blam-radar-tint',
+        type: 'fill',
+        source: 'blam-radar-tint',
+        paint: {
+          'fill-color': '#2563EB',
+          'fill-opacity': radarModeRef.current ? 0.28 : 0,
+          'fill-opacity-transition': { duration: 300 },
+        },
+      })
 
       map.addSource('blam-route', {
         type: 'geojson',
@@ -500,6 +532,23 @@ export default function MapView({
       duration: reducedMotion() ? 0 : 950,
     })
   }, [fitAllSignal])
+
+  useEffect(() => {
+    if (fitIndonesiaSignal === 0) return
+    const map = mapRef.current
+    if (!map) return
+    const { bottom, right, left = 0 } = paddingRef.current
+    map.fitBounds(INDONESIA_BOUNDS, {
+      padding: { top: 68, bottom: 28 + bottom, left: 16 + left, right: 16 + right },
+      duration: reducedMotion() ? 0 : 1050,
+    })
+  }, [fitIndonesiaSignal])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current || !map.getLayer('blam-radar-tint')) return
+    map.setPaintProperty('blam-radar-tint', 'fill-opacity', radarMode ? 0.28 : 0)
+  }, [radarMode])
 
   useEffect(() => {
     if (locateSignal === 0) return

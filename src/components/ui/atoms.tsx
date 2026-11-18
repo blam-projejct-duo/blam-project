@@ -51,9 +51,28 @@ export function EcoIcon({
   return <Icon className={className} strokeWidth={2} aria-label={ECOSYSTEM_LABEL[ecosystem]} />
 }
 
+export function DashedOutline({ rx = 19 }: { rx?: number }) {
+  return (
+    <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
+      <rect
+        x="0.75"
+        y="0.75"
+        rx={rx}
+        ry={rx}
+        fill="none"
+        stroke="rgba(47, 138, 87, 0.24)"
+        strokeWidth="1.5"
+        strokeDasharray="10 7"
+        strokeLinecap="round"
+        style={{ width: 'calc(100% - 1.5px)', height: 'calc(100% - 1.5px)' }}
+      />
+    </svg>
+  )
+}
+
 export function EcoBadge({ ecosystem }: { ecosystem: Ecosystem }) {
   return (
-    <span className="grid size-11 shrink-0 place-items-center rounded-[14px] border-[1.5px] border-dashed border-leaf/30 bg-mint/45 text-forest">
+    <span className="grid size-11 shrink-0 place-items-center rounded-[14px] border-[1.5px] border-leaf/30 bg-white text-forest">
       <EcoIcon ecosystem={ecosystem} />
     </span>
   )

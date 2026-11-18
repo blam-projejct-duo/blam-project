@@ -1,13 +1,12 @@
 import { ChevronDown, Flame, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ECOSYSTEM_FILTERS, EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
-import { formatSignalDate } from '../../modules/map/radarFilters'
-import { EcoBadge } from '../ui/atoms'
+import { DashedOutline, EcoBadge } from '../ui/atoms'
 import type { ConservationEvent, Ecosystem, HazardKind, SatelliteSignal } from '../../types'
 
-type ListTab = 'Disarankan' | 'Terbaru' | 'Dampak' | 'Satelit'
+type ListTab = 'Utama' | 'Terbaru' | 'Dampak' | 'Satelit'
 
-const TABS: ListTab[] = ['Disarankan', 'Terbaru', 'Dampak', 'Satelit']
+const TABS: ListTab[] = ['Utama', 'Terbaru', 'Dampak', 'Satelit']
 const DOT = { critical: 'bg-critical', progress: 'bg-progress', resolved: 'bg-resolved' } as const
 const RANK = { open: 0, in_progress: 1, resolved: 2, cancelled: 3 } as const
 
@@ -21,7 +20,8 @@ function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListT
         : shortLocation(event.location_name)
 
   return (
-    <li className="capsule-dashed rounded-[20px] transition-colors hover:bg-mint/25">
+    <li className="relative rounded-[20px] bg-[#f7faf6] transition-colors hover:bg-mint/30">
+      <DashedOutline rx={19} />
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
         <EcoBadge ecosystem={event.ecosystem} />
         <span className="min-w-0 flex-1">
@@ -64,18 +64,16 @@ function SignalRow({
   linked: boolean
   onOpen: () => void
 }) {
-  const sourceLabel = signal.source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'
-  const dateLabel = formatSignalDate(signal)
-  const meta = linked
-    ? `${sourceLabel} · Ada Event`
-    : `${sourceLabel} · ${signal.categoryLabel}${dateLabel ? ` · ${dateLabel}` : ''}`
+  const sourceLabel = signal.source === 'nasa_firms' ? 'FIRMS' : 'EONET'
+  const meta = linked ? `${sourceLabel} · Ada Aksi` : `${sourceLabel} · ${signal.categoryLabel}`
   const kind = signal.kind ?? 'suspected'
 
   return (
-    <li className="capsule-dashed rounded-[20px] transition-colors hover:bg-mint/25">
+    <li className="relative rounded-[20px] bg-[#f7faf6] transition-colors hover:bg-mint/30">
+      <DashedOutline rx={19} />
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
         <span
-          className={`grid size-11 shrink-0 place-items-center rounded-[14px] border-[1.5px] border-dashed border-leaf/25 bg-white ${SIGNAL_TEXT_COLOR[kind]}`}
+          className={`grid size-11 shrink-0 place-items-center rounded-[14px] border-[1.5px] border-leaf/25 bg-white ${SIGNAL_TEXT_COLOR[kind]}`}
         >
           <Flame className="size-5" strokeWidth={2} />
         </span>
@@ -102,6 +100,8 @@ export default function EventListPanel({
   onEcosystemChange,
   showSearch = true,
   autoFocus = false,
+  title = 'Aksi',
+  onExpand,
   onOpen,
   onOpenSignal,
 }: {
@@ -114,10 +114,12 @@ export default function EventListPanel({
   onEcosystemChange?: (next: Ecosystem | 'all') => void
   showSearch?: boolean
   autoFocus?: boolean
+  title?: string
+  onExpand?: () => void
   onOpen: (id: string) => void
   onOpenSignal?: (signal: SatelliteSignal) => void
 }) {
-  const [tab, setTab] = useState<ListTab>('Disarankan')
+  const [tab, setTab] = useState<ListTab>('Utama')
   const [filterOpen, setFilterOpen] = useState(false)
   const filterWrapRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -187,29 +189,34 @@ export default function EventListPanel({
   }, [events, impactEvents, tab, query])
 
   const shownSignals =
-    tab === 'Satelit' ? filteredSignals : tab === 'Disarankan' && onOpenSignal ? filteredSignals.slice(0, 4) : []
+    tab === 'Satelit' ? filteredSignals : tab === 'Utama' && onOpenSignal ? filteredSignals.slice(0, 4) : []
 
   return (
     <div>
       {!onEcosystemChange && (
-        <div className="mb-3 flex items-baseline gap-2">
-          <h2 className="text-[22px] font-bold tracking-tight text-ink">Radar Aksi</h2>
-          <span className="num text-xs text-leaf">{rows.length + filteredSignals.length}</span>
-        </div>
+        <h2 className="mb-3 text-[22px] font-bold tracking-tight text-ink">{title}</h2>
       )}
 
       {showSearch && (
-        <label className="capsule-dashed flex h-11 items-center gap-2.5 rounded-full px-4">
+        <label className="flex h-11 items-center gap-2.5 rounded-full bg-[#f3f6f2] px-4 transition-colors focus-within:bg-mint/35">
           <Search className="size-4.5 shrink-0 text-leaf" />
           <input
             ref={searchRef}
             value={query}
+            onFocus={() => onExpand?.()}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Cari lokasi"
-            className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-ink-soft"
+            placeholder="Cari"
+            className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none focus:outline-none focus-visible:outline-none placeholder:text-ink-soft"
           />
           {query && (
-            <button type="button" aria-label="Hapus" onClick={() => onQueryChange('')}>
+            <button
+              type="button"
+              aria-label="Hapus"
+              onClick={() => {
+                onExpand?.()
+                onQueryChange('')
+              }}
+            >
               <X className="size-4 text-ink-soft" />
             </button>
           )}
@@ -226,10 +233,13 @@ export default function EventListPanel({
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => setTab(t)}
-                className={`font-display h-8 shrink-0 rounded-full px-2.5 text-[12px] whitespace-nowrap transition-colors ${
+                onClick={() => {
+                  onExpand?.()
+                  setTab(t)
+                }}
+                className={`font-display h-8 shrink-0 rounded-full px-3 text-[12px] whitespace-nowrap transition-colors ${
                   active
-                    ? 'border-[1.5px] border-dashed border-leaf/35 bg-mint/65 font-semibold text-forest'
+                    ? 'bg-mint/70 font-semibold text-forest'
                     : 'font-medium text-ink-soft hover:text-forest'
                 }`}
               >
@@ -329,12 +339,15 @@ export default function EventListPanel({
         <div className={rows.length > 0 ? 'mt-4 border-t-[1.5px] border-dashed border-dash pt-3.5' : 'mt-3'}>
           <div className="mb-2 flex items-center justify-between">
             <p className="font-display text-[11px] font-semibold tracking-wider text-ink-soft uppercase">
-              {tab === 'Satelit' ? `Sinyal Satelit (${filteredSignals.length})` : 'Sinyal Satelit'}
+              {tab === 'Satelit' ? `Satelit (${filteredSignals.length})` : 'Satelit'}
             </p>
-            {tab === 'Disarankan' && filteredSignals.length > shownSignals.length && (
+            {tab === 'Utama' && filteredSignals.length > shownSignals.length && (
               <button
                 type="button"
-                onClick={() => setTab('Satelit')}
+                onClick={() => {
+                  onExpand?.()
+                  setTab('Satelit')
+                }}
                 className="font-display text-[11px] font-semibold text-leaf hover:underline"
               >
                 Lihat semua ({filteredSignals.length})
