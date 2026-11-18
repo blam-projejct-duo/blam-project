@@ -338,4 +338,17 @@ export async function fetchEnvLayers(lat: number, lng: number, signal?: AbortSig
   return data
 }
 
+export async function fetchLandRoute(
+  fromLat: number,
+  fromLng: number,
+  toLat: number,
+  toLng: number,
+  signal?: AbortSignal,
+): Promise<{ distanceKm: number; coordinates: [number, number][] }> {
+  return apiFetch<{ ok: true; distanceKm: number; coordinates: [number, number][] }>(
+    `/route?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}`,
+    { signal },
+  )
+}
+
 

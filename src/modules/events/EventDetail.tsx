@@ -1,9 +1,24 @@
-import { Calendar, Camera, Check, Link2, Lock, MapPin, QrCode, ShieldCheck } from 'lucide-react'
+import {
+  Calendar,
+  Camera,
+  Check,
+  ExternalLink,
+  Link2,
+  Lock,
+  MapPin,
+  Navigation,
+  Plane,
+  QrCode,
+  Route,
+  ShieldCheck,
+  X,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Pill, StatusPill } from '../../components/ui/atoms'
 import { updateEventVisibility } from '../../lib/api'
 import type { ConservationEvent } from '../../types'
 import { useAuth } from '../auth/AuthContext'
+import type { ActiveRoute, RouteMode } from '../map/directions'
 import { formatPulseTiles, usePulse } from '../map/usePulse'
 import BeforeAfterSlider from './BeforeAfterSlider'
 import QrActionModal from './QrActionModal'
@@ -14,6 +29,12 @@ interface Props {
   joined: boolean
   onJoin: () => Promise<void>
   onRefresh: () => Promise<void>
+  activeRoute?: ActiveRoute | null
+  routeLoading?: boolean
+  routeError?: string | null
+  onStartRoute?: () => Promise<void>
+  onSwitchRouteMode?: (mode: RouteMode) => void
+  onClearRoute?: () => void
 }
 
 function Tile({ value, unit, label }: { value: string; unit?: string; label: string }) {
@@ -28,7 +49,18 @@ function Tile({ value, unit, label }: { value: string; unit?: string; label: str
   )
 }
 
-export default function EventDetail({ event, joined, onJoin, onRefresh }: Props) {
+export default function EventDetail({
+  event,
+  joined,
+  onJoin,
+  onRefresh,
+  activeRoute = null,
+  routeLoading = false,
+  routeError = null,
+  onStartRoute,
+  onSwitchRouteMode,
+  onClearRoute,
+}: Props) {
   const { profile, openAuthModal, isLeadOf, isActiveMemberOf } = useAuth()
   const [copied, setCopied] = useState(false)
   const [busyJoin, setBusyJoin] = useState(false)
@@ -111,6 +143,13 @@ export default function EventDetail({ event, joined, onJoin, onRefresh }: Props)
   const photoClass = 'relative aspect-[16/10] @md:aspect-[2/1] overflow-hidden rounded-card bg-muted'
   const labelClass = 'absolute top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-ink'
   const quotaText = event.max_participants ? `${participantsCount}/${event.max_participants}` : `${participantsCount}`
+  const routeForEvent = activeRoute?.eventId === event.id ? activeRoute : null
+  const googleMapsUrl = routeForEvent
+    ? `https://www.google.com/maps/dir/?api=1&origin=${routeForEvent.origin.lat},${routeForEvent.origin.lng}&destination=${event.lat},${event.lng}&travelmode=driving`
+    : `https://www.google.com/maps/dir/?api=1&destination=${event.lat},${event.lng}&travelmode=driving`
+  const distanceLabel = routeForEvent
+    ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(routeForEvent.distanceKm)
+    : null
 
   return (
     <div className="@container flex flex-col gap-5">
@@ -142,6 +181,22 @@ export default function EventDetail({ event, joined, onJoin, onRefresh }: Props)
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          {onStartRoute && (
+            <button
+              type="button"
+              disabled={routeLoading}
+              onClick={() => (routeForEvent ? onClearRoute?.() : void onStartRoute())}
+              aria-label="Arahkan ke lokasi"
+              aria-pressed={Boolean(routeForEvent)}
+              className={`grid size-11 place-items-center rounded-full border transition-colors ${
+                routeForEvent
+                  ? 'border-cobalt bg-cobalt text-white'
+                  : 'border-line bg-white text-ink hover:bg-canvas'
+              } disabled:opacity-60`}
+            >
+              <Navigation className="size-4.5" />
+            </button>
+          )}
           {canResolve && (
             <button
               type="button"
@@ -182,6 +237,108 @@ export default function EventDetail({ event, joined, onJoin, onRefresh }: Props)
             {event.lat.toFixed(3)}, {event.lng.toFixed(3)}
           </p>
         </div>
+      )}
+
+      {(routeLoading || routeError || routeForEvent) && (
+        <section className="rounded-card border border-line bg-canvas p-4">
+          {routeLoading && (
+            <p className="text-xs font-bold text-ink-soft">Meminta izin GPS &amp; menghitung rute…</p>
+          )}
+
+          {routeError && !routeLoading && (
+            <div className="flex flex-col gap-2.5">
+              <p role="alert" className="text-xs font-semibold text-ink">
+                {routeError}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {onStartRoute && (
+                  <button
+                    type="button"
+                    onClick={() => void onStartRoute()}
+                    className="h-9 rounded-full bg-ink px-3.5 text-xs font-bold text-white"
+                  >
+                    Coba Lagi
+                  </button>
+                )}
+                <a
+                  href={googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-xs font-bold text-ink hover:bg-muted"
+                >
+                  <ExternalLink className="size-3.5" /> Google Maps
+                </a>
+              </div>
+            </div>
+          )}
+
+          {routeForEvent && !routeLoading && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={!routeForEvent.landAvailable}
+                    onClick={() => onSwitchRouteMode?.('land')}
+                    aria-pressed={routeForEvent.mode === 'land'}
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition-colors ${
+                      routeForEvent.mode === 'land'
+                        ? 'bg-ink text-white'
+                        : 'border border-line bg-white text-ink hover:bg-muted'
+                    } disabled:opacity-45`}
+                  >
+                    <Route className="size-3.5" /> Darat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSwitchRouteMode?.('air')}
+                    aria-pressed={routeForEvent.mode === 'air'}
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition-colors ${
+                      routeForEvent.mode === 'air'
+                        ? 'bg-ink text-white'
+                        : 'border border-line bg-white text-ink hover:bg-muted'
+                    }`}
+                  >
+                    <Plane className="size-3.5" /> Udara
+                  </button>
+                </div>
+                {onClearRoute && (
+                  <button
+                    type="button"
+                    onClick={onClearRoute}
+                    aria-label="Tutup rute"
+                    className="grid size-8 place-items-center rounded-full text-ink-soft hover:bg-white hover:text-ink"
+                  >
+                    <X className="size-4" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-baseline justify-between gap-2">
+                <div>
+                  <p className="num text-xl text-ink">{distanceLabel} km</p>
+                  <p className="text-xs font-semibold text-ink-soft">
+                    {routeForEvent.mode === 'land' ? 'Jalur darat tercepat' : 'Jalur udara (garis lurus)'}
+                  </p>
+                </div>
+                <a
+                  href={googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink hover:bg-muted"
+                >
+                  <ExternalLink className="size-3.5" /> Google Maps
+                </a>
+              </div>
+
+              {!routeForEvent.landAvailable && (
+                <p className="text-[11px] font-medium text-ink-soft">
+                  {routeForEvent.landError ?? 'Jalur darat tidak terjangkau, menampilkan jalur udara.'}
+                </p>
+              )}
+            </div>
+          )}
+        </section>
       )}
 
       <div className={`grid grid-cols-2 gap-2.5 ${pulseStatus === 'loading' ? 'animate-pulse' : ''}`}>
@@ -225,6 +382,18 @@ export default function EventDetail({ event, joined, onJoin, onRefresh }: Props)
       )}
 
       <div className="flex flex-col gap-2">
+        {onStartRoute && !routeForEvent && (
+          <button
+            type="button"
+            disabled={routeLoading}
+            onClick={() => void onStartRoute()}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-white text-sm font-bold text-ink hover:bg-canvas disabled:opacity-60"
+          >
+            <Navigation className="size-4" />
+            {routeLoading ? 'Mencari Rute…' : 'Arahkan ke Lokasi'}
+          </button>
+        )}
+
         {event.status !== 'resolved' && event.status !== 'cancelled' && (
           <button
             type="button"

@@ -387,6 +387,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         hazards={visibleHazards}
         selectedId={radar.selectedId}
         selectedSignal={radar.selectedSignal}
+        activeRoute={radar.activeRoute}
         onSelect={openDetail}
         onSelectSignal={openSignalDetail}
         style={radar.style}
@@ -609,6 +610,12 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                     await radar.joinAction(selected.id)
                   }}
                   onRefresh={radar.refresh}
+                  activeRoute={radar.activeRoute}
+                  routeLoading={radar.routeLoading}
+                  routeError={radar.routeError}
+                  onStartRoute={() => radar.startDirections(selected)}
+                  onSwitchRouteMode={radar.switchRouteMode}
+                  onClearRoute={radar.clearRoute}
                 />
               )}
 
