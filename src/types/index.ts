@@ -8,7 +8,7 @@ export type OrgType = 'community' | 'agency'
 export type MemberRole = 'lead' | 'member'
 export type MemberStatus = 'pending' | 'active'
 export type MapStyle = 'terang' | 'gelap' | 'satelit'
-export type RefSource = 'nasa_firms' | 'nasa_eonet'
+export type RefSource = 'nasa_firms' | 'nasa_eonet' | 'open_meteo_flood' | 'petabencana'
 export type HazardKind = 'wildfire' | 'suspected' | 'volcano' | 'flood' | 'storm' | 'other'
 
 export interface Profile {
@@ -183,8 +183,25 @@ export interface SatelliteSignal {
   pointCount?: number
   totalFrp?: number
   radiusKm?: number
+  dischargeM3s?: number | null
+  dischargeRatio?: number | null
+  rainMm?: number | null
   memberIds?: string[]
   credible?: boolean
+}
+
+export interface FloodPoint {
+  id: string
+  title: string
+  lat: number
+  lng: number
+  date: string
+  severity: 'high' | 'medium'
+  source: 'open_meteo_flood' | 'petabencana'
+  dischargeM3s: number | null
+  dischargeRatio: number | null
+  rainMm: number | null
+  reason: string
 }
 
 export interface EonetPoint {
@@ -211,6 +228,7 @@ export interface SpeciesPoint {
 export interface EnvLayers {
   hotspots: HotspotPoint[]
   eonet: EonetPoint[]
+  floods?: FloodPoint[]
   species: SpeciesPoint[]
   fetchedAt: string
   cached: boolean
@@ -218,6 +236,7 @@ export interface EnvLayers {
     nasaFirms: string
     nasaEonet: string
     inaturalist: string
+    flood?: string
   }
 }
 

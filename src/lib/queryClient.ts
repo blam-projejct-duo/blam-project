@@ -3,7 +3,7 @@ import type { QueryKey } from '@tanstack/react-query'
 
 export const CACHE_TTL_MS = 20 * 60 * 1000
 const MAX_PERSIST_MS = 24 * 60 * 60 * 1000
-const STORAGE_KEY = 'blam_query_cache_v5'
+const STORAGE_KEY = 'blam_query_cache_v7'
 const MAX_PULSE_ENTRIES = 30
 
 interface PersistedEntry {
@@ -32,6 +32,21 @@ export const queryClient = new QueryClient({
   },
 })
 
+function isValidPersistedEntry(key: QueryKey, data: unknown): boolean {
+  if (key[0] !== 'layers') return true
+  const layerData = data as
+    | { hotspots?: unknown[]; floods?: unknown[]; sources?: { nasaFirms?: string; flood?: string } }
+    | undefined
+  if (!layerData || !Array.isArray(layerData.floods)) return false
+  if (layerData.sources?.nasaFirms && layerData.sources.nasaFirms !== 'ok' && (layerData.hotspots?.length ?? 0) === 0) {
+    return false
+  }
+  if (layerData.sources?.flood && layerData.sources.flood !== 'ok' && layerData.floods.length === 0) {
+    return false
+  }
+  return true
+}
+
 export function hydrateQueryCache(): void {
   if (typeof window === 'undefined') return
   try {
@@ -44,6 +59,7 @@ export function hydrateQueryCache(): void {
     for (const entry of Object.values(parsed.entries)) {
       if (!entry || !Array.isArray(entry.queryKey) || !shouldPersistKey(entry.queryKey)) continue
       if (typeof entry.dataUpdatedAt !== 'number' || now - entry.dataUpdatedAt > MAX_PERSIST_MS) continue
+      if (!isValidPersistedEntry(entry.queryKey, entry.data)) continue
       queryClient.setQueryData(entry.queryKey, entry.data, { updatedAt: entry.dataUpdatedAt })
     }
   } catch {
@@ -65,12 +81,7 @@ function flushPersist(): void {
       if (q.state.status !== 'success' || q.state.data === undefined) continue
       if (!shouldPersistKey(q.queryKey)) continue
       if (now - q.state.dataUpdatedAt > MAX_PERSIST_MS) continue
-      if (q.queryKey[0] === 'layers') {
-        const layerData = q.state.data as { hotspots?: unknown[]; sources?: { nasaFirms?: string } } | undefined
-        if (layerData?.sources?.nasaFirms && layerData.sources.nasaFirms !== 'ok' && (layerData.hotspots?.length ?? 0) === 0) {
-          continue
-        }
-      }
+      if (!isValidPersistedEntry(q.queryKey, q.state.data)) continue
 
       const entry: PersistedEntry = {
         queryKey: q.queryKey,

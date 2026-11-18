@@ -137,11 +137,13 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
     setBusy(true)
     setError(null)
     try {
+      const canAttachRef =
+        initialSignal?.source === 'nasa_firms' || initialSignal?.source === 'nasa_eonet'
       const res = await createEvent({
         organizationId: effectiveOrgId || undefined,
         reportId: initialReport?.id,
-        refSource: initialSignal?.source,
-        refExternalId: initialSignal?.externalId,
+        refSource: canAttachRef ? initialSignal.source : undefined,
+        refExternalId: canAttachRef ? initialSignal.externalId : undefined,
         visibility: canSetMembersOnly ? visibility : 'public',
         title: title.trim(),
         description: description.trim() || undefined,

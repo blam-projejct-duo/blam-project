@@ -8,7 +8,7 @@ import type { ActiveRoute } from './directions'
 import { hazardToSignal, severityRank } from './hotspotCluster'
 import type { HazardPoint } from './hotspotCluster'
 import { applyMapStyle, createInitialMapStyle } from './mapStyles'
-import { formatSignalDate } from './radarFilters'
+import { formatSignalDate, formatSignalSource } from './radarFilters'
 
 setWorkerUrl(maplibreWorkerUrl)
 
@@ -96,7 +96,7 @@ function createHazardPopupNode(h: HazardPoint): HTMLDivElement {
 
   const meta = document.createElement('p')
   meta.className = 'text-[11px] font-semibold text-ink-soft'
-  const src = h.source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'
+  const src = formatSignalSource(h.source)
   const dateLabel = formatSignalDate(h)
   meta.textContent = `${h.kindLabel} · ${src}${dateLabel ? ` · ${dateLabel}` : ''}`
 
@@ -256,6 +256,7 @@ export default function MapView({
           sev: ['max', ['get', 'sev']],
           hasWildfire: ['max', ['case', ['==', ['get', 'kind'], 'wildfire'], 1, 0]],
           hasVolcano: ['max', ['case', ['==', ['get', 'kind'], 'volcano'], 1, 0]],
+          hasFlood: ['max', ['case', ['==', ['get', 'kind'], 'flood'], 1, 0]],
         },
       })
       map.addLayer({
@@ -271,6 +272,8 @@ export default function MapView({
             '#DC2626',
             ['==', ['get', 'hasVolcano'], 1],
             '#7C3AED',
+            ['==', ['get', 'hasFlood'], 1],
+            '#2563EB',
             ['>=', ['get', 'sev'], 3],
             '#2563EB',
             '#F59E0B',

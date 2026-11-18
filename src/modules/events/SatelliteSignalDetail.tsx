@@ -1,9 +1,11 @@
 import {
   Ban,
   CalendarPlus,
+  Droplets,
   ExternalLink,
   Flame,
   MapPin,
+  Mountain,
   ShieldAlert,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -11,7 +13,7 @@ import { Pill } from '../../components/ui/atoms'
 import { moderateHotspotAdmin } from '../../lib/api'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
-import { formatSignalDate } from '../map/radarFilters'
+import { formatSignalDate, formatSignalSource } from '../map/radarFilters'
 import { formatPulseTiles, usePulse } from '../map/usePulse'
 
 const KIND_DOT_CLASS: Record<HazardKind, string> = {
@@ -93,6 +95,7 @@ export default function SatelliteSignalDetail({
   }
 
   const kind = signal.kind ?? 'suspected'
+  const SignalIcon = kind === 'flood' ? Droplets : kind === 'volcano' ? Mountain : Flame
   const pulseTiles = formatPulseTiles(pulse)
 
   return (
@@ -124,8 +127,8 @@ export default function SatelliteSignalDetail({
 
         <div className="flex flex-wrap items-center gap-1.5">
           <Pill>
-            <Flame className={`size-3.5 ${KIND_TEXT_CLASS[kind]}`} />
-            {signal.source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'}
+            <SignalIcon className={`size-3.5 ${KIND_TEXT_CLASS[kind]}`} />
+            {formatSignalSource(signal.source)}
           </Pill>
           <Pill>{signal.categoryLabel}</Pill>
         </div>
@@ -143,6 +146,13 @@ export default function SatelliteSignalDetail({
               />
               <Tile value={formatHeatScale(signal.totalFrp, signal.frp)} label="Skala Panas" />
               <Tile value={`±${signal.radiusKm ?? 1}`} unit="km" label="Radius Area" />
+            </div>
+          )}
+          {signal.kind === 'flood' && signal.dischargeM3s != null && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <Tile value={String(signal.dischargeM3s)} unit="m³/s" label="Debit Sungai" />
+              <Tile value={`${signal.dischargeRatio ?? 1}×`} label="Dari Normal" />
+              <Tile value={String(signal.rainMm ?? 0)} unit="mm" label="Hujan 72j" />
             </div>
           )}
         </section>

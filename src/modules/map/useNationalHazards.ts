@@ -2,7 +2,7 @@ import { useQueries } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { fetchEnvLayers } from '../../lib/api'
 import { CACHE_TTL_MS } from '../../lib/queryClient'
-import type { EonetPoint, HotspotPoint } from '../../types'
+import type { EonetPoint, FloodPoint, HotspotPoint } from '../../types'
 import { buildHazards, hotspotKey } from './hotspotCluster'
 import type { HazardSet } from './hotspotCluster'
 
@@ -36,6 +36,7 @@ const EMPTY: HazardSet = { credible: [], weak: [] }
 interface Merged {
     hotspots: HotspotPoint[]
     eonet: EonetPoint[]
+    floods: FloodPoint[]
     loading: boolean
 }
 
@@ -54,30 +55,37 @@ export function useNationalHazards(focus: { lat: number; lng: number } | null) {
         combine: (results): Merged => {
             const hot = new Map<string, HotspotPoint>()
             const eo = new Map<string, EonetPoint>()
+            const fl = new Map<string, FloodPoint>()
             for (const r of results) {
                 for (const h of r.data?.hotspots ?? []) hot.set(hotspotKey(h), h)
                 for (const e of r.data?.eonet ?? []) eo.set(e.id, e)
+                for (const f of r.data?.floods ?? []) fl.set(f.id, f)
             }
             return {
                 hotspots: [...hot.values()],
                 eonet: [...eo.values()],
+                floods: [...fl.values()],
                 loading: results.some((r) => r.isFetching),
             }
         },
     })
 
     const hazards = useMemo(
-        () => (merged.hotspots.length || merged.eonet.length ? buildHazards(merged.hotspots, merged.eonet) : EMPTY),
-        [merged.hotspots, merged.eonet],
+        () =>
+            merged.hotspots.length || merged.eonet.length || merged.floods.length
+                ? buildHazards(merged.hotspots, merged.eonet, merged.floods)
+                : EMPTY,
+        [merged.hotspots, merged.eonet, merged.floods],
     )
 
     const nHot = merged.hotspots.length
     const nEonet = merged.eonet.length
+    const nFlood = merged.floods.length
     const nCredible = hazards.credible.length
     const nWeak = hazards.weak.length
     useEffect(() => {
-        console.info('[Blam:Hazards]', { hotspots: nHot, eonet: nEonet, credible: nCredible, weak: nWeak })
-    }, [nHot, nEonet, nCredible, nWeak])
+        console.info('[Blam:Hazards]', { hotspots: nHot, eonet: nEonet, floods: nFlood, credible: nCredible, weak: nWeak })
+    }, [nHot, nEonet, nFlood, nCredible, nWeak])
 
     return { hazards, loading: merged.loading }
 }

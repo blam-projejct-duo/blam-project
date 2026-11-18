@@ -1,4 +1,4 @@
-import type { EonetPoint, HazardKind, HotspotPoint, SatelliteSignal } from '../../types'
+import type { EonetPoint, FloodPoint, HazardKind, HotspotPoint, RefSource, SatelliteSignal } from '../../types'
 
 /**
  * Aturan "hotspot" Blam (satu tempat, supaya mudah diubah & dijelaskan ke juri).
@@ -25,7 +25,7 @@ export interface HazardPoint {
     id: string
     kind: HazardKind
     kindLabel: string
-    source: 'nasa_firms' | 'nasa_eonet'
+    source: RefSource
     externalId: string
     memberIds: string[]
     title: string
@@ -40,6 +40,9 @@ export interface HazardPoint {
     maxFrp: number
     radiusKm: number
     confidence?: string
+    dischargeM3s?: number | null
+    dischargeRatio?: number | null
+    rainMm?: number | null
 }
 
 export interface HazardSet {
@@ -306,12 +309,45 @@ function eonetToHazard(e: EonetPoint): HazardPoint {
     }
 }
 
-export function buildHazards(hotspots: HotspotPoint[], eonet: EonetPoint[]): HazardSet {
+function floodToHazard(f: FloodPoint): HazardPoint {
+    return {
+        id: f.id,
+        kind: 'flood',
+        kindLabel: KIND_LABEL.flood,
+        source: f.source,
+        externalId: f.id,
+        memberIds: [f.id],
+        title: f.title,
+        lat: f.lat,
+        lng: f.lng,
+        date: f.date,
+        credible: true,
+        severity: f.severity,
+        reason: f.reason,
+        pointCount: 1,
+        totalFrp: 0,
+        maxFrp: 0,
+        radiusKm: 0,
+        dischargeM3s: f.dischargeM3s,
+        dischargeRatio: f.dischargeRatio,
+        rainMm: f.rainMm,
+    }
+}
+
+export function buildHazards(
+    hotspots: HotspotPoint[],
+    eonet: EonetPoint[],
+    floods: FloodPoint[] = [],
+): HazardSet {
     const valid = hotspots.filter((h) => Number.isFinite(h.lat) && Number.isFinite(h.lng))
     const fires = groupFires(valid)
         .map(buildFireArea)
         .filter((f): f is HazardPoint => f !== null)
     const credibleFires = fires.filter((f) => f.credible)
+
+    const floodAreas = floods
+        .filter((f) => Number.isFinite(f.lat) && Number.isFinite(f.lng))
+        .map(floodToHazard)
 
     const eonetAreas: HazardPoint[] = []
     for (const e of eonet) {
@@ -326,11 +362,17 @@ export function buildHazards(hotspots: HotspotPoint[], eonet: EonetPoint[]): Haz
                 twin.reason += ` Juga tercatat di NASA EONET: ${hz.title}.`
                 continue
             }
+        } else if (hz.kind === 'flood') {
+            const twin = floodAreas.find((f) => haversineKm(f.lat, f.lng, hz.lat, hz.lng) <= EONET_DEDUPE_KM)
+            if (twin) {
+                twin.reason += ` Juga tercatat di NASA EONET: ${hz.title}.`
+                continue
+            }
         }
         eonetAreas.push(hz)
     }
 
-    const all = [...fires, ...eonetAreas]
+    const all = [...fires, ...floodAreas, ...eonetAreas]
     const rank = (h: HazardPoint) =>
         SEVERITY_RANK[h.severity] * 1000 + KIND_PRIORITY[h.kind] * 100 + Math.min(99, h.totalFrp / 10)
     const credible = all.filter((h) => h.credible).sort((a, b) => rank(b) - rank(a))
@@ -355,6 +397,9 @@ export function hazardToSignal(h: HazardPoint): SatelliteSignal {
         pointCount: h.pointCount,
         totalFrp: h.totalFrp,
         radiusKm: h.radiusKm,
+        dischargeM3s: h.dischargeM3s,
+        dischargeRatio: h.dischargeRatio,
+        rainMm: h.rainMm,
         memberIds: h.memberIds,
         credible: h.credible,
     }
