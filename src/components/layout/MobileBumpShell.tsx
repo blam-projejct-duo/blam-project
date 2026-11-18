@@ -1,18 +1,12 @@
 import { motion, useAnimationControls, useDragControls } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
 import {
-  Bell,
   Building2,
   CalendarPlus,
-  Camera,
   CheckSquare,
   ChevronDown,
-  Compass,
-  ListChecks,
-  LocateFixed,
-  Search,
+  Leaf,
   Shield,
-  User,
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -45,8 +39,82 @@ function DockItem({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-1.5">
       {children}
-      <span className="glass rounded-full px-2 py-0.5 text-[11px] font-bold text-ink">{label}</span>
+      <span className="map-label">{label}</span>
     </div>
+  )
+}
+
+function RadarCompassIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[21px] -translate-y-0.5" aria-hidden="true">
+      <circle cx="12" cy="12" r="9.5" fill="var(--color-mint)" stroke="var(--color-leaf)" strokeWidth="1.9" />
+      <polygon points="15.8,8.2 13.6,13.6 10.4,10.4" fill="var(--color-leaf)" />
+      <polygon points="8.2,15.8 10.4,10.4 13.6,13.6" fill="var(--color-forest)" />
+      <circle cx="12" cy="12" r="1.4" fill="#fff" />
+    </svg>
+  )
+}
+
+function BlamCameraIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[25px] -translate-y-0.5" aria-hidden="true">
+      <path
+        d="M9.1 4.5h5.8c.7 0 1.3.4 1.6 1l.7 1.3h1.8A2.8 2.8 0 0 1 21.8 9.6v7.9a2.8 2.8 0 0 1-2.8 2.8H5a2.8 2.8 0 0 1-2.8-2.8V9.6A2.8 2.8 0 0 1 5 6.8h1.8l.7-1.3c.3-.6.9-1 1.6-1Z"
+        fill="#fff"
+      />
+      <circle cx="12" cy="13.4" r="4.1" fill="var(--color-forest)" fillOpacity="0.22" stroke="var(--color-forest)" strokeWidth="1.7" />
+      <circle cx="12" cy="13.4" r="1.8" fill="var(--color-leaf)" />
+    </svg>
+  )
+}
+
+function AksiActionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[20px] -translate-y-0.5" aria-hidden="true">
+      <rect x="4" y="5" width="16" height="15" rx="4.5" fill="var(--color-leaf)" />
+      <rect x="8" y="3" width="8" height="4" rx="2" fill="var(--color-mint)" stroke="var(--color-leaf)" strokeWidth="1.6" />
+      <path d="M8.5 13.2l2.3 2.3 4.7-4.7" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function BellSolidIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[18px]" aria-hidden="true">
+      <path
+        d="M12 3.2a5.5 5.5 0 0 0-5.5 5.5v3.1c0 1-.4 2-1.1 2.7l-.8.9c-.5.5-.1 1.4.6 1.4h13.6c.7 0 1.1-.9.6-1.4l-.8-.9a3.9 3.9 0 0 1-1.1-2.7V8.7A5.5 5.5 0 0 0 12 3.2Z"
+        fill="var(--color-leaf)"
+      />
+      <path d="M9.8 18.2a2.2 2.2 0 0 0 4.4 0" fill="var(--color-forest)" />
+    </svg>
+  )
+}
+
+function GuestAvatarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[19px]" aria-hidden="true">
+      <circle cx="12" cy="8.5" r="3.8" fill="var(--color-leaf)" />
+      <path d="M5.5 19.2c.8-3.2 3.3-5 6.5-5s5.7 1.8 6.5 5" fill="var(--color-mint)" stroke="var(--color-leaf)" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function SearchDuotoneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[18px]" aria-hidden="true">
+      <circle cx="10.8" cy="10.8" r="6.4" fill="var(--color-mint)" stroke="var(--color-leaf)" strokeWidth="2.3" />
+      <path d="M15.6 15.6l4.2 4.2" stroke="var(--color-leaf)" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function LocateDuotoneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="relative z-10 size-[18px]" aria-hidden="true">
+      <circle cx="12" cy="12" r="6.5" fill="var(--color-mint)" stroke="var(--color-leaf)" strokeWidth="2.1" />
+      <circle cx="12" cy="12" r="2.4" fill="var(--color-leaf)" />
+      <path d="M12 2.6v2.7M12 18.7v2.7M2.6 12h2.7M18.7 12h2.7" stroke="var(--color-leaf)" strokeWidth="2.1" strokeLinecap="round" />
+    </svg>
   )
 }
 
@@ -208,7 +276,11 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const initials = profile?.full_name ? profile.full_name.slice(0, 1).toUpperCase() : null
 
   return (
-    <div ref={rootRef} className="relative h-full w-full select-none overflow-clip bg-canvas">
+    <div
+      ref={rootRef}
+      data-map-style={radar.style}
+      className="blam-mobile relative h-full w-full select-none overflow-clip bg-canvas"
+    >
       <MapView
         events={visibleEvents}
         hazards={visibleHazards}
@@ -222,18 +294,17 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         locateSignal={radar.locateSignal}
       />
 
-      {/* Top status pill + filter menu */}
-      <div className="absolute top-[calc(env(safe-area-inset-top)+16px)] left-1/2 z-[500] -translate-x-1/2">
+      <div className="absolute top-[calc(env(safe-area-inset-top)+14px)] left-1/2 z-[500] -translate-x-1/2">
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
           aria-expanded={menuOpen}
-          className="glass flex h-12 items-center gap-2 rounded-full px-5 text-sm font-bold whitespace-nowrap"
+          className="pill-top flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium whitespace-nowrap transition-transform duration-120 active:scale-95"
         >
-          <span className="size-2 rounded-full bg-critical" />
-          {visibleEvents.length + visibleHazards.length} titik
+          <Leaf className="pill-top-icon size-3.5 text-leaf" strokeWidth={2.4} />
+          {visibleEvents.length + visibleHazards.length} tampilan peta
           <ChevronDown
-            className={`size-4 text-ink-soft transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`}
+            className={`size-3 opacity-60 transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`}
           />
         </button>
       </div>
@@ -246,7 +317,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             className="absolute inset-0 z-[510] cursor-default"
             onClick={() => setMenuOpen(false)}
           />
-          <div className="glass absolute top-[calc(env(safe-area-inset-top)+76px)] left-1/2 z-[520] flex w-[min(340px,calc(100%-32px))] -translate-x-1/2 flex-col gap-3 rounded-card p-4">
+          <div className="glass absolute top-[calc(env(safe-area-inset-top)+54px)] left-1/2 z-[520] flex w-[min(340px,calc(100%-32px))] -translate-x-1/2 flex-col gap-3 rounded-card bg-white/90 p-4 backdrop-blur-xl">
             <div className="flex flex-wrap gap-2">
               {ECOSYSTEM_FILTERS.map((f) => {
                 const active = radar.filter === f.id
@@ -306,7 +377,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                 <button
                   type="button"
                   onClick={() => startCreateEvent(null)}
-                  className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-cobalt text-[13px] font-bold text-white"
+                  className="btn-primary h-10 flex-1 text-[13px]"
                 >
                   <CalendarPlus className="size-4" /> Buat Event
                 </button>
@@ -334,30 +405,28 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         </>
       )}
 
-      {/* Top-right 2 orbs (Avatar + Bell) */}
-      <div className="absolute top-[calc(env(safe-area-inset-top)+16px)] right-4 z-[500] flex flex-col gap-2.5">
+      <div className="absolute top-[calc(env(safe-area-inset-top)+12px)] right-3.5 z-[500] flex flex-col gap-2.5">
         <Orb
-          size={48}
+          size={42}
           label={profile ? 'Profil' : 'Masuk'}
           onClick={() => openSheet('profile', true)}
-          className="text-sm font-extrabold"
+          className="orb-avatar text-xs font-extrabold"
         >
-          {initials ?? <User className="size-5 text-ink-soft" />}
+          {initials ?? <GuestAvatarIcon />}
         </Orb>
         <Orb
-          size={48}
+          size={42}
           label="Notifikasi"
           onClick={() => openSheet('profile', true)}
           className="relative"
         >
-          <Bell className="size-5 text-ink" strokeWidth={2.25} />
+          <BellSolidIcon />
           {unreadCount > 0 && (
-            <span className="absolute top-2.5 right-3 size-2.5 rounded-full border-2 border-white bg-cobalt" />
+            <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-white bg-critical" />
           )}
         </Orb>
       </div>
 
-      {/* Bottom Dock */}
       <motion.div
         initial={false}
         animate={{ y: sheetOpen ? 140 : 0, opacity: sheetOpen ? 0 : 1 }}
@@ -365,36 +434,37 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         inert={sheetOpen}
         className="pointer-events-none absolute inset-x-0 bottom-0 z-[500]"
       >
-        <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex justify-between px-5 pb-4`}>
-          <Orb size={48} label="Cari lokasi" onClick={() => openSheet('list', false, true)}>
-            <Search className="size-5 text-ink" strokeWidth={2.5} />
+        <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex justify-between px-3.5 pb-3`}>
+          <Orb size={42} label="Cari lokasi" onClick={() => openSheet('list', false, true)}>
+            <SearchDuotoneIcon />
           </Orb>
-          <Orb size={48} label="Lokasi saya" onClick={radar.locate}>
-            <LocateFixed className="size-5 text-ink" strokeWidth={2.25} />
+          <Orb size={42} label="Lokasi saya" onClick={radar.locate}>
+            <LocateDuotoneIcon />
           </Orb>
         </div>
-        <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex items-end justify-center gap-7 pb-[calc(env(safe-area-inset-bottom)+20px)]`}>
+        <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex items-end justify-center gap-6 pb-[calc(env(safe-area-inset-bottom)+14px)]`}>
           <DockItem label="Jelajah">
-            <Orb size={56} label="Jelajah" onClick={radar.fitAll}>
-              <Compass className="size-6 text-ink" strokeWidth={2} />
+            <Orb size={48} label="Jelajah" watermark="RADAR" onClick={radar.fitAll}>
+              <RadarCompassIcon />
             </Orb>
           </DockItem>
           <DockItem label="Lapor">
-            <button
-              type="button"
-              aria-label="Lapor"
+            <Orb
+              size={58}
+              label="Lapor"
+              watermark="BLAM"
+              tone="primary"
               onClick={() => setReportOpen(true)}
-              className="btn-primary orb !border-0 !bg-cobalt !text-white"
-              style={{ width: 68, height: 68 }}
+              className="orb-primary"
             >
-              <Camera className="size-7" strokeWidth={2} />
-            </button>
+              <BlamCameraIcon />
+            </Orb>
           </DockItem>
           <DockItem label="Aksi">
-            <Orb size={56} label="Aksi" onClick={() => openSheet('list')} className="relative">
-              <ListChecks className="size-6 text-ink" strokeWidth={2} />
+            <Orb size={48} label="Aksi" watermark="AKSI" onClick={() => openSheet('list')} className="relative">
+              <AksiActionIcon />
               {openCount > 0 && (
-                <span className="num absolute -top-1 -right-1 grid size-5 place-items-center rounded-full border-2 border-white bg-ink text-[10px] text-white">
+                <span className="num absolute -top-1 -right-1 grid size-4.5 place-items-center rounded-full border-2 border-white bg-ink text-[9px] text-white">
                   {openCount}
                 </span>
               )}
