@@ -2307,6 +2307,68 @@ function singleFlight<T>(key: string, fn: () => Promise<T>): Promise<T> {
   return promise
 }
 
+function downsampleLine(coords: [number, number][], maxPoints = 1500): [number, number][] {
+  if (coords.length <= maxPoints) return coords
+  const step = Math.ceil((coords.length - 1) / (maxPoints - 1))
+  const out: [number, number][] = []
+  for (let i = 0; i < coords.length - 1; i += step) {
+    out.push(coords[i])
+  }
+  out.push(coords[coords.length - 1])
+  return out
+}
+
+app.get('/route', async (c) => {
+  const fromLat = Number(c.req.query('fromLat'))
+  const fromLng = Number(c.req.query('fromLng'))
+  const toLat = Number(c.req.query('toLat'))
+  const toLng = Number(c.req.query('toLng'))
+
+  const valid =
+    Number.isFinite(fromLat) &&
+    Number.isFinite(fromLng) &&
+    Number.isFinite(toLat) &&
+    Number.isFinite(toLng) &&
+    Math.abs(fromLat) <= 90 &&
+    Math.abs(toLat) <= 90 &&
+    Math.abs(fromLng) <= 180 &&
+    Math.abs(toLng) <= 180
+
+  if (!valid) {
+    return c.json({ error: 'Koordinat asal/tujuan tidak valid' }, 400)
+  }
+
+  const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+    if (!res.ok) {
+      return c.json({ error: 'Layanan rute darat sedang sibuk' }, 502)
+    }
+    const data = (await res.json()) as {
+      code?: string
+      routes?: { distance?: number; geometry?: { coordinates?: [number, number][] } }[]
+    }
+    const route = data.routes?.[0]
+    const coords = route?.geometry?.coordinates
+    if (data.code !== 'Ok' || !Array.isArray(coords) || coords.length < 2) {
+      return c.json({ error: 'Rute darat tidak tersedia untuk lokasi ini' }, 404)
+    }
+
+    const distanceKm = Math.round(((route.distance ?? 0) / 1000) * 10) / 10
+    c.header('Cache-Control', 'public, max-age=300')
+    return c.json({
+      ok: true,
+      distanceKm,
+      coordinates: downsampleLine(coords, 1500),
+    })
+  } catch (err) {
+    log('warn', 'API:OSRM', 'Gagal mengambil rute darat', {
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return c.json({ error: 'Gagal menghubungi layanan rute darat' }, 502)
+  }
+})
+
 app.get('/env/layers', async (c) => {
   const latParam = c.req.query('lat')
   const lngParam = c.req.query('lng')

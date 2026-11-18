@@ -65,6 +65,23 @@ const PALETTES: Record<'terang' | 'gelap', ThemePalette> = {
   },
 }
 
+const HYBRID_ROADS = {
+  roadMinor: 'rgba(255, 255, 255, 0.72)',
+  roadMajorCasing: 'rgba(17, 24, 39, 0.58)',
+  roadMajorInner: 'rgba(255, 255, 255, 0.88)',
+  roadMotorwayCasing: 'rgba(17, 24, 39, 0.65)',
+  roadMotorwayInner: 'rgba(253, 224, 71, 0.92)',
+}
+
+const ROAD_LAYER_IDS = [
+  'road-path',
+  'road-minor',
+  'road-major-casing',
+  'road-major-inner',
+  'road-motorway-casing',
+  'road-motorway-inner',
+] as const
+
 const VECTOR_LAYER_IDS = [
   'background',
   'park',
@@ -73,12 +90,6 @@ const VECTOR_LAYER_IDS = [
   'water',
   'waterway',
   'building',
-  'road-path',
-  'road-minor',
-  'road-major-casing',
-  'road-major-inner',
-  'road-motorway-casing',
-  'road-motorway-inner',
   'boundary-admin',
   'boundary-country',
   'label-water',
@@ -98,9 +109,11 @@ const TEXT_FIELD_EXPR = [
 ]
 
 export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecification {
+  const isSat = initialStyle === 'satelit'
   const palette = PALETTES[initialStyle === 'gelap' ? 'gelap' : 'terang']
-  const vecVis = initialStyle === 'satelit' ? 'none' : 'visible'
-  const satVis = initialStyle === 'satelit' ? 'visible' : 'none'
+  const roadPalette = isSat ? HYBRID_ROADS : palette
+  const vecVis = isSat ? 'none' : 'visible'
+  const satVis = isSat ? 'visible' : 'none'
 
   return {
     version: 8,
@@ -140,13 +153,6 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         id: 'satelit-imagery',
         type: 'raster',
         source: 'esri-satelit',
-        layout: { visibility: satVis },
-        paint: { 'raster-fade-duration': 120 },
-      },
-      {
-        id: 'satelit-labels',
-        type: 'raster',
-        source: 'esri-satelit-labels',
         layout: { visibility: satVis },
         paint: { 'raster-fade-duration': 120 },
       },
@@ -234,15 +240,15 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         source: 'openmaptiles',
         'source-layer': 'transportation',
         minzoom: 13,
-        layout: { visibility: vecVis, 'line-cap': 'round', 'line-join': 'round' },
+        layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
         filter: [
           'all',
           ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
           ['==', ['get', 'class'], 'path'],
         ],
         paint: {
-          'line-color': palette.roadMinor,
-          'line-opacity': 0.75,
+          'line-color': roadPalette.roadMinor,
+          'line-opacity': isSat ? 0.5 : 0.75,
           'line-width': ['interpolate', ['exponential', 1.2], ['zoom'], 13, 1, 18, 4],
         },
       },
@@ -252,15 +258,15 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         source: 'openmaptiles',
         'source-layer': 'transportation',
         minzoom: 10,
-        layout: { visibility: vecVis, 'line-cap': 'round', 'line-join': 'round' },
+        layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
         filter: [
           'all',
           ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
           ['match', ['get', 'class'], ['minor', 'service', 'track'], true, false],
         ],
         paint: {
-          'line-color': palette.roadMinor,
-          'line-opacity': 0.9,
+          'line-color': roadPalette.roadMinor,
+          'line-opacity': isSat ? 0.72 : 0.9,
           'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 11, 0.8, 17, 7],
         },
       },
@@ -270,14 +276,14 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         source: 'openmaptiles',
         'source-layer': 'transportation',
         minzoom: 7,
-        layout: { visibility: vecVis, 'line-cap': 'round', 'line-join': 'round' },
+        layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
         filter: [
           'all',
           ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
           ['match', ['get', 'class'], ['primary', 'secondary', 'tertiary', 'trunk'], true, false],
         ],
         paint: {
-          'line-color': palette.roadMajorCasing,
+          'line-color': roadPalette.roadMajorCasing,
           'line-width': ['interpolate', ['exponential', 1.35], ['zoom'], 7, 1.4, 16, 12],
         },
       },
@@ -287,14 +293,14 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         source: 'openmaptiles',
         'source-layer': 'transportation',
         minzoom: 7,
-        layout: { visibility: vecVis, 'line-cap': 'round', 'line-join': 'round' },
+        layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
         filter: [
           'all',
           ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
           ['match', ['get', 'class'], ['primary', 'secondary', 'tertiary', 'trunk'], true, false],
         ],
         paint: {
-          'line-color': palette.roadMajorInner,
+          'line-color': roadPalette.roadMajorInner,
           'line-width': ['interpolate', ['exponential', 1.35], ['zoom'], 7, 0.8, 16, 9],
         },
       },
@@ -304,14 +310,14 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         source: 'openmaptiles',
         'source-layer': 'transportation',
         minzoom: 5,
-        layout: { visibility: vecVis, 'line-cap': 'round', 'line-join': 'round' },
+        layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
         filter: [
           'all',
           ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
           ['==', ['get', 'class'], 'motorway'],
         ],
         paint: {
-          'line-color': palette.roadMotorwayCasing,
+          'line-color': roadPalette.roadMotorwayCasing,
           'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 5, 1.8, 16, 15],
         },
       },
@@ -321,16 +327,23 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         source: 'openmaptiles',
         'source-layer': 'transportation',
         minzoom: 5,
-        layout: { visibility: vecVis, 'line-cap': 'round', 'line-join': 'round' },
+        layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
         filter: [
           'all',
           ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
           ['==', ['get', 'class'], 'motorway'],
         ],
         paint: {
-          'line-color': palette.roadMotorwayInner,
+          'line-color': roadPalette.roadMotorwayInner,
           'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 5, 1.1, 16, 12],
         },
+      },
+      {
+        id: 'satelit-labels',
+        type: 'raster',
+        source: 'esri-satelit-labels',
+        layout: { visibility: satVis },
+        paint: { 'raster-fade-duration': 120 },
       },
       {
         id: 'boundary-admin',
@@ -487,6 +500,19 @@ export function applyMapStyle(map: MapLibreMap, style: MapStyle): void {
   for (const id of VECTOR_LAYER_IDS) {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vecVis)
   }
+  for (const id of ROAD_LAYER_IDS) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible')
+  }
+
+  const roadPalette = isSat ? HYBRID_ROADS : PALETTES[style]
+  map.setPaintProperty('road-path', 'line-color', roadPalette.roadMinor)
+  map.setPaintProperty('road-path', 'line-opacity', isSat ? 0.5 : 0.75)
+  map.setPaintProperty('road-minor', 'line-color', roadPalette.roadMinor)
+  map.setPaintProperty('road-minor', 'line-opacity', isSat ? 0.72 : 0.9)
+  map.setPaintProperty('road-major-casing', 'line-color', roadPalette.roadMajorCasing)
+  map.setPaintProperty('road-major-inner', 'line-color', roadPalette.roadMajorInner)
+  map.setPaintProperty('road-motorway-casing', 'line-color', roadPalette.roadMotorwayCasing)
+  map.setPaintProperty('road-motorway-inner', 'line-color', roadPalette.roadMotorwayInner)
 
   if (isSat) return
 
@@ -499,12 +525,6 @@ export function applyMapStyle(map: MapLibreMap, style: MapStyle): void {
   map.setPaintProperty('waterway', 'line-color', palette.waterway)
   map.setPaintProperty('building', 'fill-color', palette.building)
   map.setPaintProperty('building', 'fill-outline-color', palette.buildingOutline)
-  map.setPaintProperty('road-path', 'line-color', palette.roadMinor)
-  map.setPaintProperty('road-minor', 'line-color', palette.roadMinor)
-  map.setPaintProperty('road-major-casing', 'line-color', palette.roadMajorCasing)
-  map.setPaintProperty('road-major-inner', 'line-color', palette.roadMajorInner)
-  map.setPaintProperty('road-motorway-casing', 'line-color', palette.roadMotorwayCasing)
-  map.setPaintProperty('road-motorway-inner', 'line-color', palette.roadMotorwayInner)
   map.setPaintProperty('boundary-admin', 'line-color', palette.boundary)
   map.setPaintProperty('boundary-country', 'line-color', palette.boundary)
   map.setPaintProperty('label-water', 'text-color', palette.waterLabel)

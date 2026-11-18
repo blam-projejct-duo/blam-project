@@ -4,6 +4,7 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { useEffect, useRef } from 'react'
 import { mapEventTone } from '../../lib/constants'
 import type { ConservationEvent, MapStyle, SatelliteSignal } from '../../types'
+import type { ActiveRoute } from './directions'
 import { hazardToSignal, severityRank } from './hotspotCluster'
 import type { HazardPoint } from './hotspotCluster'
 import { applyMapStyle, createInitialMapStyle } from './mapStyles'
@@ -31,6 +32,7 @@ interface Props {
   hazards: HazardPoint[]
   selectedId: string | null
   selectedSignal?: SatelliteSignal | null
+  activeRoute?: ActiveRoute | null
   onSelect: (id: string) => void
   onSelectSignal?: (signal: SatelliteSignal) => void
   style: MapStyle
@@ -102,11 +104,31 @@ function createHazardPopupNode(h: HazardPoint): HTMLDivElement {
   return root
 }
 
+function buildRouteGeoJson(route: ActiveRoute | null) {
+  if (!route || route.coordinates.length < 2) {
+    return { type: 'FeatureCollection' as const, features: [] }
+  }
+  return {
+    type: 'FeatureCollection' as const,
+    features: [
+      {
+        type: 'Feature' as const,
+        properties: { mode: route.mode },
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: route.coordinates,
+        },
+      },
+    ],
+  }
+}
+
 export default function MapView({
   events,
   hazards,
   selectedId,
   selectedSignal = null,
+  activeRoute = null,
   onSelect,
   onSelectSignal,
   style,
@@ -127,6 +149,7 @@ export default function MapView({
   const paddingRef = useRef(padding)
   const eventsRef = useRef(events)
   const hazardsRef = useRef(hazards)
+  const activeRouteRef = useRef(activeRoute)
   const styleRef = useRef(style)
 
   useEffect(() => {
@@ -135,6 +158,7 @@ export default function MapView({
     paddingRef.current = padding
     eventsRef.current = events
     hazardsRef.current = hazards
+    activeRouteRef.current = activeRoute
     styleRef.current = style
   })
 
@@ -177,6 +201,45 @@ export default function MapView({
 
     map.once('load', () => {
       readyRef.current = true
+
+      map.addSource('blam-route', {
+        type: 'geojson',
+        data: buildRouteGeoJson(activeRouteRef.current),
+      })
+      map.addLayer({
+        id: 'blam-route-casing',
+        type: 'line',
+        source: 'blam-route',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': '#FFFFFF',
+          'line-opacity': 0.92,
+          'line-width': ['case', ['==', ['get', 'mode'], 'air'], 6, 8],
+        },
+      })
+      map.addLayer({
+        id: 'blam-route-land',
+        type: 'line',
+        source: 'blam-route',
+        filter: ['==', ['get', 'mode'], 'land'],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': '#2563EB',
+          'line-width': 4.5,
+        },
+      })
+      map.addLayer({
+        id: 'blam-route-air',
+        type: 'line',
+        source: 'blam-route',
+        filter: ['==', ['get', 'mode'], 'air'],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': '#2563EB',
+          'line-width': 3.5,
+          'line-dasharray': [2, 2],
+        },
+      })
 
       // Kawasan radar: digabung otomatis saat zoom-out, terpecah saat zoom-in
       map.addSource('blam-hazards', {
@@ -395,7 +458,25 @@ export default function MapView({
   }, [hazards])
 
   useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    const src = map.getSource('blam-route') as GeoJSONSource | undefined
+    src?.setData(buildRouteGeoJson(activeRoute))
+    if (!activeRoute || activeRoute.coordinates.length < 2) return
+
+    meRef.current?.setLngLat([activeRoute.origin.lng, activeRoute.origin.lat])
+    const bounds = new LngLatBounds()
+    for (const coord of activeRoute.coordinates) bounds.extend(coord)
+    const { bottom, right, left = 0 } = paddingRef.current
+    map.fitBounds(bounds, {
+      padding: { top: 96, bottom: 56 + bottom, left: 56 + left, right: 56 + right },
+      duration: reducedMotion() ? 0 : 900,
+    })
+  }, [activeRoute])
+
+  useEffect(() => {
     if (!selectedId || selectedSignal) return
+    if (activeRouteRef.current?.eventId === selectedId) return
     const ev = eventsRef.current.find((x) => x.id === selectedId)
     if (ev) focusOn(ev.lat, ev.lng, 10.5)
   }, [selectedId, selectedSignal])
