@@ -49,11 +49,11 @@ function BlamRoot({ isDemo, onNavigate }: { isDemo: boolean; onNavigate: (path: 
           onClick={openAuthModal}
           className={
             isDesktop
-              ? 'fixed top-4 right-20 z-[500] flex h-12 items-center gap-2 rounded-full border border-line bg-white px-4 text-xs font-extrabold text-ink transition-colors hover:bg-canvas'
+              ? 'orb-surface orb-surface-btn fixed top-4 right-20 z-[500] flex h-11 items-center gap-2 px-4 text-xs font-extrabold text-forest'
               : 'glass fixed top-[calc(env(safe-area-inset-top)+16px)] left-4 z-[500] flex h-12 items-center gap-1.5 rounded-full px-3.5 text-xs font-extrabold text-ink'
           }
         >
-          <span className="size-2 rounded-full bg-cobalt" />
+          <span className="size-2 rounded-full bg-leaf" />
           Demo
         </button>
       )}

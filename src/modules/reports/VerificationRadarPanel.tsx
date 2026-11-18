@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Ban, CalendarPlus, Check, MapPin, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Pill, ReportStatusPill } from '../../components/ui/atoms'
+import { DashedOutline, Pill, ReportStatusPill } from '../../components/ui/atoms'
 import { fetchReportsQueue, verifyCitizenReport } from '../../lib/api'
 import { ECOSYSTEM_LABEL } from '../../lib/constants'
 import type { CitizenReport, ReportStatus } from '../../types'
@@ -17,9 +17,13 @@ const TABS: { id: FilterTab; label: string }[] = [
 ]
 
 export default function VerificationRadarPanel({
+  embedded = false,
+  query = '',
   onCreateEvent,
   onCreateStandaloneEvent,
 }: {
+  embedded?: boolean
+  query?: string
   onCreateEvent: (report: CitizenReport) => void
   onCreateStandaloneEvent: () => void
 }) {
@@ -44,9 +48,17 @@ export default function VerificationRadarPanel({
 
   const reports = useMemo(() => {
     const rows = queueQuery.data ?? []
-    if (filter === 'all') return rows
-    return rows.filter((r) => r.status === filter)
-  }, [queueQuery.data, filter])
+    const q = query.trim().toLowerCase()
+    return rows.filter((r) => {
+      if (filter !== 'all' && r.status !== filter) return false
+      if (!q) return true
+      return (
+        r.title.toLowerCase().includes(q) ||
+        r.location_name.toLowerCase().includes(q) ||
+        r.threat_category.toLowerCase().includes(q)
+      )
+    })
+  }, [queueQuery.data, filter, query])
 
   const decide = async (reportId: string, status: Extract<ReportStatus, 'verified' | 'rejected'>) => {
     setBusyId(reportId)
@@ -63,17 +75,19 @@ export default function VerificationRadarPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-[22px] font-bold tracking-tight text-ink">Verifikasi</h2>
-        <button
-          type="button"
-          onClick={onCreateStandaloneEvent}
-          className="btn-primary h-10 px-4 text-xs"
-        >
-          <Plus className="size-4" />
-          Event
-        </button>
-      </div>
+      {!embedded && (
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-[22px] font-bold tracking-tight text-ink">Verifikasi</h2>
+          <button
+            type="button"
+            onClick={onCreateStandaloneEvent}
+            className="btn-primary h-10 px-4 text-xs"
+          >
+            <Plus className="size-4" />
+            Event
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-1.5">
         {TABS.map((t) => (
@@ -101,20 +115,22 @@ export default function VerificationRadarPanel({
       {queueQuery.isPending && !queueQuery.data ? (
         <p className="py-8 text-center text-sm font-semibold text-ink-soft">Memuat antrean…</p>
       ) : queueQuery.isError && !queueQuery.data ? (
-        <div className="rounded-[20px] border border-line bg-white p-5 text-center">
+        <div className="relative rounded-[20px] bg-[#f7faf6] p-5 text-center">
+          <DashedOutline rx={19} />
           <p className="text-xs font-semibold text-ink-soft">
             {queueQuery.error instanceof Error ? queueQuery.error.message : 'Gagal memuat antrean'}
           </p>
           <button
             type="button"
             onClick={() => void queueQuery.refetch()}
-            className="mt-3 h-9 rounded-full border border-line bg-canvas px-4 text-xs font-bold text-ink"
+            className="mt-3 h-9 rounded-full border border-line bg-white px-4 text-xs font-bold text-ink"
           >
             Muat Ulang
           </button>
         </div>
       ) : reports.length === 0 ? (
-        <p className="rounded-[20px] border border-line bg-white p-6 text-center text-sm font-semibold text-ink-soft">
+        <p className="relative rounded-[20px] bg-[#f7faf6] p-6 text-center text-sm font-semibold text-ink-soft">
+          <DashedOutline rx={19} />
           Kosong
         </p>
       ) : (
@@ -124,7 +140,8 @@ export default function VerificationRadarPanel({
             const canCreateEvent = r.status === 'verified' || r.status === 'escalated'
             const isPending = r.status === 'pending_verification' || r.status === 'escalated'
             return (
-              <article key={r.id} className="capsule-dashed overflow-hidden rounded-[20px]">
+              <article key={r.id} className="relative overflow-hidden rounded-[20px] bg-[#f7faf6]">
+                <DashedOutline rx={19} />
                 {r.before_image_url && (
                   <div className="relative aspect-[16/9] w-full bg-muted">
                     <img src={r.before_image_url} alt={r.title} className="size-full object-cover" />
@@ -170,7 +187,7 @@ export default function VerificationRadarPanel({
                           type="button"
                           disabled={busyId === r.id}
                           onClick={() => void decide(r.id, 'verified')}
-                          className="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-ink px-3.5 text-xs font-bold text-white disabled:opacity-50"
+                          className="btn-primary h-10 flex-1 px-3.5 text-xs disabled:opacity-50"
                         >
                           <Check className="size-3.5" /> Setujui
                         </button>

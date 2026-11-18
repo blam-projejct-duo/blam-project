@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { CalendarPlus } from 'lucide-react'
 import { useState } from 'react'
-import { ReportStatusPill } from '../../components/ui/atoms'
+import { DashedOutline, ReportStatusPill } from '../../components/ui/atoms'
 import { fetchReportsQueue, verifyActionAgency } from '../../lib/api'
 import type { CitizenReport, ConservationEvent } from '../../types'
 import { useAuth } from '../auth/AuthContext'
@@ -55,14 +55,16 @@ export default function AgencyInboxPanel({
       <h2 className="text-xl font-extrabold tracking-tight text-ink">Eskalasi</h2>
 
       {error && (
-        <p role="alert" className="rounded-card border border-line bg-white px-4 py-3 text-xs font-semibold text-ink">
+        <p role="alert" className="relative rounded-[20px] bg-[#f7faf6] px-4 py-3 text-xs font-semibold text-ink">
+          <DashedOutline rx={19} />
           {error}
         </p>
       )}
 
       {agencyNotifs.length > 0 && (
-        <section className="rounded-[20px] border border-line bg-white p-4">
-          <p className="text-xs font-extrabold text-ink-soft uppercase">Notifikasi ({agencyNotifs.length})</p>
+        <section className="relative rounded-[20px] bg-[#f7faf6] p-4">
+          <DashedOutline rx={19} />
+          <p className="font-display text-xs font-semibold text-ink-soft uppercase">Notifikasi ({agencyNotifs.length})</p>
           <ul className="mt-2 space-y-2">
             {agencyNotifs.slice(0, 5).map((n) => (
               <li key={n.id} className="dashed-row pt-2 text-xs">
@@ -75,14 +77,16 @@ export default function AgencyInboxPanel({
       )}
 
       <section className="flex flex-col gap-2.5">
-        <p className="text-xs font-extrabold text-ink-soft uppercase">Kritis ({escalated.length})</p>
+        <p className="font-display text-xs font-semibold text-ink-soft uppercase">Kritis ({escalated.length})</p>
         {escalated.length === 0 ? (
-          <p className="rounded-[20px] border border-line bg-white p-4 text-sm font-semibold text-ink-soft">
+          <p className="relative rounded-[20px] bg-[#f7faf6] p-4 text-sm font-semibold text-ink-soft">
+            <DashedOutline rx={19} />
             Kosong
           </p>
         ) : (
           escalated.map((r) => (
-            <div key={r.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-white p-4">
+            <div key={r.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f7faf6] p-4">
+              <DashedOutline rx={19} />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <ReportStatusPill status={r.status} />
@@ -105,12 +109,13 @@ export default function AgencyInboxPanel({
 
       {pendingStamp.length > 0 && (
         <section className="flex flex-col gap-2.5">
-          <p className="text-xs font-extrabold text-ink-soft uppercase">Menunggu Sah</p>
+          <p className="font-display text-xs font-semibold text-ink-soft uppercase">Menunggu Sah</p>
           {pendingStamp.map((ev) => {
             const action = ev.event_actions?.find((a) => !a.verified_by_agency)
             if (!action) return null
             return (
-              <div key={action.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-white p-4">
+              <div key={action.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f7faf6] p-4">
+                <DashedOutline rx={19} />
                 <button
                   type="button"
                   onClick={() => onSelectEvent(ev.id)}

@@ -1,12 +1,13 @@
-import { ChevronDown, Droplets, Flame, HeartHandshake, Mountain, Search, SlidersHorizontal, X } from 'lucide-react'
+import { Droplets, Flame, HeartHandshake, Mountain, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ECOSYSTEM_FILTERS, EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
+import type { ReactNode } from 'react'
+import { EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
 import { findFundraisingForSignal, useFundraisings } from '../../modules/fundraising/useFundraisings'
 import { formatFloodRiskLabel, formatSignalSource } from '../../modules/map/radarFilters'
 import { DashedOutline, EcoBadge } from '../ui/atoms'
-import type { ConservationEvent, Ecosystem, HazardKind, SatelliteSignal } from '../../types'
+import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 
-type ListTab = 'Utama' | 'Terbaru' | 'Dampak' | 'Satelit'
+export type ListTab = 'Utama' | 'Terbaru' | 'Dampak' | 'Satelit' | 'Berjalan' | 'Verifikasi' | 'Selesai'
 
 const TABS: ListTab[] = ['Utama', 'Terbaru', 'Dampak', 'Satelit']
 const DOT = { critical: 'bg-critical', progress: 'bg-progress', resolved: 'bg-resolved' } as const
@@ -104,61 +105,105 @@ function SignalRow({
   )
 }
 
+function summarizeResolvedEvent(event: ConservationEvent) {
+  let wasteKg = 0
+  let trees = 0
+  for (const a of event.event_actions ?? []) {
+    wasteKg += Number(a.waste_kg) || 0
+    trees += a.trees_planted || 0
+  }
+  const latestAction = event.event_actions?.[0]
+  const summary =
+    latestAction?.ai_comparison_summary?.trim() ||
+    latestAction?.notes?.trim() ||
+    event.description?.trim() ||
+    'Event konservasi telah diselesaikan.'
+  const meta = event.organization?.name
+    ? `${event.organization.name} · ${shortLocation(event.location_name)}`
+    : shortLocation(event.location_name)
+  return {
+    wasteKg,
+    trees,
+    recoveryScore: latestAction?.ai_recovery_score ?? null,
+    participantCount: event.event_participants?.length ?? 0,
+    summary,
+    meta,
+  }
+}
+
+function ResolvedEventRow({ event, onOpen }: { event: ConservationEvent; onOpen: () => void }) {
+  const { wasteKg, trees, recoveryScore, participantCount, summary, meta } = summarizeResolvedEvent(event)
+
+  return (
+    <li className="relative rounded-[20px] bg-[#f7faf6] transition-colors hover:bg-mint/30">
+      <DashedOutline rx={19} />
+      <button type="button" onClick={onOpen} className="flex w-full flex-col gap-2.5 px-3.5 py-3.5 text-left">
+        <div className="flex items-center gap-3">
+          <EcoBadge ecosystem={event.ecosystem} />
+          <div className="min-w-0 flex-1">
+            <span className="font-display block truncate text-[15px] font-semibold text-ink">{event.title}</span>
+            <span className="block truncate text-[12px] text-ink-soft">{meta}</span>
+          </div>
+          <span className="font-display shrink-0 rounded-full bg-mint/70 px-2.5 py-0.5 text-[11px] font-semibold text-forest">
+            Selesai
+          </span>
+        </div>
+
+        <p className="line-clamp-2 text-[12px] leading-relaxed text-ink-soft">{summary}</p>
+
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-dashed border-dash pt-2 text-[11px] font-semibold text-forest">
+          <span className="num rounded-full bg-white px-2.5 py-0.5 text-forest">{wasteKg} kg sampah</span>
+          <span className="num rounded-full bg-white px-2.5 py-0.5 text-forest">{trees} bibit</span>
+          {recoveryScore !== null && (
+            <span className="num rounded-full bg-mint/50 px-2.5 py-0.5 text-forest">{recoveryScore}% pulih</span>
+          )}
+          {participantCount > 0 && (
+            <span className="num rounded-full bg-white px-2.5 py-0.5 text-ink-soft">{participantCount} relawan</span>
+          )}
+        </div>
+      </button>
+    </li>
+  )
+}
+
 export default function EventListPanel({
   events,
   impactEvents,
   signals = [],
   query,
   onQueryChange,
-  ecosystemFilter,
-  onEcosystemChange,
   showSearch = true,
+  showTitle = true,
+  tabs = TABS,
+  initialTab,
   autoFocus = false,
   title = 'Aksi',
   onExpand,
   onOpen,
   onOpenSignal,
+  renderTabContent,
 }: {
   events: ConservationEvent[]
   impactEvents?: ConservationEvent[]
   signals?: SatelliteSignal[]
   query: string
   onQueryChange: (q: string) => void
-  ecosystemFilter?: Ecosystem | 'all'
-  onEcosystemChange?: (next: Ecosystem | 'all') => void
   showSearch?: boolean
+  showTitle?: boolean
+  tabs?: readonly ListTab[]
+  initialTab?: ListTab
   autoFocus?: boolean
   title?: string
   onExpand?: () => void
   onOpen: (id: string) => void
   onOpenSignal?: (signal: SatelliteSignal) => void
+  renderTabContent?: (tab: ListTab) => ReactNode
 }) {
-  const [tab, setTab] = useState<ListTab>('Utama')
-  const [filterOpen, setFilterOpen] = useState(false)
+  const [tab, setTab] = useState<ListTab>(() =>
+    initialTab && tabs.includes(initialTab) ? initialTab : (tabs[0] ?? 'Utama'),
+  )
   const { fundraisings } = useFundraisings()
-  const filterWrapRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (!filterOpen) return
-    const handlePointerDown = (e: PointerEvent) => {
-      if (!filterWrapRef.current?.contains(e.target as Node)) {
-        setFilterOpen(false)
-      }
-    }
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setFilterOpen(false)
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [filterOpen])
-
-  const activeEcosystemLabel =
-    ECOSYSTEM_FILTERS.find((f) => f.id === ecosystemFilter)?.label ?? 'Semua'
 
   useEffect(() => {
     if (!autoFocus) return
@@ -190,9 +235,24 @@ export default function EventListPanel({
     const matches = (ev: ConservationEvent) =>
       !q || ev.title.toLowerCase().includes(q) || ev.location_name.toLowerCase().includes(q)
     const base = events.filter(matches)
-    if (tab === 'Satelit') return []
+    if (tab === 'Satelit' || tab === 'Verifikasi') return []
     if (tab === 'Terbaru') {
       return [...base].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at))
+    }
+    if (tab === 'Berjalan') {
+      return base
+        .filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled')
+        .sort((a, b) => RANK[a.status] - RANK[b.status] || +new Date(b.created_at) - +new Date(a.created_at))
+    }
+    if (tab === 'Selesai') {
+      const source = (impactEvents ?? events).filter(matches)
+      return source
+        .filter((ev) => ev.status === 'resolved')
+        .sort(
+          (a, b) =>
+            +new Date(b.event_actions?.[0]?.completed_at ?? b.updated_at) -
+            +new Date(a.event_actions?.[0]?.completed_at ?? a.updated_at),
+        )
     }
     if (tab === 'Dampak') {
       const source = (impactEvents ?? events).filter(matches)
@@ -203,12 +263,26 @@ export default function EventListPanel({
     )
   }, [events, impactEvents, tab, query])
 
+  const resolvedTotals = useMemo(() => {
+    if (tab !== 'Selesai') return null
+    let wasteKg = 0
+    let trees = 0
+    for (const ev of rows) {
+      for (const a of ev.event_actions ?? []) {
+        wasteKg += Number(a.waste_kg) || 0
+        trees += a.trees_planted || 0
+      }
+    }
+    return { count: rows.length, wasteKg, trees }
+  }, [rows, tab])
+
   const shownSignals =
     tab === 'Satelit' ? filteredSignals : tab === 'Utama' && onOpenSignal ? filteredSignals.slice(0, 4) : []
+  const customContent = renderTabContent?.(tab)
 
   return (
     <div>
-      {!onEcosystemChange && (
+      {showTitle && (
         <h2 className="mb-3 text-[22px] font-bold tracking-tight text-ink">{title}</h2>
       )}
 
@@ -238,155 +312,110 @@ export default function EventListPanel({
         </label>
       )}
 
-      {!onEcosystemChange ? (
-        <div role="tablist" className={`flex items-center gap-1 overflow-x-auto ${showSearch ? 'mt-3' : ''}`}>
-          {TABS.map((t) => {
-            const active = tab === t
-            return (
-              <button
-                key={t}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => {
-                  onExpand?.()
-                  setTab(t)
-                }}
-                className={`font-display h-8 shrink-0 rounded-full px-3 text-[12px] whitespace-nowrap transition-colors ${
-                  active
-                    ? 'bg-mint/70 font-semibold text-forest'
-                    : 'font-medium text-ink-soft hover:text-forest'
-                }`}
-              >
-                {t}
-              </button>
-            )
-          })}
-        </div>
+      <div role="tablist" className={`flex items-center gap-1 overflow-x-auto ${showSearch ? 'mt-3' : ''}`}>
+        {tabs.map((t) => {
+          const active = tab === t
+          return (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => {
+                onExpand?.()
+                setTab(t)
+              }}
+              className={`font-display h-8 shrink-0 rounded-full px-3 text-[12px] whitespace-nowrap transition-colors ${
+                active
+                  ? 'bg-mint/70 font-semibold text-forest'
+                  : 'font-medium text-ink-soft hover:text-forest'
+              }`}
+            >
+              {t}
+            </button>
+          )
+        })}
+      </div>
+
+      {customContent ? (
+        <div className="mt-3">{customContent}</div>
       ) : (
-        <div ref={filterWrapRef} className={`relative ${showSearch ? 'mt-4' : ''}`}>
-          <button
-            type="button"
-            aria-expanded={filterOpen}
-            aria-haspopup="listbox"
-            onClick={() => setFilterOpen((v) => !v)}
-            className="capsule-dashed flex h-11 w-full items-center justify-between gap-2 rounded-full px-4 text-left transition-colors hover:bg-mint/25"
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <SlidersHorizontal className="size-4 shrink-0 text-leaf" strokeWidth={2.25} />
-              <span className="font-display truncate text-[13px] font-semibold text-ink">
-                {tab}
-                {ecosystemFilter && ecosystemFilter !== 'all' ? ` · ${activeEcosystemLabel}` : ''}
-              </span>
-            </span>
-            <ChevronDown
-              className={`size-4 shrink-0 text-ink-soft transition-transform duration-200 ${filterOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
-
-          {filterOpen && (
-            <div className="capsule-dashed mt-2 flex flex-col gap-3 rounded-[20px] bg-white p-3.5">
+        <>
+          {resolvedTotals && rows.length > 0 && (
+            <div className="relative mt-3 grid grid-cols-3 gap-2 rounded-[20px] bg-[#f7faf6] p-3 text-center">
+              <DashedOutline rx={19} />
               <div>
-                <p className="mb-2 text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
-                  Tampilan Radar
-                </p>
-                <div role="tablist" className="grid grid-cols-2 gap-1.5">
-                  {TABS.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      role="tab"
-                      aria-selected={tab === t}
-                      onClick={() => {
-                        setTab(t)
-                        setFilterOpen(false)
-                      }}
-                      className={`font-display h-9 rounded-full px-3 text-[13px] font-semibold transition-colors ${
-                        tab === t ? 'bg-leaf text-white' : 'capsule-dashed text-ink hover:bg-mint/30'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
+                <p className="num text-base font-bold text-forest">{resolvedTotals.count}</p>
+                <p className="font-display text-[11px] font-semibold text-ink-soft">Selesai</p>
               </div>
-
-              <div className="border-t-[1.5px] border-dashed border-dash pt-3">
-                <p className="mb-2 text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
-                  Ekosistem
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {ECOSYSTEM_FILTERS.map((f) => {
-                    const active = ecosystemFilter === f.id
-                    return (
-                      <button
-                        key={f.id}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => {
-                          onEcosystemChange(f.id)
-                          setFilterOpen(false)
-                        }}
-                        className={`font-display h-8 rounded-full px-3 text-[12px] font-semibold transition-colors ${
-                          active ? 'bg-leaf text-white' : 'capsule-dashed text-ink hover:bg-mint/30'
-                        }`}
-                      >
-                        {f.label}
-                      </button>
-                    )
-                  })}
-                </div>
+              <div>
+                <p className="num text-base font-bold text-forest">{resolvedTotals.wasteKg} kg</p>
+                <p className="font-display text-[11px] font-semibold text-ink-soft">Sampah</p>
+              </div>
+              <div>
+                <p className="num text-base font-bold text-forest">{resolvedTotals.trees}</p>
+                <p className="font-display text-[11px] font-semibold text-ink-soft">Bibit</p>
               </div>
             </div>
           )}
-        </div>
-      )}
 
-      {rows.length > 0 && (
-        <ul className="mt-3 flex flex-col gap-2.5">
-          {rows.map((ev) => (
-            <EventRow key={ev.id} event={ev} tab={tab} onOpen={() => onOpen(ev.id)} />
-          ))}
-        </ul>
-      )}
+          {rows.length > 0 && (
+            <ul className="mt-3 flex flex-col gap-2.5">
+              {rows.map((ev) =>
+                tab === 'Selesai' ? (
+                  <ResolvedEventRow key={ev.id} event={ev} onOpen={() => onOpen(ev.id)} />
+                ) : (
+                  <EventRow key={ev.id} event={ev} tab={tab} onOpen={() => onOpen(ev.id)} />
+                ),
+              )}
+            </ul>
+          )}
 
-      {shownSignals.length > 0 && onOpenSignal && (
-        <div className={rows.length > 0 ? 'mt-4 border-t-[1.5px] border-dashed border-dash pt-3.5' : 'mt-3'}>
-          <div className="mb-2 flex items-center justify-between">
-            <p className="font-display text-[11px] font-semibold tracking-wider text-ink-soft uppercase">
-              {tab === 'Satelit' ? `Satelit (${filteredSignals.length})` : 'Satelit'}
+          {shownSignals.length > 0 && onOpenSignal && (
+            <div className={rows.length > 0 ? 'mt-4 border-t-[1.5px] border-dashed border-dash pt-3.5' : 'mt-3'}>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="font-display text-[11px] font-semibold tracking-wider text-ink-soft uppercase">
+                  {tab === 'Satelit' ? `Satelit (${filteredSignals.length})` : 'Satelit'}
+                </p>
+                {tab === 'Utama' && filteredSignals.length > shownSignals.length && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onExpand?.()
+                      setTab('Satelit')
+                    }}
+                    className="font-display text-[11px] font-semibold text-leaf hover:underline"
+                  >
+                    Lihat semua ({filteredSignals.length})
+                  </button>
+                )}
+              </div>
+              <ul className="flex flex-col gap-2.5">
+                {shownSignals.map((sig) => (
+                  <SignalRow
+                    key={sig.id}
+                    signal={sig}
+                    linked={linkedSet.has(sig.id)}
+                    hasFundraising={Boolean(findFundraisingForSignal(fundraisings, sig))}
+                    onOpen={() => onOpenSignal(sig)}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {rows.length === 0 && shownSignals.length === 0 && (
+            <p className="py-10 text-center text-sm font-semibold text-ink-soft">
+              {tab === 'Satelit'
+                ? 'Belum ada sinyal satelit'
+                : tab === 'Berjalan'
+                  ? 'Belum ada event berjalan'
+                  : tab === 'Selesai'
+                    ? 'Belum ada event selesai'
+                    : 'Tidak ada event'}
             </p>
-            {tab === 'Utama' && filteredSignals.length > shownSignals.length && (
-              <button
-                type="button"
-                onClick={() => {
-                  onExpand?.()
-                  setTab('Satelit')
-                }}
-                className="font-display text-[11px] font-semibold text-leaf hover:underline"
-              >
-                Lihat semua ({filteredSignals.length})
-              </button>
-            )}
-          </div>
-          <ul className="flex flex-col gap-2.5">
-            {shownSignals.map((sig) => (
-              <SignalRow
-                key={sig.id}
-                signal={sig}
-                linked={linkedSet.has(sig.id)}
-                hasFundraising={Boolean(findFundraisingForSignal(fundraisings, sig))}
-                onOpen={() => onOpenSignal(sig)}
-              />
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {rows.length === 0 && shownSignals.length === 0 && (
-        <p className="py-10 text-center text-sm font-semibold text-ink-soft">
-          {tab === 'Satelit' ? 'Belum ada sinyal satelit' : 'Tidak ada event'}
-        </p>
+          )}
+        </>
       )}
     </div>
   )

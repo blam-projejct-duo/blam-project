@@ -1,11 +1,11 @@
-@import '@fontsource-variable/plus-jakarta-sans';
-@import '@fontsource-variable/fredoka';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/rubik';
 @import 'tailwindcss';
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
 @theme {
-  --font-sans: 'Plus Jakarta Sans Variable', system-ui, sans-serif;
-  --font-display: 'Fredoka Variable', 'Plus Jakarta Sans Variable', system-ui, sans-serif;
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-display: 'Rubik Variable', 'Inter Variable', system-ui, sans-serif;
 
   --color-canvas: #f3f1ed;
   --color-surface: #ffffff;
@@ -52,7 +52,7 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
 }
 
 button {
@@ -87,11 +87,10 @@ button {
   --gloss: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 48%);
 }
 
-.orb {
+.orb,
+.orb-surface {
   position: relative;
   isolation: isolate;
-  display: grid;
-  place-items: center;
   border-radius: 9999px;
   border: none;
   background: linear-gradient(180deg, #ffffff 0%, #ffffff 66%, #eef2ee 92%, #e4eae4 100%);
@@ -104,8 +103,15 @@ button {
   transition: transform 120ms var(--ease-spring);
 }
 
+.orb {
+  display: grid;
+  place-items: center;
+}
+
 [data-map-style='satelit'] .orb,
-[data-map-style='gelap'] .orb {
+[data-map-style='gelap'] .orb,
+[data-map-style='satelit'] .orb-surface,
+[data-map-style='gelap'] .orb-surface {
   background: linear-gradient(180deg, #ffffff 0%, #ffffff 65%, #edf1ed 92%, #e2e8e2 100%);
   box-shadow:
     0 7px 16px -2px rgba(0, 0, 0, 0.34),
@@ -122,14 +128,16 @@ button {
   border-radius: 9999px;
 }
 
-.orb:active {
+.orb:active,
+.orb-surface-btn:active {
   transform: scale(0.95);
   box-shadow:
     0 2px 6px rgba(19, 36, 26, 0.2),
     inset 0 2px 4px rgba(19, 36, 26, 0.16);
 }
 
-.orb-primary {
+.orb-primary,
+.orb-surface-primary {
   border: none;
   color: #fff;
   background: linear-gradient(180deg, #64e395 0%, #37b76b 54%, #1f824b 100%);
@@ -141,7 +149,9 @@ button {
 }
 
 [data-map-style='satelit'] .orb-primary,
-[data-map-style='gelap'] .orb-primary {
+[data-map-style='gelap'] .orb-primary,
+[data-map-style='satelit'] .orb-surface-primary,
+[data-map-style='gelap'] .orb-surface-primary {
   background: linear-gradient(180deg, #64e395 0%, #37b76b 54%, #1f824b 100%);
   box-shadow:
     0 8px 18px -2px rgba(0, 0, 0, 0.38),
@@ -236,7 +246,7 @@ button {
 }
 
 .orb-mark-primary {
-  fill: rgba(47, 138, 87, 0.32);
+  fill: rgba(255, 255, 255, 0.28);
 }
 
 .map-label {
@@ -293,7 +303,7 @@ button {
 /* MapLibre GL */
 .maplibregl-map {
   font-family: var(--font-sans);
-  background: var(--color-canvas);
+  background: #d7e7f4;
 }
 
 [data-style='satelit'].maplibregl-map,

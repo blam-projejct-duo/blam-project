@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { DashedOutline } from '../../components/ui/atoms'
 import { donateToFundraising } from '../../lib/api'
 import type { FundraisingCampaign, PaymentMethod } from '../../types'
 import { useAuth } from '../auth/AuthContext'
@@ -267,7 +268,8 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                 </button>
               </div>
               {isAnonymous ? (
-                <p className="capsule-dashed rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-forest">
+                <p className="relative rounded-2xl bg-[#f7faf6] px-3.5 py-2.5 text-xs font-semibold text-forest">
+                  <DashedOutline rx={15} />
                   Di bagian catatan pemberi, nama Anda akan ditampilkan sebagai <strong>Anonim</strong>.
                 </p>
               ) : (
@@ -352,7 +354,8 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
             </div>
 
             {paymentMethod === 'qris' ? (
-              <div className="capsule-dashed flex flex-col items-center gap-3 rounded-3xl p-5 text-center">
+              <div className="relative flex flex-col items-center gap-3 rounded-3xl bg-[#f7faf6] p-5 text-center">
+                <DashedOutline rx={23} />
                 <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-[11px] font-extrabold text-ink shadow-xs">
                   <ShieldCheck className="size-3.5 shrink-0 text-leaf" />
                   <span className="truncate">QRIS · {campaign.organizer_name}</span>
@@ -389,7 +392,8 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                 </div>
               </div>
             ) : (
-              <div className="capsule-dashed flex flex-col gap-3 rounded-3xl p-4">
+              <div className="relative flex flex-col gap-3 rounded-3xl bg-[#f7faf6] p-4">
+                <DashedOutline rx={23} />
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-bold text-ink-soft">Bank Tujuan</span>
                   <span className="text-xs font-extrabold text-ink">{selectedBank} Virtual Account</span>

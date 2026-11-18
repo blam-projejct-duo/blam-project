@@ -1,4 +1,4 @@
-import type { Map as MapLibreMap, StyleSpecification } from 'maplibre-gl'
+import type { Map as MapLibreMap, ProjectionSpecification, SkySpecification, StyleSpecification } from 'maplibre-gl'
 import type { MapStyle } from '../../types'
 
 interface ThemePalette {
@@ -109,6 +109,36 @@ const TEXT_FIELD_EXPR = [
   ['coalesce', ['get', 'name_en'], ['get', 'name']],
 ]
 
+const GLOBE_PROJECTION: ProjectionSpecification = {
+  type: ['interpolate', ['linear'], ['zoom'], 3.45, 'vertical-perspective', 4.25, 'mercator'] as never,
+}
+
+function skyForStyle(style: MapStyle): SkySpecification {
+  const atmosphereBlend = ['interpolate', ['linear'], ['zoom'], 1.2, 1, 3.8, 0.65, 4.25, 0] as never
+  if (style === 'satelit') {
+    return {
+      'sky-color': '#09142c',
+      'horizon-color': '#2563eb',
+      'sky-horizon-blend': 0.6,
+      'atmosphere-blend': atmosphereBlend,
+    }
+  }
+  if (style === 'gelap') {
+    return {
+      'sky-color': '#0a0f15',
+      'horizon-color': '#1e3a5f',
+      'sky-horizon-blend': 0.55,
+      'atmosphere-blend': atmosphereBlend,
+    }
+  }
+  return {
+    'sky-color': '#cde3f3',
+    'horizon-color': '#7bc2ee',
+    'sky-horizon-blend': 0.6,
+    'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 1.2, 0.9, 3.8, 0.5, 4.25, 0] as never,
+  }
+}
+
 export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecification {
   const isSat = initialStyle === 'satelit'
   const palette = PALETTES[initialStyle === 'gelap' ? 'gelap' : 'terang']
@@ -118,6 +148,8 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
 
   return {
     version: 8,
+    projection: GLOBE_PROJECTION,
+    sky: skyForStyle(initialStyle),
     glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
     sources: {
       openmaptiles: {
@@ -530,6 +562,8 @@ export function applyMapStyle(map: MapLibreMap, style: MapStyle): void {
   const isSat = style === 'satelit'
   const vecVis = isSat ? 'none' : 'visible'
   const satVis = isSat ? 'visible' : 'none'
+
+  map.setSky(skyForStyle(style))
 
   for (const id of SATELLITE_LAYER_IDS) {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', satVis)

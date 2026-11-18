@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Ban, Check } from 'lucide-react'
 import { useState } from 'react'
-import { Pill, ReportStatusPill, StatusPill } from '../../components/ui/atoms'
+import { DashedOutline, Pill, ReportStatusPill, StatusPill } from '../../components/ui/atoms'
 import {
   fetchOrgs,
   fetchReportsQueue,
@@ -95,20 +95,23 @@ export default function AdminPanel({
       <h2 className="text-xl font-extrabold tracking-tight text-ink">Admin</h2>
 
       {error && (
-        <p role="alert" className="rounded-card border border-line bg-white px-4 py-3 text-xs font-semibold text-ink">
+        <p role="alert" className="relative rounded-[20px] bg-[#f7faf6] px-4 py-3 text-xs font-semibold text-ink">
+          <DashedOutline rx={19} />
           {error}
         </p>
       )}
 
       <section className="flex flex-col gap-2.5">
-        <p className="text-xs font-extrabold text-ink-soft uppercase">Organisasi ({orgs.length})</p>
+        <p className="font-display text-xs font-semibold text-ink-soft uppercase">Organisasi ({orgs.length})</p>
         {orgs.length === 0 ? (
-          <p className="rounded-[20px] border border-line bg-white p-4 text-sm font-semibold text-ink-soft">
+          <p className="relative rounded-[20px] bg-[#f7faf6] p-4 text-sm font-semibold text-ink-soft">
+            <DashedOutline rx={19} />
             Kosong
           </p>
         ) : (
           orgs.map((o) => (
-            <div key={o.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-white p-4">
+            <div key={o.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f7faf6] p-4">
+              <DashedOutline rx={19} />
               <div className="min-w-0">
                 <Pill>{o.type === 'agency' ? 'Instansi' : 'Komunitas'}</Pill>
                 <p className="mt-1.5 truncate text-sm font-extrabold text-ink">{o.name}</p>
@@ -119,7 +122,7 @@ export default function AdminPanel({
                   type="button"
                   disabled={busyId === o.id}
                   onClick={() => void handleOrg(o.id, true)}
-                  className="inline-flex h-9 items-center gap-1 rounded-full bg-ink px-3 text-xs font-bold text-white"
+                  className="btn-primary h-9 px-3 text-xs"
                 >
                   <Check className="size-3.5" /> Setujui
                 </button>
@@ -138,14 +141,16 @@ export default function AdminPanel({
       </section>
 
       <section className="flex flex-col gap-2.5">
-        <p className="text-xs font-extrabold text-ink-soft uppercase">Laporan Warga ({reports.length})</p>
+        <p className="font-display text-xs font-semibold text-ink-soft uppercase">Laporan Warga ({reports.length})</p>
         {reports.length === 0 ? (
-          <p className="rounded-[20px] border border-line bg-white p-4 text-sm font-semibold text-ink-soft">
+          <p className="relative rounded-[20px] bg-[#f7faf6] p-4 text-sm font-semibold text-ink-soft">
+            <DashedOutline rx={19} />
             Kosong
           </p>
         ) : (
           reports.slice(0, 8).map((r) => (
-            <div key={r.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-white p-3.5">
+            <div key={r.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f7faf6] p-3.5">
+              <DashedOutline rx={19} />
               <div className="min-w-0">
                 <ReportStatusPill status={r.status} />
                 <p className="mt-1 truncate text-sm font-bold text-ink">{r.title}</p>
@@ -154,7 +159,7 @@ export default function AdminPanel({
                 type="button"
                 disabled={busyId === r.id}
                 onClick={() => void rejectReport(r.id)}
-                className="h-8 shrink-0 rounded-full border border-line bg-canvas px-3 text-xs font-bold text-ink-soft"
+                className="h-8 shrink-0 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink-soft"
               >
                 Tolak
               </button>
@@ -164,9 +169,10 @@ export default function AdminPanel({
       </section>
 
       <section className="flex flex-col gap-2.5">
-        <p className="text-xs font-extrabold text-ink-soft uppercase">Event Radar ({events.length})</p>
+        <p className="font-display text-xs font-semibold text-ink-soft uppercase">Event Radar ({events.length})</p>
         {events.slice(0, 8).map((ev) => (
-          <div key={ev.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-white p-3.5">
+          <div key={ev.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f7faf6] p-3.5">
+            <DashedOutline rx={19} />
             <div className="min-w-0">
               <StatusPill status={ev.status} />
               <p className="mt-1 truncate text-sm font-bold text-ink">{ev.title}</p>
@@ -175,7 +181,7 @@ export default function AdminPanel({
               type="button"
               disabled={busyId === ev.id}
               onClick={() => void cancelEvent(ev.id)}
-              className="h-8 shrink-0 rounded-full border border-line bg-canvas px-3 text-xs font-bold text-ink-soft"
+              className="h-8 shrink-0 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink-soft"
             >
               Batalkan
             </button>

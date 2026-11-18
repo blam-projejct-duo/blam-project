@@ -1,7 +1,7 @@
 import { Camera, LogOut } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { DashedRow, Pill } from '../../components/ui/atoms'
+import { DashedOutline, DashedRow, Pill } from '../../components/ui/atoms'
 import { updateMyProfile } from '../../lib/api'
 import { ROLE_LABEL } from '../../lib/constants'
 import { compressImage } from '../../lib/imageCompress'
@@ -40,7 +40,8 @@ export default function ProfilePanel() {
         <h2 className="text-[22px] font-bold tracking-tight text-ink">
           {isDemo ? 'Peran Demo' : 'Masuk'}
         </h2>
-        <div className="capsule-dashed rounded-[20px] p-5">
+        <div className="relative rounded-[20px] bg-[#f7faf6] p-5">
+          <DashedOutline rx={19} />
           <AuthPanel />
         </div>
       </div>
@@ -51,7 +52,8 @@ export default function ProfilePanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="capsule-dashed rounded-[20px] p-4 sm:p-5">
+      <section className="relative rounded-[20px] bg-[#f7faf6] p-4 sm:p-5">
+        <DashedOutline rx={19} />
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative shrink-0">
@@ -92,7 +94,8 @@ export default function ProfilePanel() {
               {profile.email && <p className="truncate text-xs text-ink-soft">{profile.email}</p>}
             </div>
           </div>
-          <div className="shrink-0 rounded-2xl border border-line/80 bg-white/80 px-3 py-1.5 text-center">
+          <div className="relative shrink-0 rounded-2xl bg-white px-3 py-1.5 text-center">
+            <DashedOutline rx={15} />
             <p className="num text-xl leading-none text-forest sm:text-2xl">{profile.points}</p>
             <p className="mt-0.5 text-[10px] font-bold tracking-wide text-ink-soft uppercase">Poin</p>
           </div>
@@ -134,7 +137,8 @@ export default function ProfilePanel() {
         </div>
       </section>
 
-      <section className="capsule-dashed rounded-[20px] p-4">
+      <section className="relative rounded-[20px] bg-[#f7faf6] p-4">
+        <DashedOutline rx={19} />
         <p className="font-display text-xs font-semibold text-ink-soft uppercase">Organisasi ({memberships.length})</p>
         {memberships.length === 0 ? (
           <p className="mt-2 text-xs font-medium text-ink-soft">Kosong</p>
@@ -155,7 +159,8 @@ export default function ProfilePanel() {
         )}
       </section>
 
-      <section className="capsule-dashed rounded-[20px] p-4">
+      <section className="relative rounded-[20px] bg-[#f7faf6] p-4">
+        <DashedOutline rx={19} />
         <p className="font-display text-xs font-semibold text-ink-soft uppercase">Notifikasi ({notifications.length})</p>
         {notifications.length === 0 ? (
           <p className="mt-2 text-xs font-medium text-ink-soft">Kosong</p>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="sq-bg" x1="24" y1="24" x2="488" y2="488" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#EBF2E7"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="116" fill="url(#sq-bg)" stroke="#DCE3D3" stroke-width="4"/>
+  <g transform="translate(56, 56) scale(0.78)">
+  <defs>
+    <linearGradient id="sq-left" x1="130" y1="76" x2="256" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6CE79C"/>
+      <stop offset="55%" stop-color="#37B76B"/>
+      <stop offset="100%" stop-color="#278751"/>
+    </linearGradient>
+    <linearGradient id="sq-right" x1="256" y1="76" x2="390" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2F8A57"/>
+      <stop offset="60%" stop-color="#1D5C3A"/>
+      <stop offset="100%" stop-color="#184C30"/>
+    </linearGradient>
+    <linearGradient id="sq-rim" x1="160" y1="76" x2="350" y2="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.58"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="sq-vein-mask">
+      <rect x="0" y="0" width="512" height="512" fill="white"/>
+      <path d="M247 368 L252 178 C252 173, 260 173, 260 178 L265 368 Z" fill="black"/>
+      <path d="M254 282 C230 266, 206 252, 186 240" fill="none" stroke="black" stroke-width="11.5" stroke-linecap="round"/>
+      <path d="M258 250 C282 234, 304 220, 322 208" fill="none" stroke="black" stroke-width="11.5" stroke-linecap="round"/>
+    </mask>
+  </defs>
+
+  <g transform="translate(272, 238) scale(1.40) translate(-235.6, -257.0) translate(0, 22) rotate(14 256 234)">
+    <g mask="url(#sq-vein-mask)">
+      <path d="M256 68 C239 68, 222 87, 195 135 C158 202, 122 284, 130 339 C136 375, 170 392, 204 375 L244 355 C250 352, 256 351, 256 351 L256 68 Z"
+            fill="url(#sq-left)"/>
+      <path d="M256 68 C273 68, 290 87, 317 135 C354 202, 390 284, 382 339 C376 375, 342 392, 308 375 L268 355 C262 352, 256 351, 256 351 L256 68 Z"
+            fill="url(#sq-right)"/>
+      <path d="M256 72 C241 72, 224 91, 199 137 C168 194, 136 266, 135 320"
+            fill="none" stroke="url(#sq-rim)" stroke-width="7.5" stroke-linecap="round"/>
+      <path d="M256 72 C271 72, 288 91, 313 137"
+            fill="none" stroke="#A7F3D0" stroke-opacity="0.40" stroke-width="5.5" stroke-linecap="round"/>
+    </g>
+  </g>
+  </g>
+</svg>

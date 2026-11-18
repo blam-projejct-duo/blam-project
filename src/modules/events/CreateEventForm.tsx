@@ -23,7 +23,7 @@ const ECOS: { id: Ecosystem; label: string }[] = [
 const CATEGORIES = ['Aksi Pemulihan', 'Bersih Sampah', 'Tanam Bibit', 'Pantau Satelit']
 
 const field =
-  'h-11 w-full rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-ink focus:outline-none'
+  'h-11 w-full rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-leaf focus:outline-none'
 
 export default function CreateEventForm({ initialReport, initialSignal, onClose, onCreated }: Props) {
   const queryClient = useQueryClient()
@@ -221,8 +221,10 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
                 type="button"
                 aria-pressed={ecosystem === e.id}
                 onClick={() => setEcosystem(e.id)}
-                className={`h-10 flex-1 rounded-full border text-xs font-bold ${
-                  ecosystem === e.id ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink'
+                className={`font-display h-10 flex-1 rounded-full border text-xs font-semibold transition-colors ${
+                  ecosystem === e.id
+                    ? 'border-leaf bg-leaf text-white'
+                    : 'capsule-dashed text-ink hover:bg-mint/30'
                 }`}
               >
                 {e.label}
@@ -244,8 +246,10 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
                 key={c}
                 type="button"
                 onClick={() => setCategory(c)}
-                className={`h-8 rounded-full border px-3 text-xs font-bold ${
-                  category === c ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-soft'
+                className={`font-display h-8 rounded-full border px-3 text-xs font-semibold transition-colors ${
+                  category === c
+                    ? 'border-leaf bg-leaf text-white'
+                    : 'capsule-dashed text-ink-soft hover:text-forest'
                 }`}
               >
                 {c}

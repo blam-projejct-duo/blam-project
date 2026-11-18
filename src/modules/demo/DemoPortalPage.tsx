@@ -31,7 +31,7 @@ export default function DemoPortalPage({
       <div className="flex w-full max-w-xl flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <span className="grid size-10 place-items-center rounded-full border border-line bg-white text-emerald">
+            <span className="grid size-10 place-items-center rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white text-forest">
               <Leaf className="size-5" strokeWidth={2.25} />
             </span>
             <span className="text-base font-extrabold tracking-tight text-ink">Blam</span>
@@ -77,7 +77,7 @@ export default function DemoPortalPage({
                     type="button"
                     disabled={busyId !== null}
                     onClick={() => void selectRole(acc.id)}
-                    className="flex min-h-[104px] flex-col items-start justify-between rounded-[20px] border border-line bg-canvas p-4 text-left transition-colors hover:border-ink/30 hover:bg-white disabled:opacity-60"
+                    className="flex min-h-[104px] flex-col items-start justify-between rounded-[20px] border border-line bg-canvas p-4 text-left transition-colors hover:border-leaf/40 hover:bg-white disabled:opacity-60"
                   >
                     <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold text-ink-soft">
                       {ROLE_LABEL[acc.role]}

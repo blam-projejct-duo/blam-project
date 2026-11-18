@@ -1,5 +1,6 @@
 import { Building2, EyeOff, HeartHandshake, Landmark, ShieldCheck, Users } from 'lucide-react'
 import { useState } from 'react'
+import { DashedOutline } from '../../components/ui/atoms'
 import type { OrganizerKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import CreateFundraisingModal from './CreateFundraisingModal'
@@ -52,7 +53,8 @@ export default function FundraisingSection({ signal }: Props) {
   if (!campaign) {
     return (
       <>
-        <section className="capsule-dashed flex flex-col gap-3 rounded-card p-4">
+        <section className="relative flex flex-col gap-3 rounded-[20px] bg-[#f7faf6] p-4">
+          <DashedOutline rx={19} />
           <div className="flex items-start gap-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-critical/12 text-critical">
               <HeartHandshake className="size-4.5" />
@@ -93,7 +95,8 @@ export default function FundraisingSection({ signal }: Props) {
 
   return (
     <>
-      <section className="flex flex-col gap-3.5 rounded-card border border-line bg-canvas p-4">
+      <section className="relative flex flex-col gap-3.5 rounded-[20px] bg-[#f7faf6] p-4">
+        <DashedOutline rx={19} />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-critical/10 px-2.5 py-1 text-[11px] font-extrabold text-critical">
             <HeartHandshake className="size-3.5" />
@@ -114,7 +117,8 @@ export default function FundraisingSection({ signal }: Props) {
           )}
         </div>
 
-        <div className="flex flex-col gap-2 rounded-tile border border-line/80 bg-surface p-3.5 shadow-2xs">
+        <div className="relative flex flex-col gap-2 rounded-tile bg-white p-3.5">
+          <DashedOutline rx={13} />
           <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
             <p className="num text-lg text-forest">{formatRupiah(campaign.collected_amount)}</p>
             <p className="text-xs font-semibold text-ink-soft">
@@ -154,13 +158,15 @@ export default function FundraisingSection({ signal }: Props) {
             Catatan Pemberi ({campaign.donations.length})
           </h4>
           {campaign.donations.length === 0 ? (
-            <p className="capsule-dashed rounded-2xl px-3.5 py-3 text-center text-xs font-medium text-ink-soft">
+            <p className="relative rounded-[16px] bg-white px-3.5 py-3 text-center text-xs font-medium text-ink-soft">
+              <DashedOutline rx={15} />
               Belum ada donasi. Jadilah yang pertama membantu warga terdampak!
             </p>
           ) : (
             <ul className="flex max-h-60 flex-col gap-2 overflow-y-auto pr-0.5">
               {campaign.donations.map((d) => (
-                <li key={d.id} className="rounded-2xl border border-line bg-surface px-3.5 py-2.5">
+                <li key={d.id} className="relative rounded-[16px] bg-white px-3.5 py-2.5">
+                  <DashedOutline rx={15} />
                   <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-extrabold text-ink">
                       {d.is_anonymous && <EyeOff className="size-3 shrink-0 text-ink-soft" />}
