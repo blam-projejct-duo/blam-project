@@ -25,13 +25,13 @@ function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListT
           : shortLocation(event.location_name)
 
   return (
-    <li className="relative rounded-[20px] bg-[#f7faf6] transition-colors hover:bg-mint/30">
+    <li className="relative rounded-[20px] bg-[#f5f7ff] transition-colors hover:bg-mint/30">
       <DashedOutline rx={19} />
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
         <EcoBadge ecosystem={event.ecosystem} />
         <span className="min-w-0 flex-1">
-          <span className="font-display block truncate text-[15px] font-semibold text-ink">{event.title}</span>
-          <span className="block truncate text-[13px] text-ink-soft">{meta}</span>
+          <span className="block truncate text-[13.5px] font-normal text-ink">{event.title}</span>
+          <span className="block truncate text-[12px] font-light text-ink-soft">{meta}</span>
         </span>
         <span
           className={`size-2.5 shrink-0 rounded-full ${DOT[mapEventTone(event)]}`}
@@ -80,20 +80,20 @@ function SignalRow({
   const SignalIcon = kind === 'flood' ? Droplets : kind === 'volcano' ? Mountain : Flame
 
   return (
-    <li className="relative rounded-[20px] bg-[#f7faf6] transition-colors hover:bg-mint/30">
+    <li className="relative rounded-[20px] bg-[#f5f7ff] transition-colors hover:bg-mint/30">
       <DashedOutline rx={19} />
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
         <span
-          className={`grid size-11 shrink-0 place-items-center rounded-[14px] border-[1.5px] border-leaf/25 bg-white ${SIGNAL_TEXT_COLOR[kind]}`}
+          className={`grid size-11 shrink-0 place-items-center rounded-[14px] bg-white shadow-[0_1px_2px_rgba(18,29,79,0.04)] ${SIGNAL_TEXT_COLOR[kind]}`}
         >
           <SignalIcon className="size-5" strokeWidth={2} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="font-display block truncate text-[15px] font-semibold text-ink">{signal.title}</span>
-          <span className="block truncate text-[13px] text-ink-soft">{meta}</span>
+          <span className="block truncate text-[13.5px] font-normal text-ink">{signal.title}</span>
+          <span className="block truncate text-[12px] font-light text-ink-soft">{meta}</span>
         </span>
         {hasFundraising && (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-critical/10 px-2 py-0.5 text-[11px] font-extrabold text-critical">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-critical/10 px-2 py-0.5 text-[10.5px] font-normal text-critical">
             <HeartHandshake className="size-3" />
             Donasi
           </span>
@@ -137,23 +137,23 @@ function ResolvedEventRow({ event, onOpen }: { event: ConservationEvent; onOpen:
   const { wasteKg, trees, recoveryScore, participantCount, summary, meta } = summarizeResolvedEvent(event)
 
   return (
-    <li className="relative rounded-[20px] bg-[#f7faf6] transition-colors hover:bg-mint/30">
+    <li className="relative rounded-[20px] bg-[#f5f7ff] transition-colors hover:bg-mint/30">
       <DashedOutline rx={19} />
       <button type="button" onClick={onOpen} className="flex w-full flex-col gap-2.5 px-3.5 py-3.5 text-left">
         <div className="flex items-center gap-3">
           <EcoBadge ecosystem={event.ecosystem} />
           <div className="min-w-0 flex-1">
-            <span className="font-display block truncate text-[15px] font-semibold text-ink">{event.title}</span>
-            <span className="block truncate text-[12px] text-ink-soft">{meta}</span>
+            <span className="block truncate text-[13.5px] font-normal text-ink">{event.title}</span>
+            <span className="block truncate text-[12px] font-light text-ink-soft">{meta}</span>
           </div>
-          <span className="font-display shrink-0 rounded-full bg-mint/70 px-2.5 py-0.5 text-[11px] font-semibold text-forest">
+          <span className="shrink-0 rounded-full bg-mint/75 px-2.5 py-0.5 text-[10.5px] font-normal text-forest">
             Selesai
           </span>
         </div>
 
-        <p className="line-clamp-2 text-[12px] leading-relaxed text-ink-soft">{summary}</p>
+        <p className="line-clamp-2 text-[12px] leading-relaxed font-light text-ink-soft">{summary}</p>
 
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-dashed border-dash pt-2 text-[11px] font-semibold text-forest">
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-leaf/10 pt-2 text-[11px] font-normal text-forest">
           <span className="num rounded-full bg-white px-2.5 py-0.5 text-forest">{wasteKg} kg sampah</span>
           <span className="num rounded-full bg-white px-2.5 py-0.5 text-forest">{trees} bibit</span>
           {recoveryScore !== null && (
@@ -287,19 +287,19 @@ export default function EventListPanel({
   return (
     <div>
       {showTitle && (
-        <h2 className="mb-3 text-[22px] font-bold tracking-tight text-ink">{title}</h2>
+        <h2 className="mb-2.5 text-[21px] font-semibold tracking-tight text-ink">{title}</h2>
       )}
 
       {showSearch && (
-        <label className="flex h-11 items-center gap-2.5 rounded-full bg-[#f3f6f2] px-4 transition-colors focus-within:bg-mint/35">
-          <Search className="size-4.5 shrink-0 text-leaf" />
+        <label className="flex h-10 items-center gap-2 rounded-full bg-[#f5f7ff] px-3.5 transition-colors focus-within:bg-mint/45">
+          <Search className="size-4 shrink-0 text-leaf" />
           <input
             ref={searchRef}
             value={query}
             onFocus={() => onExpand?.()}
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder="Cari"
-            className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none focus:outline-none focus-visible:outline-none placeholder:text-ink-soft"
+            className="min-w-0 flex-1 bg-transparent text-[13px] font-light text-ink outline-none focus:outline-none focus-visible:outline-none placeholder:font-light placeholder:text-ink-soft"
           />
           {query && (
             <button
@@ -316,7 +316,7 @@ export default function EventListPanel({
         </label>
       )}
 
-      <div role="tablist" className={`flex items-center gap-1 overflow-x-auto ${showSearch ? 'mt-3' : ''}`}>
+      <div role="tablist" className={`flex items-center gap-1 overflow-x-auto ${showSearch ? 'mt-2.5' : ''}`}>
         {tabs.map((t) => {
           const active = tab === t
           return (
@@ -329,10 +329,10 @@ export default function EventListPanel({
                 onExpand?.()
                 setTab(t)
               }}
-              className={`font-display h-8 shrink-0 rounded-full px-3 text-[12px] whitespace-nowrap transition-colors ${
+              className={`h-7.5 shrink-0 rounded-full px-3 text-[12px] whitespace-nowrap transition-colors ${
                 active
-                  ? 'bg-mint/70 font-semibold text-forest'
-                  : 'font-medium text-ink-soft hover:text-forest'
+                  ? 'bg-mint/80 font-medium text-forest'
+                  : 'font-light text-ink-soft hover:text-forest'
               }`}
             >
               {t}
@@ -346,25 +346,25 @@ export default function EventListPanel({
       ) : (
         <>
           {resolvedTotals && rows.length > 0 && (
-            <div className="relative mt-3 grid grid-cols-3 gap-2 rounded-[20px] bg-[#f7faf6] p-3 text-center">
+            <div className="relative mt-3 grid grid-cols-3 gap-2 rounded-[20px] bg-[#f5f7ff] p-3 text-center">
               <DashedOutline rx={19} />
               <div>
-                <p className="num text-base font-bold text-forest">{resolvedTotals.count}</p>
-                <p className="font-display text-[11px] font-semibold text-ink-soft">Selesai</p>
+                <p className="num text-base font-semibold text-forest">{resolvedTotals.count}</p>
+                <p className="text-[11px] font-light text-ink-soft">Selesai</p>
               </div>
               <div>
-                <p className="num text-base font-bold text-forest">{resolvedTotals.wasteKg} kg</p>
-                <p className="font-display text-[11px] font-semibold text-ink-soft">Sampah</p>
+                <p className="num text-base font-semibold text-forest">{resolvedTotals.wasteKg} kg</p>
+                <p className="text-[11px] font-light text-ink-soft">Sampah</p>
               </div>
               <div>
-                <p className="num text-base font-bold text-forest">{resolvedTotals.trees}</p>
-                <p className="font-display text-[11px] font-semibold text-ink-soft">Bibit</p>
+                <p className="num text-base font-semibold text-forest">{resolvedTotals.trees}</p>
+                <p className="text-[11px] font-light text-ink-soft">Bibit</p>
               </div>
             </div>
           )}
 
           {rows.length > 0 && (
-            <ul className="mt-3 flex flex-col gap-2.5">
+            <ul className="mt-3 flex flex-col gap-2">
               {rows.map((ev) =>
                 tab === 'Selesai' ? (
                   <ResolvedEventRow key={ev.id} event={ev} onOpen={() => onOpen(ev.id)} />
@@ -376,9 +376,9 @@ export default function EventListPanel({
           )}
 
           {shownSignals.length > 0 && onOpenSignal && (
-            <div className={rows.length > 0 ? 'mt-4 border-t-[1.5px] border-dashed border-dash pt-3.5' : 'mt-3'}>
+            <div className={rows.length > 0 ? 'mt-4 pt-1' : 'mt-3'}>
               <div className="mb-2 flex items-center justify-between">
-                <p className="font-display text-[11px] font-semibold tracking-wider text-ink-soft uppercase">
+                <p className="text-[10.5px] font-normal tracking-wider text-ink-soft uppercase">
                   {tab === 'Satelit' ? `Satelit (${filteredSignals.length})` : 'Satelit'}
                 </p>
                 {tab === 'Utama' && filteredSignals.length > shownSignals.length && (
@@ -388,13 +388,13 @@ export default function EventListPanel({
                       onExpand?.()
                       setTab('Satelit')
                     }}
-                    className="font-display text-[11px] font-semibold text-leaf hover:underline"
+                    className="text-[11.5px] font-normal text-leaf hover:underline"
                   >
                     Lihat semua ({filteredSignals.length})
                   </button>
                 )}
               </div>
-              <ul className="flex flex-col gap-2.5">
+              <ul className="flex flex-col gap-2">
                 {shownSignals.map((sig) => (
                   <SignalRow
                     key={sig.id}
@@ -409,14 +409,14 @@ export default function EventListPanel({
           )}
 
           {rows.length === 0 && shownSignals.length === 0 && (
-            <p className="py-10 text-center text-sm font-semibold text-ink-soft">
+            <p className="py-10 text-center text-[13px] font-light text-ink-soft">
               {tab === 'Satelit'
-                ? 'Belum ada sinyal satelit'
+                ? 'Belum ada sinyal'
                 : tab === 'Berjalan'
-                  ? 'Belum ada event berjalan'
+                  ? 'Belum ada aksi berjalan'
                   : tab === 'Selesai'
-                    ? 'Belum ada event selesai'
-                    : 'Tidak ada event'}
+                    ? 'Belum ada aksi selesai'
+                    : 'Belum ada aksi'}
             </p>
           )}
         </>

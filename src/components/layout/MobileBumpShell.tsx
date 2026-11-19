@@ -1,27 +1,39 @@
-import { motion, useAnimationControls, useDragControls } from 'framer-motion'
+import { AnimatePresence, motion, useAnimationControls, useDragControls } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
 import {
   Building2,
   CalendarPlus,
   CheckSquare,
   ChevronDown,
+  Droplets,
+  Flame,
   History,
+  Mountain,
   Shield,
+  Sprout,
+  Sun,
+  X,
 } from 'lucide-react'
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { DashedOutline, Orb } from '../../components/ui/atoms'
+import { DashedOutline, ModalShell, Orb } from '../../components/ui/atoms'
 import {
   AksiActionIcon,
   BellSolidIcon,
+  BlamAiAvatarIcon,
   BlamNatureIcon,
+  DonateHeartDuotoneIcon,
   GuestAvatarIcon,
   LocateDuotoneIcon,
   MapPillIcon,
   RadarCompassIcon,
   SearchDuotoneIcon,
+  SnapCameraDuotoneIcon,
 } from '../../components/ui/bumpIcons'
+import type { BlamChatAction, BlamChatContext, BlamSnapPrefill } from '../../lib/api'
+import { ROLE_LABEL } from '../../lib/constants'
 import { useAuth } from '../../modules/auth/AuthContext'
+import BlamChatModal from '../../modules/chat/BlamChatModal'
 import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
 import MapView from '../../modules/map/MapView'
 import { filterRadarItems, LAYER_CHIPS } from '../../modules/map/radarFilters'
@@ -44,8 +56,36 @@ const VerificationRadarPanel = lazy(() => import('../../modules/reports/Verifica
 type Snap = 'peek' | 'half' | 'full'
 type Mode = 'detail' | 'signal' | 'radar' | 'list' | 'history' | 'orgs' | 'profile' | 'verify' | 'agency' | 'admin' | null
 
-const SPRING = { type: 'spring', stiffness: 350, damping: 30 } as const
+const SPRING = { type: 'spring', stiffness: 290, damping: 32, mass: 0.9 } as const
 const PEEK_PX = 214
+
+const LAYER_CHIP_ICON: Record<RadarLayer, { icon: ReactNode; offCls: string; onCls: string }> = {
+  wildfire: {
+    icon: <Flame className="size-4" strokeWidth={2.2} />,
+    offCls: 'bg-critical/8 text-critical hover:bg-critical/14',
+    onCls: 'bg-critical text-white shadow-xs',
+  },
+  suspected: {
+    icon: <Sun className="size-4" strokeWidth={2.2} />,
+    offCls: 'bg-progress/10 text-progress hover:bg-progress/18',
+    onCls: 'bg-progress text-white shadow-xs',
+  },
+  flood: {
+    icon: <Droplets className="size-4" strokeWidth={2.2} />,
+    offCls: 'bg-cobalt/8 text-cobalt hover:bg-cobalt/14',
+    onCls: 'bg-cobalt text-white shadow-xs',
+  },
+  volcano: {
+    icon: <Mountain className="size-4" strokeWidth={2.2} />,
+    offCls: 'bg-purple-600/8 text-purple-600 hover:bg-purple-600/14',
+    onCls: 'bg-purple-600 text-white shadow-xs',
+  },
+  event: {
+    icon: <Sprout className="size-4" strokeWidth={2.2} />,
+    offCls: 'bg-emerald/10 text-emerald hover:bg-emerald/16',
+    onCls: 'bg-emerald text-white shadow-xs',
+  },
+}
 
 function DockItem({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -66,7 +106,11 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const [query, setQuery] = useState('')
   const [layers, setLayers] = useState<Set<RadarLayer>>(() => new Set())
   const [focusSearch, setFocusSearch] = useState(false)
+  const [blamMenuOpen, setBlamMenuOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [donasiOpen, setDonasiOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
+  const [reportPrefill, setReportPrefill] = useState<BlamSnapPrefill | undefined>(undefined)
   const [eventOpen, setEventOpen] = useState(false)
   const [draftReport, setDraftReport] = useState<CitizenReport | null>(null)
   const [draftSignal, setDraftSignal] = useState<SatelliteSignal | null>(null)
@@ -120,17 +164,20 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   }, [mode, setSelectedId, setSelectedSignal])
 
   useEffect(() => {
-    if (mode === null) return
+    if (mode === null && !blamMenuOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeSheet()
+      if (e.key !== 'Escape') return
+      if (blamMenuOpen) setBlamMenuOpen(false)
+      else closeSheet()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [mode, closeSheet])
+  }, [mode, blamMenuOpen, closeSheet])
 
   const openDetail = (id: string) => {
     radar.setSelectedId(id)
     setMenuOpen(false)
+    setBlamMenuOpen(false)
     setMode('detail')
     setSnap('half')
   }
@@ -138,12 +185,14 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const openSignalDetail = (signal: SatelliteSignal) => {
     radar.setSelectedSignal(signal)
     setMenuOpen(false)
+    setBlamMenuOpen(false)
     setMode('signal')
     setSnap('half')
   }
 
   const openSheet = (nextMode: Exclude<Mode, null>, full = false, search = false) => {
     setMenuOpen(false)
+    setBlamMenuOpen(false)
     setFocusSearch(search)
     setMode(nextMode)
     setSnap(full || search ? 'full' : 'half')
@@ -153,6 +202,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
     setSelectedId(null)
     setSelectedSignal(null)
     setMenuOpen(false)
+    setBlamMenuOpen(false)
     setFocusSearch(false)
     setMode('radar')
     setSnap('half')
@@ -161,6 +211,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
 
   const startCreateEvent = (report: CitizenReport | null = null, signal: SatelliteSignal | null = null) => {
     setMenuOpen(false)
+    setBlamMenuOpen(false)
     setDraftReport(report)
     setDraftSignal(signal)
     setEventOpen(true)
@@ -207,6 +258,32 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const selected = radar.selected
   const initials = profile?.full_name ? profile.full_name.slice(0, 1).toUpperCase() : null
 
+  const blamChatContext = useMemo<BlamChatContext>(
+    () => ({
+      userName: profile?.full_name,
+      userRole: profile ? ROLE_LABEL[profile.role] : 'Warga',
+      mapStyle: radar.style,
+      selectedTitle: selected?.title ?? radar.selectedSignal?.title,
+      selectedLocation: selected?.location_name,
+      activeEvents: visibleEvents
+        .filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled')
+        .slice(0, 6)
+        .map((ev) => ({
+          title: ev.title,
+          ecosystem: ev.ecosystem,
+          status: ev.status,
+          locationName: ev.location_name,
+        })),
+      signals: visibleSignals.slice(0, 5).map((s) => ({
+        title: s.title,
+        kindLabel: s.kind ?? 'suspected',
+        source: s.source,
+        categoryLabel: s.categoryLabel,
+      })),
+    }),
+    [profile, radar.style, radar.selectedSignal, selected, visibleEvents, visibleSignals],
+  )
+
   return (
     <div
       ref={rootRef}
@@ -226,7 +303,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         fitAllSignal={radar.fitAllSignal}
         fitIndonesiaSignal={radar.fitIndonesiaSignal}
         locateSignal={radar.locateSignal}
-        radarMode={mode === 'radar' || mode === 'signal'}
+        radarMode={mode === 'radar' && !radar.selectedId && !radar.selectedSignal}
         focusTarget={radar.focusTarget}
       />
 
@@ -245,96 +322,129 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         </button>
       </div>
 
-      {menuOpen && (
-        <>
-          <button
-            type="button"
-            aria-label="Tutup menu"
-            className="absolute inset-0 z-[510] cursor-default"
-            onClick={() => setMenuOpen(false)}
-          />
-          <div className="absolute top-[calc(env(safe-area-inset-top)+48px)] left-1/2 z-[520] flex w-[min(340px,calc(100%-32px))] -translate-x-1/2 flex-col gap-3 rounded-[24px] bg-white/95 p-4 shadow-[0_8px_24px_rgba(19,36,26,0.12)] backdrop-blur-md">
-            <DashedOutline rx={23} />
-            <MapStyleSwitcher value={radar.style} onChange={radar.setStyle} className="w-full [&>button]:flex-1" />
-            <div className="flex flex-wrap gap-2">
-              {LAYER_CHIPS.map((c) => {
-                const on = layers.has(c.layer)
-                return (
-                  <button
-                    key={c.layer}
-                    type="button"
-                    onClick={() => toggleLayer(c.layer)}
-                    aria-pressed={on}
-                    className={`font-display relative flex h-9 items-center gap-2 rounded-full px-3.5 text-[12px] font-semibold transition-colors ${
-                      on ? 'bg-leaf text-white' : 'bg-[#f7faf6] text-ink hover:bg-mint/35'
-                    }`}
-                  >
-                    {!on && <DashedOutline rx={17} />}
-                    <span className={`size-2 rounded-full ${c.dot} ${on ? 'ring-1 ring-white/80' : ''}`} />
-                    {c.label}
-                  </button>
-                )
-              })}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => openSheet('history', true)}
-                className="font-display relative flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-[#f7faf6] text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
-              >
-                <DashedOutline rx={19} />
-                <History className="size-4" /> History
-              </button>
-              <button
-                type="button"
-                onClick={() => openSheet('orgs', true)}
-                className="font-display relative flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-[#f7faf6] text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
-              >
-                <DashedOutline rx={19} />
-                <Building2 className="size-4" /> Organisasi
-              </button>
-            </div>
-            {canOrganize && (
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => openSheet('verify', true)}
-                  className="font-display relative flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#f7faf6] text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
-                >
-                  <DashedOutline rx={19} />
-                  <CheckSquare className="size-4" /> Verifikasi
-                </button>
-                <button
-                  type="button"
-                  onClick={() => startCreateEvent(null)}
-                  className="btn-primary h-10 flex-1 text-[13px]"
-                >
-                  <CalendarPlus className="size-4" /> Buat Event
-                </button>
+      <AnimatePresence>
+        {menuOpen && (
+          <>
+            <motion.button
+              type="button"
+              aria-label="Tutup menu"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="absolute inset-0 z-[510] cursor-default"
+              onClick={() => setMenuOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.96 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              style={{ transformOrigin: 'top center' }}
+              className="font-sans absolute top-[calc(env(safe-area-inset-top)+60px)] left-1/2 z-[520] flex w-[min(296px,calc(100%-32px))] -translate-x-1/2 flex-col gap-2.5 rounded-[22px] bg-white/95 p-3 shadow-[0_10px_28px_rgba(18,29,79,0.16)] backdrop-blur-md"
+            >
+              <DashedOutline rx={21} />
+              <MapStyleSwitcher compact value={radar.style} onChange={radar.setStyle} className="w-full [&>button]:flex-1" />
+
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between px-0.5 text-[10px] font-light text-ink-soft">
+                  <span className="truncate">
+                    Layer:{' '}
+                    {layers.size === 0
+                      ? 'Semua'
+                      : LAYER_CHIPS.filter((c) => layers.has(c.layer))
+                          .map((c) => c.label)
+                          .join(', ')}
+                  </span>
+                  {layers.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setLayers(new Set())}
+                      className="shrink-0 pl-2 font-normal text-leaf hover:underline"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {LAYER_CHIPS.map((c) => {
+                    const on = layers.has(c.layer)
+                    const ui = LAYER_CHIP_ICON[c.layer]
+                    return (
+                      <button
+                        key={c.layer}
+                        type="button"
+                        onClick={() => toggleLayer(c.layer)}
+                        aria-pressed={on}
+                        aria-label={c.label}
+                        title={c.label}
+                        className={`grid h-9 place-items-center rounded-full transition-all active:scale-95 ${
+                          on ? ui.onCls : ui.offCls
+                        }`}
+                      >
+                        {ui.icon}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            )}
-            {profile?.role === 'agency' && (
-              <button
-                type="button"
-                onClick={() => openSheet('agency', true)}
-                className="font-display relative flex h-10 items-center justify-center gap-2 rounded-full bg-[#f7faf6] text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
-              >
-                <DashedOutline rx={19} />
-                <Shield className="size-4" /> Eskalasi
-              </button>
-            )}
-            {profile?.role === 'admin' && (
-              <button
-                type="button"
-                onClick={() => openSheet('admin', true)}
-                className="font-display flex h-10 items-center justify-center gap-2 rounded-full bg-forest text-[13px] font-semibold text-white"
-              >
-                <Shield className="size-4" /> Admin
-              </button>
-            )}
-          </div>
-        </>
-      )}
+
+              <div className="grid grid-cols-2 gap-1.5 border-t border-leaf/12 pt-2.5">
+                <button
+                  type="button"
+                  onClick={() => openSheet('history', true)}
+                  className="flex h-8.5 items-center justify-center gap-1.5 rounded-full bg-[#eff3ff] px-3 text-[11.5px] font-normal text-forest transition-colors hover:bg-mint/35"
+                >
+                  <History className="size-3.5 shrink-0" /> History
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openSheet('orgs', true)}
+                  className="flex h-8.5 items-center justify-center gap-1.5 rounded-full bg-[#eff3ff] px-3 text-[11.5px] font-normal text-forest transition-colors hover:bg-mint/35"
+                >
+                  <Building2 className="size-3.5 shrink-0" /> Organisasi
+                </button>
+                {canOrganize && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => openSheet('verify', true)}
+                      className="flex h-8.5 items-center justify-center gap-1.5 rounded-full bg-[#eff3ff] px-3 text-[11.5px] font-normal text-forest transition-colors hover:bg-mint/35"
+                    >
+                      <CheckSquare className="size-3.5 shrink-0" /> Verifikasi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startCreateEvent(null)}
+                      className="btn-primary !font-sans h-8.5 px-3 text-[11.5px] font-medium"
+                    >
+                      <CalendarPlus className="size-3.5 shrink-0" /> Buat Event
+                    </button>
+                  </>
+                )}
+                {profile?.role === 'agency' && (
+                  <button
+                    type="button"
+                    onClick={() => openSheet('agency', true)}
+                    className="flex h-8.5 items-center justify-center gap-1.5 rounded-full bg-[#eff3ff] px-3 text-[11.5px] font-normal text-forest transition-colors hover:bg-mint/35"
+                  >
+                    <Shield className="size-3.5 shrink-0" /> Eskalasi
+                  </button>
+                )}
+                {profile?.role === 'admin' && (
+                  <button
+                    type="button"
+                    onClick={() => openSheet('admin', true)}
+                    className="flex h-8.5 items-center justify-center gap-1.5 rounded-full bg-forest px-3 text-[11.5px] font-normal text-white"
+                  >
+                    <Shield className="size-3.5 shrink-0" /> Admin
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <div className="absolute top-[calc(env(safe-area-inset-top)+14px)] right-3.5 z-[500] flex flex-col gap-2.5">
         <Orb
@@ -367,6 +477,21 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         </Orb>
       </div>
 
+      <AnimatePresence>
+        {blamMenuOpen && !sheetOpen && (
+          <motion.button
+            type="button"
+            aria-label="Tutup menu Blam"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setBlamMenuOpen(false)}
+            className="absolute inset-0 z-[490] bg-ink/24 backdrop-blur-[2px]"
+          />
+        )}
+      </AnimatePresence>
+
       <motion.div
         initial={false}
         animate={{ y: sheetOpen ? 140 : 0, opacity: sheetOpen ? 0 : 1 }}
@@ -374,41 +499,197 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         inert={sheetOpen}
         className="pointer-events-none absolute inset-x-0 bottom-0 z-[500]"
       >
-        <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex justify-between px-4 pb-6`}>
+        <motion.div
+          initial={false}
+          animate={{
+            opacity: blamMenuOpen ? 0 : 1,
+            y: blamMenuOpen ? 14 : 0,
+            scale: blamMenuOpen ? 0.88 : 1,
+          }}
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          inert={blamMenuOpen}
+          className={`${sheetOpen || blamMenuOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex justify-between px-4 pb-6`}
+        >
           <Orb size={36} label="Cari lokasi" onClick={() => openSheet('list', false, true)}>
             <SearchDuotoneIcon />
           </Orb>
           <Orb size={36} label="Lokasi saya" onClick={radar.locate}>
             <LocateDuotoneIcon />
           </Orb>
-        </div>
-        <div className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex items-end justify-center gap-6 pb-[calc(env(safe-area-inset-bottom)+14px)]`}>
-          <DockItem label="Jelajah">
-            <Orb size={56} label="Jelajah" watermark="RADAR" onClick={openRadar}>
-              <RadarCompassIcon />
-            </Orb>
-          </DockItem>
-          <DockItem label="Blam!">
+        </motion.div>
+        <div
+          className={`${sheetOpen ? 'pointer-events-none' : 'pointer-events-auto'} flex items-end justify-center gap-6 pb-[calc(env(safe-area-inset-bottom)+14px)]`}
+        >
+          <motion.div
+            initial={false}
+            animate={{
+              x: blamMenuOpen ? 82 : 0,
+              scale: blamMenuOpen ? 0.3 : 1,
+              opacity: blamMenuOpen ? 0 : 1,
+            }}
+            transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+            inert={blamMenuOpen}
+            className={blamMenuOpen ? 'pointer-events-none' : ''}
+          >
+            <DockItem label="Jelajah">
+              <Orb size={56} label="Jelajah" watermark="RADAR" onClick={openRadar}>
+                <RadarCompassIcon />
+              </Orb>
+            </DockItem>
+          </motion.div>
+
+          <div className="relative z-10 flex flex-col items-center gap-1.5">
+            <AnimatePresence>
+              {blamMenuOpen &&
+                [
+                  {
+                    id: 'chat',
+                    label: 'Blam Chat',
+                    x: -78,
+                    y: -74,
+                    size: 52,
+                    primary: false,
+                    delay: 0.04,
+                    icon: <BlamAiAvatarIcon withBadge={false} className="relative z-10 size-10" />,
+                    onSelect: () => setChatOpen(true),
+                  },
+                  {
+                    id: 'snap',
+                    label: 'Blam Snap',
+                    x: 0,
+                    y: -108,
+                    size: 56,
+                    primary: true,
+                    delay: 0.08,
+                    icon: <SnapCameraDuotoneIcon light />,
+                    onSelect: () => {
+                      setReportPrefill(undefined)
+                      setReportOpen(true)
+                    },
+                  },
+                  {
+                    id: 'donasi',
+                    label: 'Blam Donasi',
+                    x: 78,
+                    y: -74,
+                    size: 52,
+                    primary: false,
+                    delay: 0.12,
+                    icon: <DonateHeartDuotoneIcon />,
+                    onSelect: () => setDonasiOpen(true),
+                  },
+                ].map((item) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ x: 0, y: 0, scale: 0.25, opacity: 0 }}
+                    animate={{
+                      x: item.x,
+                      y: item.y,
+                      scale: 1,
+                      opacity: 1,
+                      transition: { type: 'spring', stiffness: 420, damping: 25, delay: item.delay },
+                    }}
+                    exit={{
+                      x: 0,
+                      y: 0,
+                      scale: 0.25,
+                      opacity: 0,
+                      transition: { duration: 0.18, ease: [0.4, 0, 0.2, 1] },
+                    }}
+                    style={{
+                      left: '50%',
+                      top: 30,
+                      width: item.size,
+                      height: item.size,
+                      marginLeft: -item.size / 2,
+                      marginTop: -item.size / 2,
+                    }}
+                    className="pointer-events-auto absolute"
+                  >
+                    <Orb
+                      size={item.size}
+                      label={item.label}
+                      onClick={() => {
+                        setBlamMenuOpen(false)
+                        item.onSelect()
+                      }}
+                      className={item.primary ? 'orb-primary' : ''}
+                    >
+                      {item.primary && <span aria-hidden="true" className="orb-sheen" />}
+                      {item.icon}
+                    </Orb>
+                    <span className="font-sans pointer-events-none absolute top-[calc(100%+5px)] left-1/2 -translate-x-1/2 text-[10.5px] font-normal whitespace-nowrap text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.65)]">
+                      {item.label}
+                    </span>
+                  </motion.div>
+                ))}
+            </AnimatePresence>
+
             <Orb
-              size={60}
-              label="Blam!"
-              onClick={() => setReportOpen(true)}
-              className="orb-primary"
+              size={64}
+              label={blamMenuOpen ? 'Tutup menu Blam' : 'Buka menu Blam'}
+              onClick={() => setBlamMenuOpen((v) => !v)}
+              className={blamMenuOpen ? 'relative z-10' : 'relative z-10 !bg-none !shadow-none'}
             >
-              <span aria-hidden="true" className="orb-sheen" />
-              <BlamNatureIcon />
+              {!blamMenuOpen && <span aria-hidden="true" className="orb-sheen z-20 scale-115" />}
+              <motion.span
+                initial={false}
+                animate={{
+                  rotate: blamMenuOpen ? 90 : 0,
+                  scale: blamMenuOpen ? 0 : 1,
+                  opacity: blamMenuOpen ? 0 : 1,
+                }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="relative z-10 grid size-full place-items-center"
+              >
+                <BlamNatureIcon className="size-full scale-120 drop-shadow-[0_4px_10px_rgba(11,27,77,0.32)]" />
+              </motion.span>
+              <motion.span
+                initial={false}
+                animate={{
+                  rotate: blamMenuOpen ? 0 : -90,
+                  scale: blamMenuOpen ? 1 : 0,
+                  opacity: blamMenuOpen ? 1 : 0,
+                }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute inset-0 z-10 grid place-items-center"
+              >
+                <X className="size-6 text-forest" strokeWidth={2.6} />
+              </motion.span>
             </Orb>
-          </DockItem>
-          <DockItem label="Aksi">
-            <Orb size={56} label="Aksi" watermark="AKSI" onClick={() => openSheet('list')} className="relative">
-              <AksiActionIcon />
-              {openCount > 0 && (
-                <span className="num absolute -top-1 -right-1 grid size-5 place-items-center rounded-full border-2 border-white bg-ink text-[10px] text-white">
-                  {openCount}
-                </span>
-              )}
-            </Orb>
-          </DockItem>
+            <span
+              className={
+                blamMenuOpen
+                  ? 'font-sans text-[10.5px] font-normal text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.65)]'
+                  : 'map-label'
+              }
+            >
+              {blamMenuOpen ? 'Tutup' : 'Blam!'}
+            </span>
+          </div>
+
+          <motion.div
+            initial={false}
+            animate={{
+              x: blamMenuOpen ? -82 : 0,
+              scale: blamMenuOpen ? 0.3 : 1,
+              opacity: blamMenuOpen ? 0 : 1,
+            }}
+            transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+            inert={blamMenuOpen}
+            className={blamMenuOpen ? 'pointer-events-none' : ''}
+          >
+            <DockItem label="Aksi">
+              <Orb size={56} label="Aksi" watermark="AKSI" onClick={() => openSheet('list')} className="relative">
+                <AksiActionIcon />
+                {openCount > 0 && (
+                  <span className="num absolute -top-1 -right-1 grid size-5 place-items-center rounded-full border-2 border-white bg-ink text-[10px] text-white">
+                    {openCount}
+                  </span>
+                )}
+              </Orb>
+            </DockItem>
+          </motion.div>
         </div>
       </motion.div>
 
@@ -546,44 +827,125 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         </motion.div>
       )}
 
-      {reportOpen && (
-        <div className="absolute inset-0 z-[800] bg-canvas">
-          <Suspense fallback={<div className="grid h-full place-items-center text-xs font-bold text-ink-soft">Memuat…</div>}>
-            <QuickReportFlow
-              onClose={() => setReportOpen(false)}
-              onOpenVerification={() => {
-                setReportOpen(false)
-                openSheet('verify', true)
-              }}
-            />
-          </Suspense>
-        </div>
-      )}
+      <AnimatePresence>
+        {reportOpen && (
+          <motion.div
+            key="quick-report-panel"
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 32, opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-0 z-[800] bg-canvas"
+          >
+            <Suspense fallback={<div className="grid h-full place-items-center text-xs font-bold text-ink-soft">Memuat…</div>}>
+              <QuickReportFlow
+                initialPrefill={reportPrefill}
+                onClose={() => {
+                  setReportOpen(false)
+                  setReportPrefill(undefined)
+                }}
+                onOpenVerification={() => {
+                  setReportOpen(false)
+                  setReportPrefill(undefined)
+                  openSheet('verify', true)
+                }}
+              />
+            </Suspense>
+          </motion.div>
+        )}
 
-      {eventOpen && (
-        <div className="absolute inset-0 z-[800] bg-canvas">
-          <Suspense fallback={<div className="grid h-full place-items-center text-xs font-bold text-ink-soft">Memuat…</div>}>
-            <CreateEventForm
-              key={draftReport?.id ?? draftSignal?.id ?? 'standalone'}
-              initialReport={draftReport}
-              initialSignal={draftSignal}
-              onClose={() => {
-                setDraftReport(null)
-                setDraftSignal(null)
-                setEventOpen(false)
-              }}
-              onCreated={async (id) => {
-                setDraftReport(null)
-                setDraftSignal(null)
-                setEventOpen(false)
-                radar.setFilter('all')
-                await radar.refresh()
-                openDetail(id)
-              }}
-            />
-          </Suspense>
-        </div>
-      )}
+        {eventOpen && (
+          <motion.div
+            key="create-event-panel"
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 32, opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-0 z-[800] bg-canvas"
+          >
+            <Suspense fallback={<div className="grid h-full place-items-center text-xs font-bold text-ink-soft">Memuat…</div>}>
+              <CreateEventForm
+                key={draftReport?.id ?? draftSignal?.id ?? 'standalone'}
+                initialReport={draftReport}
+                initialSignal={draftSignal}
+                onClose={() => {
+                  setDraftReport(null)
+                  setDraftSignal(null)
+                  setEventOpen(false)
+                }}
+                onCreated={async (id) => {
+                  setDraftReport(null)
+                  setDraftSignal(null)
+                  setEventOpen(false)
+                  radar.setFilter('all')
+                  await radar.refresh()
+                  openDetail(id)
+                }}
+              />
+            </Suspense>
+          </motion.div>
+        )}
+
+        {chatOpen && (
+          <BlamChatModal
+            key="blam-chat-modal"
+            context={blamChatContext}
+            onClose={() => setChatOpen(false)}
+            onAction={(action: BlamChatAction) => {
+              if (action.type === 'open_blam_snap') {
+                setReportPrefill(action.prefill)
+                setChatOpen(false)
+                setReportOpen(true)
+                return
+              }
+              if (action.type === 'focus_map_point') {
+                const { lat, lng, eventId } = action.target
+                setChatOpen(false)
+                if (eventId && radar.events.some((ev) => ev.id === eventId)) {
+                  openDetail(eventId)
+                  return
+                }
+                const nearestSignal = radar.satelliteSignals.find(
+                  (s) => Math.abs(s.lat - lat) < 0.2 && Math.abs(s.lng - lng) < 0.2,
+                )
+                if (nearestSignal) {
+                  openSignalDetail(nearestSignal)
+                  return
+                }
+                setMode(null)
+                radar.focusLocation(lat, lng, 9.5)
+              }
+            }}
+          />
+        )}
+
+        {donasiOpen && (
+          <ModalShell key="blam-donasi-modal" title="Blam Donasi" onClose={() => setDonasiOpen(false)}>
+            <div className="flex flex-col gap-4">
+              <div className="relative flex flex-col items-center gap-3 rounded-[20px] bg-[#f5f7ff] p-5 text-center">
+                <DashedOutline rx={19} />
+                <div className="grid size-14 place-items-center rounded-full bg-white shadow-[0_4px_12px_rgba(19,36,26,0.08)]">
+                  <DonateHeartDuotoneIcon className="size-7" />
+                </div>
+                <span className="font-display rounded-full bg-mint/70 px-3 py-0.5 text-[11px] font-semibold text-forest">
+                  Segera Hadir
+                </span>
+                <p className="font-display text-base font-bold text-ink">Dukungan Cepat Kampanye Konservasi</p>
+                <p className="text-xs leading-relaxed text-ink-soft">
+                  Placeholder untuk Blam Donasi — nantinya menampilkan akses cepat untuk berdonasi langsung ke titik konservasi dan aksi yang membutuhkan dana.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDonasiOpen(false)}
+                className="btn-primary h-11 w-full text-sm"
+              >
+                Oke, Mengerti
+              </button>
+            </div>
+          </ModalShell>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

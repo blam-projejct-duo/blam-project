@@ -1,43 +1,107 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 360" width="1060" height="360">
   <rect width="1060" height="360" rx="40" fill="#13241A"/>
-  <g transform="translate(36, 28) scale(0.58)">
+  <g transform="translate(26, 20) scale(0.62)">
   <defs>
-    <linearGradient id="hd-left" x1="130" y1="76" x2="256" y2="400" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#6CE79C"/>
-      <stop offset="55%" stop-color="#37B76B"/>
-      <stop offset="100%" stop-color="#278751"/>
+    <radialGradient id="hd-globe" cx="42%" cy="36%" r="68%">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="56%" stop-color="#1D4ED8"/>
+      <stop offset="100%" stop-color="#0B1B4D"/>
+    </radialGradient>
+    <linearGradient id="hd-land" x1="200" y1="200" x2="420" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A7F3D0"/>
+      <stop offset="100%" stop-color="#22C55E"/>
     </linearGradient>
-    <linearGradient id="hd-right" x1="256" y1="76" x2="390" y2="400" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#2F8A57"/>
-      <stop offset="60%" stop-color="#1D5C3A"/>
-      <stop offset="100%" stop-color="#184C30"/>
+    <linearGradient id="hd-cradle-a" x1="110" y1="290" x2="290" y2="445" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#D9F99D"/>
+      <stop offset="100%" stop-color="#22C55E"/>
     </linearGradient>
-    <linearGradient id="hd-rim" x1="160" y1="76" x2="350" y2="260" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.58"/>
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    <linearGradient id="hd-cradle-b" x1="110" y1="320" x2="290" y2="445" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22C55E"/>
+      <stop offset="100%" stop-color="#15803D"/>
     </linearGradient>
-    <mask id="hd-vein-mask">
-      <rect x="0" y="0" width="512" height="512" fill="white"/>
-      <path d="M247 368 L252 178 C252 173, 260 173, 260 178 L265 368 Z" fill="black"/>
-      <path d="M254 282 C230 266, 206 252, 186 240" fill="none" stroke="black" stroke-width="11.5" stroke-linecap="round"/>
-      <path d="M258 250 C282 234, 304 220, 322 208" fill="none" stroke="black" stroke-width="11.5" stroke-linecap="round"/>
-    </mask>
+    <linearGradient id="hd-el" x1="120" y1="90" x2="380" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E0F2FE"/>
+      <stop offset="46%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+    <linearGradient id="hd-arm" x1="130" y1="220" x2="250" y2="370" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7DD3FC"/>
+      <stop offset="55%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+    <linearGradient id="hd-ear" x1="85" y1="130" x2="210" y2="290" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#BAE6FD"/>
+      <stop offset="55%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0369A1"/>
+    </linearGradient>
+    <linearGradient id="hd-ear-in" x1="100" y1="150" x2="185" y2="255" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E0F2FE"/>
+      <stop offset="100%" stop-color="#38BDF8"/>
+    </linearGradient>
+    <linearGradient id="hd-leaf-l" x1="395" y1="88" x2="445" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#BEF264"/>
+      <stop offset="100%" stop-color="#22C55E"/>
+    </linearGradient>
+    <linearGradient id="hd-leaf-r" x1="400" y1="90" x2="448" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22C55E"/>
+      <stop offset="100%" stop-color="#15803D"/>
+    </linearGradient>
+    <clipPath id="hd-earth-clip">
+      <path d="M276 134 C358 134, 424 192, 430 272 C434 328, 404 388, 344 416 C288 442, 212 438, 162 396 C122 362, 110 302, 126 244 C144 178, 202 134, 276 134 Z"/>
+    </clipPath>
   </defs>
 
-  <g transform="translate(272, 238) scale(1.40) translate(-235.6, -257.0) translate(0, 22) rotate(14 256 234)">
-    <g mask="url(#hd-vein-mask)">
-      <path d="M256 68 C239 68, 222 87, 195 135 C158 202, 122 284, 130 339 C136 375, 170 392, 204 375 L244 355 C250 352, 256 351, 256 351 L256 68 Z"
-            fill="url(#hd-left)"/>
-      <path d="M256 68 C273 68, 290 87, 317 135 C354 202, 390 284, 382 339 C376 375, 342 392, 308 375 L268 355 C262 352, 256 351, 256 351 L256 68 Z"
-            fill="url(#hd-right)"/>
-      <path d="M256 72 C241 72, 224 91, 199 137 C168 194, 136 266, 135 320"
-            fill="none" stroke="url(#hd-rim)" stroke-width="7.5" stroke-linecap="round"/>
-      <path d="M256 72 C271 72, 288 91, 313 137"
-            fill="none" stroke="#A7F3D0" stroke-opacity="0.40" stroke-width="5.5" stroke-linecap="round"/>
+  <g transform="translate(256, 256) scale(1.12) translate(-262, -264)">
+    <path d="M276 134 C358 134, 424 192, 430 272 C434 328, 404 388, 344 416 C288 442, 212 438, 162 396 C122 362, 110 302, 126 244 C144 178, 202 134, 276 134 Z"
+          fill="url(#hd-globe)"/>
+    <g clip-path="url(#hd-earth-clip)">
+      <path d="M236 226 C268 208, 314 218, 330 242 C344 264, 318 286, 332 304 C346 322, 376 308, 388 326 C400 344, 374 382, 344 394 C314 406, 276 396, 272 368 C268 342, 290 332, 278 312 C266 292, 236 308, 222 290 C208 272, 212 240, 236 226 Z"
+            fill="url(#hd-land)"/>
+      <path d="M390 220 C418 216, 442 244, 436 286 C430 324, 402 348, 382 338 C366 330, 374 300, 382 278 C390 258, 370 224, 390 220 Z"
+            fill="url(#hd-land)" fill-opacity="0.90"/>
+      <path d="M226 408 C276 424, 338 416, 382 384"
+            fill="none" stroke="#60A5FA" stroke-opacity="0.28" stroke-width="6" stroke-linecap="round"/>
     </g>
+
+    <path d="M114 316 C128 386, 198 440, 286 438 C242 424, 178 378, 146 318 C134 296, 112 300, 114 316 Z"
+          fill="url(#hd-cradle-b)"/>
+    <path d="M118 308 C142 366, 208 424, 284 436 C234 426, 170 384, 134 328 C124 312, 116 306, 118 308 Z"
+          fill="url(#hd-cradle-a)"/>
+
+    <path d="M148 256 C158 314, 194 358, 236 364 C210 342, 190 302, 186 254 Z"
+          fill="#0B1B4D" fill-opacity="0.24"/>
+
+    <path d="M214 106 C214 78, 240 68, 260 82 C252 90, 248 98, 250 106 Z" fill="#7DD3FC"/>
+    <path d="M244 98 C254 80, 272 78, 282 88 C272 94, 266 100, 262 108 Z" fill="#38BDF8"/>
+
+    <path d="M134 224 C120 278, 138 334, 182 356 C206 368, 238 358, 246 334 C252 314, 236 294, 212 292 C194 290, 188 270, 196 242 L202 214 Z"
+          fill="url(#hd-arm)"/>
+    <circle cx="226" cy="342" r="5" fill="#E0F2FE" fill-opacity="0.90"/>
+    <circle cx="211" cy="346" r="5" fill="#E0F2FE" fill-opacity="0.90"/>
+
+    <path d="M174 164 C178 112, 224 86, 278 98 C316 106, 338 134, 338 164 C338 186, 348 198, 368 196 C386 194, 396 176, 390 158 C386 144, 400 132, 414 140 C430 150, 430 180, 412 206 C394 234, 352 242, 314 228 C286 218, 262 224, 236 238 C206 254, 170 228, 174 164 Z"
+          fill="url(#hd-el)"/>
+
+    <path d="M400 138 C394 110, 416 88, 444 94 C432 114, 416 128, 400 138 Z" fill="url(#hd-leaf-l)"/>
+    <path d="M400 138 C416 128, 432 114, 444 94 C446 122, 426 142, 400 138 Z" fill="url(#hd-leaf-r)"/>
+    <path d="M406 132 L434 104" fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="2.5" stroke-linecap="round"/>
+
+    <path d="M254 126 C264 117, 278 118, 286 126" fill="none" stroke="#0369A1" stroke-width="5.5" stroke-linecap="round"/>
+    <ellipse cx="268" cy="152" rx="15" ry="17" fill="#0F172A"/>
+    <circle cx="263" cy="145" r="5.6" fill="#FFFFFF"/>
+    <circle cx="272" cy="158" r="2.6" fill="#FFFFFF" fill-opacity="0.72"/>
+    <ellipse cx="242" cy="178" rx="13" ry="7" fill="#FFFFFF" fill-opacity="0.32"/>
+    <path d="M276 196 C286 204, 298 202, 304 194" fill="none" stroke="#0369A1" stroke-width="5" stroke-linecap="round"/>
+
+    <path d="M196 136 C168 110, 116 118, 94 156 C74 190, 84 244, 118 264 C144 278, 174 266, 186 242 C200 214, 206 164, 196 136 Z"
+          fill="url(#hd-ear)"/>
+    <path d="M178 156 C158 138, 126 144, 112 170 C98 194, 106 230, 130 242 C148 250, 166 242, 174 224 C182 204, 184 174, 178 156 Z"
+          fill="url(#hd-ear-in)" fill-opacity="0.48"/>
+    <path d="M110 156 C126 134, 152 128, 174 136"
+          fill="none" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="4.5" stroke-linecap="round"/>
   </g>
   </g>
-  <g transform="translate(358, 84) scale(1.22)">
+  <g transform="translate(362, 84) scale(1.22)">
 <g id="wordmark-Blam">
     <path d="M22 28 L22 134" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round"/>
     <path d="M22 28 L54 28 C71 28, 81 38, 81 53 C81 67, 71 78, 54 78 L22 78" fill="none" stroke="#FFFFFF" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"/>

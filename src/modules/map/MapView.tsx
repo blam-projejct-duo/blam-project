@@ -959,7 +959,7 @@ export default function MapView({
             ? Math.round(prevPad.left + Math.max(0, host.clientWidth - prevPad.left - prevPad.right) / 2)
             : Math.round(host.clientWidth / 2)
           const visibleCenterY = shiftedBottom
-            ? Math.round(64 + Math.max(0, host.clientHeight - 64 - prevPad.bottom) / 2)
+            ? Math.round(64 + Math.max(0, host.clientHeight - 64 - prevPad.bottom) * 0.68)
             : Math.round(host.clientHeight / 2)
           const visibleCenter = map.unproject([visibleCenterX, visibleCenterY])
           map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 })
@@ -1048,18 +1048,42 @@ export default function MapView({
     clearTimeout(wipeTimerRef.current)
 
     const fitDuration = reducedMotion() ? 0 : 650
-    fitBox(
-      map,
-      INDONESIA_BOUNDS,
-      {
-        top: 64,
-        bottom: bottom > 0 ? 24 + bottom : 88,
-        left: 16 + left,
-        right: 16 + right,
-      },
-      fitDuration,
-      6,
-    )
+    const host = hostRef.current
+    if (bottom > 0 && left === 0 && right === 0 && host && host.clientWidth > 0 && host.clientHeight > 0) {
+      const w = host.clientWidth
+      const h = host.clientHeight
+      const availW = Math.max(240, w - 12)
+      const availH = Math.max(160, h - bottom - 60)
+      const zoomW = Math.log2((360 * availW) / (512 * 47.5))
+      const zoomH = Math.log2((180 * availH) / (512 * 18))
+      const targetZoom = Math.min(4.2, Math.max(2.1, Math.min(zoomW, zoomH)))
+      const offsetY = -Math.round(bottom * 0.25)
+
+      map.stop()
+      map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 })
+      map.easeTo({
+        center: [118.0, -0.5],
+        zoom: targetZoom,
+        bearing: 0,
+        pitch: 0,
+        offset: [0, offsetY],
+        duration: fitDuration,
+        essential: true,
+      })
+    } else {
+      fitBox(
+        map,
+        INDONESIA_BOUNDS,
+        {
+          top: 64,
+          bottom: bottom > 0 ? 24 + bottom : 88,
+          left: 16 + left,
+          right: 16 + right,
+        },
+        fitDuration,
+        6,
+      )
+    }
 
     // Register moveend AFTER fitBox's map.stop() so stopping a prior move never triggers wipe prematurely.
     if (radarModeRef.current && pendingWipeRef.current) {

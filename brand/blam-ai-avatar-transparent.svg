@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="ait-bg" cx="38%" cy="30%" r="72%">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="56%" stop-color="#1D4ED8"/>
+      <stop offset="100%" stop-color="#0B1B4D"/>
+    </radialGradient>
+    <linearGradient id="ait-el" x1="150" y1="120" x2="370" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E0F2FE"/>
+      <stop offset="48%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+    <linearGradient id="ait-ear" x1="80" y1="150" x2="210" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#BAE6FD"/>
+      <stop offset="55%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0369A1"/>
+    </linearGradient>
+    <linearGradient id="ait-leaf-l" x1="370" y1="90" x2="430" y2="160" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#BEF264"/>
+      <stop offset="100%" stop-color="#22C55E"/>
+    </linearGradient>
+    <linearGradient id="ait-leaf-r" x1="375" y1="90" x2="435" y2="160" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22C55E"/>
+      <stop offset="100%" stop-color="#15803D"/>
+    </linearGradient>
+  </defs>
+
+
+  <g transform="translate(256, 266) scale(1.18) translate(-252, -236)">
+    <!-- Cute 2-tuft hair crest -->
+    <path d="M206 122 C206 94, 232 84, 252 98 C244 106, 240 114, 242 122 Z" fill="#7DD3FC"/>
+    <path d="M236 114 C246 96, 264 94, 274 104 C264 110, 258 116, 254 124 Z" fill="#38BDF8"/>
+
+    <!-- Simplified Iconic Head + Raised Trunk -->
+    <path d="M164 216 C164 146, 212 106, 274 116 C322 124, 352 160, 352 204 C352 228, 362 240, 382 238 C398 236, 408 218, 402 198 C398 184, 414 172, 428 182 C444 192, 444 224, 424 252 C402 284, 354 294, 312 282 C276 310, 210 310, 178 274 C168 260, 164 240, 164 216 Z"
+          fill="url(#ait-el)"/>
+
+    <!-- 2-Tone Blam Leaf Sprout at trunk tip -->
+    <path d="M412 178 C406 146, 430 122, 462 128 C448 150, 430 166, 412 178 Z" fill="url(#ait-leaf-l)"/>
+    <path d="M412 178 C430 166, 448 150, 462 128 C464 160, 442 182, 412 178 Z" fill="url(#ait-leaf-r)"/>
+
+    <!-- Expressive Brow + Sparkling Open Eye + Warm Smile -->
+    <path d="M250 152 C262 142, 278 143, 288 152" fill="none" stroke="#0369A1" stroke-width="7" stroke-linecap="round"/>
+    <ellipse cx="268" cy="184" rx="18" ry="21" fill="#0F172A"/>
+    <circle cx="262" cy="175" r="7" fill="#FFFFFF"/>
+    <circle cx="274" cy="192" r="3" fill="#FFFFFF" fill-opacity="0.72"/>
+    <ellipse cx="236" cy="216" rx="15" ry="8" fill="#FFFFFF" fill-opacity="0.34"/>
+    <path d="M276 238 C288 248, 302 246, 310 236" fill="none" stroke="#0369A1" stroke-width="6.5" stroke-linecap="round"/>
+
+    <!-- Big Sweeping Ear -->
+    <path d="M188 164 C158 134, 100 144, 76 186 C54 224, 66 286, 104 308 C132 324, 166 310, 180 282 C194 250, 200 194, 188 164 Z"
+          fill="url(#ait-ear)"/>
+    <path d="M168 188 C146 168, 112 176, 98 204 C84 232, 94 270, 120 282"
+          fill="none" stroke="#E0F2FE" stroke-opacity="0.45" stroke-width="9" stroke-linecap="round"/>
+  </g>
+</svg>

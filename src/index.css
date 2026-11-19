@@ -1,11 +1,11 @@
-@import '@fontsource-variable/inter';
-@import '@fontsource-variable/rubik';
+@import '@fontsource-variable/dm-sans';
+@import '@fontsource-variable/bricolage-grotesque';
 @import 'tailwindcss';
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
 @theme {
-  --font-sans: 'Inter Variable', system-ui, sans-serif;
-  --font-display: 'Rubik Variable', 'Inter Variable', system-ui, sans-serif;
+  --font-sans: 'DM Sans Variable', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'DM Sans Variable', system-ui, sans-serif;
 
   --color-canvas: #f3f1ed;
   --color-surface: #ffffff;
@@ -17,9 +17,9 @@
 
   --color-cobalt: #2563eb;
   --color-emerald: #059669;
-  --color-leaf: #2f8a57;
-  --color-forest: #1d5c3a;
-  --color-mint: #ddeedf;
+  --color-leaf: #3b5bff;
+  --color-forest: #1e359e;
+  --color-mint: #e6ebff;
 
   --color-critical: #ef4444;
   --color-progress: #f59e0b;
@@ -43,6 +43,9 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: -0.015em;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: contain;
   -webkit-tap-highlight-color: transparent;
@@ -52,7 +55,8 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
 }
 
 button {
@@ -67,18 +71,18 @@ button {
 
 .num {
   font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  font-weight: 600;
+  letter-spacing: -0.025em;
   font-variant-numeric: tabular-nums;
 }
 
 .capsule-dashed {
-  border: 1.5px dashed rgba(47, 138, 87, 0.28);
-  background: rgba(246, 249, 245, 0.88);
+  border: none;
+  background: rgba(245, 247, 255, 0.96);
 }
 
 .dashed-row+.dashed-row {
-  border-top: 1.5px dashed var(--color-dash);
+  border-top: 1px solid rgba(59, 91, 255, 0.1);
 }
 
 :root {
@@ -93,12 +97,12 @@ button {
   isolation: isolate;
   border-radius: 9999px;
   border: none;
-  background: linear-gradient(180deg, #ffffff 0%, #ffffff 66%, #eef2ee 92%, #e4eae4 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 66%, #eef1fa 92%, #e3e8f6 100%);
   box-shadow:
-    0 6px 14px -2px rgba(19, 36, 26, 0.22),
-    0 2px 4px rgba(19, 36, 26, 0.12),
+    0 6px 14px -2px rgba(18, 29, 79, 0.2),
+    0 2px 4px rgba(18, 29, 79, 0.1),
     inset 0 2px 2px #ffffff,
-    inset 0 -3.5px 4.5px rgba(19, 36, 26, 0.1);
+    inset 0 -3.5px 4.5px rgba(30, 53, 158, 0.1);
   color: var(--color-forest);
   transition: transform 120ms var(--ease-spring);
 }
@@ -112,12 +116,12 @@ button {
 [data-map-style='gelap'] .orb,
 [data-map-style='satelit'] .orb-surface,
 [data-map-style='gelap'] .orb-surface {
-  background: linear-gradient(180deg, #ffffff 0%, #ffffff 65%, #edf1ed 92%, #e2e8e2 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 65%, #edf0fa 92%, #e0e6f5 100%);
   box-shadow:
-    0 7px 16px -2px rgba(0, 0, 0, 0.34),
-    0 2px 5px rgba(0, 0, 0, 0.2),
+    0 7px 16px -2px rgba(8, 15, 48, 0.36),
+    0 2px 5px rgba(8, 15, 48, 0.22),
     inset 0 2px 2px #ffffff,
-    inset 0 -4px 5px rgba(19, 36, 26, 0.11);
+    inset 0 -4px 5px rgba(30, 53, 158, 0.11);
   color: var(--color-forest);
 }
 
@@ -132,32 +136,32 @@ button {
 .orb-surface-btn:active {
   transform: scale(0.95);
   box-shadow:
-    0 2px 6px rgba(19, 36, 26, 0.2),
-    inset 0 2px 4px rgba(19, 36, 26, 0.16);
+    0 2px 6px rgba(18, 29, 79, 0.2),
+    inset 0 2px 4px rgba(18, 29, 79, 0.16);
 }
 
 .orb-primary,
 .orb-surface-primary {
   border: none;
   color: #fff;
-  background: linear-gradient(180deg, #64e395 0%, #37b76b 54%, #1f824b 100%);
+  background: linear-gradient(180deg, #7492ff 0%, #4462ff 54%, #253dd4 100%);
   box-shadow:
-    0 7px 16px -2px rgba(19, 36, 26, 0.28),
-    0 2px 5px rgba(29, 92, 58, 0.18),
+    0 7px 16px -2px rgba(22, 38, 128, 0.28),
+    0 2px 5px rgba(30, 53, 158, 0.2),
     inset 0 2px 2.5px rgba(255, 255, 255, 0.45),
-    inset 0 -4px 5px rgba(12, 61, 33, 0.26);
+    inset 0 -4px 5px rgba(15, 27, 102, 0.28);
 }
 
 [data-map-style='satelit'] .orb-primary,
 [data-map-style='gelap'] .orb-primary,
 [data-map-style='satelit'] .orb-surface-primary,
 [data-map-style='gelap'] .orb-surface-primary {
-  background: linear-gradient(180deg, #64e395 0%, #37b76b 54%, #1f824b 100%);
+  background: linear-gradient(180deg, #7492ff 0%, #4462ff 54%, #253dd4 100%);
   box-shadow:
-    0 8px 18px -2px rgba(0, 0, 0, 0.38),
-    0 2.5px 6px rgba(0, 0, 0, 0.24),
+    0 8px 18px -2px rgba(8, 15, 48, 0.4),
+    0 2.5px 6px rgba(8, 15, 48, 0.24),
     inset 0 2px 2.5px rgba(255, 255, 255, 0.45),
-    inset 0 -4px 5px rgba(12, 61, 33, 0.28);
+    inset 0 -4px 5px rgba(15, 27, 102, 0.3);
 }
 
 .orb-sheen {
@@ -218,31 +222,31 @@ button {
   -webkit-backdrop-filter: blur(18px) saturate(1.8);
   backdrop-filter: blur(18px) saturate(1.8);
   border: 1px solid rgba(255, 255, 255, 0.56);
-  color: rgba(19, 36, 26, 0.88);
+  color: rgba(18, 29, 79, 0.9);
   box-shadow:
-    0 2px 10px rgba(19, 36, 26, 0.08),
+    0 2px 10px rgba(18, 29, 79, 0.08),
     inset 0 1px 1px rgba(255, 255, 255, 0.72),
     inset 0 -1px 1px rgba(255, 255, 255, 0.24);
 }
 
 [data-map-style='gelap'] .pill-top,
 [data-map-style='satelit'] .pill-top {
-  background: rgba(19, 36, 26, 0.24);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 26, 74, 0.3);
+  border-color: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.94);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.12),
-    inset 0 1px 1px rgba(255, 255, 255, 0.14);
+    0 2px 8px rgba(0, 0, 0, 0.14),
+    inset 0 1px 1px rgba(255, 255, 255, 0.16);
 }
 
 [data-map-style='gelap'] .pill-top-icon,
 [data-map-style='satelit'] .pill-top-icon {
-  color: var(--color-mint);
+  color: #93c5fd;
 }
 
 .orb-mark {
-  fill: rgba(47, 138, 87, 0.32);
+  fill: rgba(59, 91, 255, 0.24);
 }
 
 .orb-mark-primary {
@@ -250,20 +254,20 @@ button {
 }
 
 .map-label {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
   white-space: nowrap;
-  color: rgba(19, 36, 26, 0.86);
+  color: rgba(18, 29, 79, 0.88);
   text-shadow: 0 1px 6px rgba(255, 255, 255, 0.96);
 }
 
 [data-map-style='gelap'] .map-label,
 [data-map-style='satelit'] .map-label {
   color: rgba(255, 255, 255, 0.94);
-  text-shadow: 0 1px 4px rgba(19, 36, 26, 0.85);
+  text-shadow: 0 1px 4px rgba(10, 18, 52, 0.85);
 }
 
 .btn-primary {
@@ -273,11 +277,12 @@ button {
   gap: 8px;
   border: none;
   border-radius: 9999px;
-  background: linear-gradient(135deg, #3fb473 0%, #247849 100%);
-  box-shadow: 0 3px 10px rgba(29, 92, 58, 0.16);
+  background: linear-gradient(135deg, #5673ff 0%, #2a43e0 100%);
+  box-shadow: 0 3px 10px rgba(37, 61, 212, 0.22);
   color: #fff;
-  font-family: var(--font-display);
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: -0.01em;
   transition: transform 120ms var(--ease-spring);
 }
 
@@ -291,12 +296,13 @@ button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1.5px dashed rgba(47, 138, 87, 0.3);
+  border: none;
   border-radius: 9999px;
-  background: rgba(221, 238, 223, 0.5);
+  background: rgba(230, 235, 255, 0.72);
   color: var(--color-forest);
-  font-family: var(--font-display);
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: -0.01em;
   transition: transform 120ms var(--ease-spring);
 }
 
@@ -354,8 +360,8 @@ button {
   background: var(--color-leaf);
   border: 2.5px solid #fff;
   box-shadow:
-    0 0 0 4px rgba(47, 138, 87, 0.18),
-    0 2px 6px rgba(19, 36, 26, 0.2);
+    0 0 0 4px rgba(59, 91, 255, 0.22),
+    0 2px 6px rgba(18, 29, 79, 0.24);
 }
 
 @media (prefers-reduced-motion: reduce) {
