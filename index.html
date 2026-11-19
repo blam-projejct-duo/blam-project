@@ -42,13 +42,26 @@
       background: #F3F1ED;
       color: var(--sp-ink);
       font-family: 'DM Sans Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
-      transition: opacity .45s ease, transform .45s ease;
+      transition: opacity .6s ease, transform .6s ease, filter .6s ease;
     }
 
     #splash.sp-hide {
       opacity: 0;
-      transform: scale(1.04);
+      transform: scale(1.06);
+      filter: blur(6px);
       pointer-events: none;
+    }
+
+    #splash::before {
+      content: '';
+      position: absolute;
+      width: 70vmin;
+      height: 70vmin;
+      max-width: 520px;
+      max-height: 520px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, .9), rgba(56, 189, 248, .18) 45%, transparent 70%);
+      animation: sp-glow 3.2s ease-in-out infinite;
     }
 
     #splash .sp-blob {
@@ -96,6 +109,11 @@
     #splash .sp-orbit {
       transform-origin: 512px 540px;
       animation: sp-fade .8s ease .2s both, sp-rot 12s linear infinite;
+    }
+
+    #splash .sp-orbit2 {
+      transform-origin: 512px 540px;
+      animation: sp-fade .8s ease .4s both, sp-rot-rev 20s linear infinite;
     }
 
     /* cincin radar */
@@ -211,8 +229,17 @@
         sp-wave 1.7s ease-in-out calc(1.7s + var(--i) * .12s) infinite;
     }
 
+    #splash .sp-tag {
+      margin: 8px 0 0;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: .02em;
+      color: var(--sp-muted);
+      animation: sp-fade .7s ease 1.5s both;
+    }
+
     #splash .sp-msg {
-      margin-top: 14px;
+      margin-top: 12px;
       min-height: 20px;
       font-size: 14px;
       font-weight: 600;
@@ -227,8 +254,8 @@
     /* bar loading */
     #splash .sp-bar {
       position: relative;
-      width: 150px;
-      height: 6px;
+      width: 190px;
+      height: 7px;
       margin-top: 14px;
       border-radius: 99px;
       background: rgba(18, 40, 107, .1);
@@ -238,12 +265,31 @@
 
     #splash .sp-bar i {
       position: absolute;
-      top: 0;
-      bottom: 0;
-      width: 45%;
+      inset: 0;
       border-radius: 99px;
       background: linear-gradient(90deg, var(--sp-blue), var(--sp-deep), var(--sp-green));
-      animation: sp-slide 1.3s cubic-bezier(.6, 0, .4, 1) infinite;
+      transform-origin: left center;
+      transform: scaleX(0);
+      overflow: hidden;
+    }
+
+    #splash .sp-bar i::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 40%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent);
+      animation: sp-shine 1.4s linear infinite;
+    }
+
+    #splash .sp-pct {
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--sp-deep);
+      animation: sp-fade .5s ease 1.3s both;
     }
 
     #splash nav {
@@ -549,13 +595,137 @@
       }
     }
 
-    @keyframes sp-slide {
+    /* ===== animasi keluar: launch -> burst radar -> iris reveal ===== */
+    @property --sp-r {
+      syntax: '<length>';
+      inherits: false;
+      initial-value: 0px;
+    }
+
+    #splash.sp-out {
+      pointer-events: none;
+      -webkit-mask-image: radial-gradient(circle at 50% 42%, transparent var(--sp-r), #000 calc(var(--sp-r) + 90px));
+      mask-image: radial-gradient(circle at 50% 42%, transparent var(--sp-r), #000 calc(var(--sp-r) + 90px));
+      animation: sp-iris .95s cubic-bezier(.7, 0, .3, 1) .45s forwards;
+    }
+
+    #splash.sp-out .sp-intro {
+      animation: sp-launch .6s cubic-bezier(.5, -.4, .6, 1) forwards;
+    }
+
+    #splash.sp-out .sp-ping {
+      stroke-width: 10;
+      animation: sp-burst .9s ease-out forwards;
+    }
+
+    #splash.sp-out .sp-ping.b {
+      animation-delay: .12s;
+    }
+
+    #splash.sp-out::before {
+      animation: sp-flash .8s ease-out forwards;
+    }
+
+    #splash.sp-out h1,
+    #splash.sp-out .sp-tag,
+    #splash.sp-out .sp-msg,
+    #splash.sp-out .sp-bar,
+    #splash.sp-out .sp-pct,
+    #splash.sp-out nav {
+      animation: sp-out-text .35s ease forwards;
+    }
+
+    @keyframes sp-iris {
+      0% {
+        --sp-r: 0px;
+        opacity: 1;
+      }
+
+      85% {
+        opacity: 1;
+      }
+
+      100% {
+        --sp-r: 150vmax;
+        opacity: 0;
+      }
+    }
+
+    @keyframes sp-launch {
+      0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+
+      30% {
+        opacity: 1;
+        transform: translateY(24px) scale(1.08, .9);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translateY(-300px) scale(1.5) rotate(6deg);
+      }
+    }
+
+    @keyframes sp-burst {
+      0% {
+        transform: scale(1);
+        opacity: .75;
+      }
+
+      100% {
+        transform: scale(3.4);
+        opacity: 0;
+      }
+    }
+
+    @keyframes sp-flash {
+      0% {
+        transform: scale(.9);
+        opacity: 1;
+      }
+
+      100% {
+        transform: scale(3.4);
+        opacity: 0;
+      }
+    }
+
+    @keyframes sp-out-text {
+      to {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+    }
+
+    @keyframes sp-shine {
       from {
-        left: -50%;
+        left: -45%;
       }
 
       to {
-        left: 105%;
+        left: 110%;
+      }
+    }
+
+    @keyframes sp-rot-rev {
+      to {
+        transform: rotate(-360deg);
+      }
+    }
+
+    @keyframes sp-glow {
+
+      0%,
+      100% {
+        transform: scale(.9);
+        opacity: .6;
+      }
+
+      50% {
+        transform: scale(1.08);
+        opacity: 1;
       }
     }
 
@@ -566,6 +736,12 @@
 
       #splash .sp-intro {
         opacity: 1;
+      }
+
+      #splash.sp-out {
+        animation: none !important;
+        opacity: 0;
+        transition: opacity .3s ease;
       }
 
       #splash .sp-pin {
@@ -580,8 +756,7 @@
       }
 
       #splash .sp-bar i {
-        left: 0;
-        width: 100%;
+        transform: scaleX(1) !important;
       }
     }
   </style>
@@ -609,6 +784,12 @@
           stroke-linecap="round" stroke-dasharray="2 16" />
         <circle cx="982" cy="540" r="15" fill="#38bdf8" />
         <circle cx="42" cy="540" r="15" fill="#22c55e" />
+      </g>
+      <g class="sp-orbit2">
+        <circle cx="512" cy="540" r="415" fill="none" stroke="#22c55e" stroke-opacity=".22" stroke-width="4"
+          stroke-linecap="round" stroke-dasharray="1 22" />
+        <circle cx="512" cy="125" r="11" fill="#86efac" />
+        <circle cx="512" cy="955" r="11" fill="#7dd3fc" />
       </g>
 
       <!-- radar ping & bayangan -->
@@ -788,8 +969,10 @@
 
     <h1 aria-label="Blam"><span style="--i:0">B</span><span style="--i:1">l</span><span style="--i:2">a</span><span
         style="--i:3">m</span></h1>
+    <p class="sp-tag">Radar konservasi pesisir &amp; hutan Indonesia</p>
     <div class="sp-msg" id="sp-msg" aria-live="polite">Gajah lagi pemanasan…</div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
+    <div class="sp-pct" id="sp-pct" aria-hidden="true">0%</div>
 
     <nav><a href="/privacy">Kebijakan Privasi</a><a href="/terms">Ketentuan Layanan</a></nav>
   </div>
@@ -799,29 +982,51 @@
       if (!s) return;
       var seen = false;
       try { seen = sessionStorage.getItem('sp-seen') === '1'; } catch (e) { }
+      var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
       var t0 = Date.now();
-      var MIN = seen ? 0 : 2600; // kunjungan pertama: minimal 2,6 dtk supaya animasi masuk sempat terlihat
+      // kunjungan pertama: splash tampil ±7 dtk supaya seluruh cerita animasinya sempat terlihat
+      var MIN = seen ? 0 : (reduce ? 1500 : 7000);
+      var done = false;
       window.__hideSplash = function () {
         if (window.__splashGone) return;
         window.__splashGone = true;
         setTimeout(function () {
-          s.classList.add('sp-hide');
-          try { sessionStorage.setItem('sp-seen', '1'); } catch (e) { }
-          setTimeout(function () { s.remove(); }, 500);
+          done = true; // bar & persen mengisi sampai 100% dulu
+          setTimeout(function () {
+            s.classList.add('sp-out'); // gajah meluncur, cincin radar meledak, lalu layar terbuka melingkar
+            try { sessionStorage.setItem('sp-seen', '1'); } catch (e) { }
+            setTimeout(function () { s.remove(); }, reduce ? 400 : 1500);
+          }, 450);
         }, Math.max(0, MIN - (Date.now() - t0)));
       };
-      setTimeout(window.__hideSplash, 6000); // pengaman: splash tidak boleh menutup layar selamanya
+      setTimeout(window.__hideSplash, 10000); // pengaman: splash tidak boleh menutup layar selamanya
 
-      var msgs = ['Gajah lagi pemanasan…', 'Memindai hutan & pesisir…', 'Menyiram bibit mangrove…', 'Menandai titik rawan…', 'Hampir siap!'];
+      // pesan bergantian, berhenti di "Hampir siap!"
+      var msgs = ['Gajah lagi pemanasan…', 'Memindai hutan & pesisir…', 'Menyiram bibit mangrove…', 'Menandai titik rawan…', 'Menyiapkan data radar…', 'Merapikan peta konservasi…', 'Hampir siap!'];
       var i = 0, el = document.getElementById('sp-msg');
-      setInterval(function () {
-        i = (i + 1) % msgs.length;
-        if (!el) return;
+      var iv = setInterval(function () {
+        i++;
+        if (!el) return clearInterval(iv);
         el.classList.remove('swap');
         void el.offsetWidth; // restart animasi
         el.textContent = msgs[i];
         el.classList.add('swap');
-      }, 1300);
+        if (i >= msgs.length - 1) clearInterval(iv);
+      }, 1000);
+
+      // progres: naik halus sampai ±92%, merayap pelan kalau app belum siap, lalu 100% saat selesai
+      var bar = s.querySelector('.sp-bar i'), pct = document.getElementById('sp-pct'), p = 0;
+      var span = Math.max(MIN, 1500);
+      (function tick() {
+        if (!document.body.contains(s)) return;
+        var e = Date.now() - t0;
+        var k = Math.min(e / span, 1);
+        var target = done ? 1 : .92 * (1 - Math.pow(1 - k, 2.2)) + Math.min(.06, Math.max(0, e - span) / 40000);
+        p += (target - p) * .12;
+        if (bar) bar.style.transform = 'scaleX(' + p.toFixed(3) + ')';
+        if (pct) pct.textContent = Math.round(p * 100) + '%';
+        requestAnimationFrame(tick);
+      })();
     })();
   </script>
 
