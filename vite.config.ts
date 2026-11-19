@@ -1,7 +1,11 @@
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+
+const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -24,7 +28,7 @@ export default defineConfig({
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/privacy/, /^\/terms/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/server\.arcgisonline\.com\/ArcGIS\/rest\/services\/.*\/tile\//i,
@@ -74,6 +78,11 @@ export default defineConfig({
   ],
   build: {
     rollupOptions: {
+      input: {
+        main: resolve(rootDir, 'index.html'),
+        privacy: resolve(rootDir, 'privacy/index.html'),
+        terms: resolve(rootDir, 'terms/index.html'),
+      },
       output: {
         manualChunks(id) {
           if (id.includes('maplibre-gl')) return 'maplibre'

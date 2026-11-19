@@ -1,13 +1,15 @@
+import { AnimatePresence } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import DesktopShell from './components/layout/DesktopShell'
 import MobileBumpShell from './components/layout/MobileBumpShell'
 import { getDemoSessionId } from './lib/api'
-import { useAppRoute } from './lib/route'
+import { navigateBack, useAppRoute } from './lib/route'
 import type { AppPath } from './lib/route'
 import { useMediaQuery } from './lib/useMediaQuery'
 import { AuthProvider, useAuth } from './modules/auth/AuthContext'
 import AuthModal from './modules/auth/AuthModal'
 import DemoPortalPage from './modules/demo/DemoPortalPage'
+import { LegalModal } from './modules/legal/LegalPages'
 import { useRadar } from './modules/map/useRadar'
 
 function BlamRoot({ isDemo, onNavigate }: { isDemo: boolean; onNavigate: (path: AppPath) => void }) {
@@ -74,11 +76,24 @@ function BlamRoot({ isDemo, onNavigate }: { isDemo: boolean; onNavigate: (path: 
 }
 
 export default function App() {
-  const { isDemo, navigateTo } = useAppRoute()
+  const { isDemo, legalPage, navigateTo } = useAppRoute()
 
   return (
-    <AuthProvider key={isDemo ? 'demo' : 'live'} isDemo={isDemo}>
-      <BlamRoot isDemo={isDemo} onNavigate={navigateTo} />
-    </AuthProvider>
+    <>
+      <AuthProvider key={isDemo ? 'demo' : 'live'} isDemo={isDemo}>
+        <BlamRoot isDemo={isDemo} onNavigate={navigateTo} />
+      </AuthProvider>
+
+      <AnimatePresence>
+        {legalPage && (
+          <LegalModal
+            key="legal-modal"
+            page={legalPage}
+            onNavigate={navigateTo}
+            onClose={() => navigateBack('/')}
+          />
+        )}
+      </AnimatePresence>
+    </>
   )
 }

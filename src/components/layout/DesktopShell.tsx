@@ -8,28 +8,28 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { DashedOutline, DashedRow, EcoBadge, Orb } from '../ui/atoms'
+import { DashedOutline, DashedRow, Orb } from '../ui/atoms'
 import {
   AdminDuotoneIcon,
   AksiActionIcon,
   BellSolidIcon,
   BlamNatureIcon,
-  DampakDuotoneIcon,
   EscalateDuotoneIcon,
   FilterDuotoneIcon,
   GuestAvatarIcon,
+  HistoryDuotoneIcon,
   LocateDuotoneIcon,
   OrgDuotoneIcon,
   RadarCompassIcon,
   SearchDuotoneIcon,
 } from '../ui/bumpIcons'
-import { ECOSYSTEM_LABEL } from '../../lib/constants'
 import AdminPanel from '../../modules/admin/AdminPanel'
 import AgencyInboxPanel from '../../modules/agency/AgencyInboxPanel'
 import { useAuth } from '../../modules/auth/AuthContext'
 import CreateEventForm from '../../modules/events/CreateEventForm'
 import EventDetail from '../../modules/events/EventDetail'
 import SatelliteSignalDetail from '../../modules/events/SatelliteSignalDetail'
+import HistoryPanel from '../../modules/history/HistoryPanel'
 import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
 import MapView from '../../modules/map/MapView'
 import { filterRadarItems, LAYER_CHIPS } from '../../modules/map/radarFilters'
@@ -38,11 +38,11 @@ import type { Radar } from '../../modules/map/useRadar'
 import OrgsPanel from '../../modules/organizations/OrgsPanel'
 import ProfilePanel from '../../modules/profile/ProfilePanel'
 import VerificationRadarPanel from '../../modules/reports/VerificationRadarPanel'
-import type { CitizenReport, Ecosystem, SatelliteSignal } from '../../types'
+import type { CitizenReport, SatelliteSignal } from '../../types'
 import EventListPanel from './EventListPanel'
 import type { ListTab } from './EventListPanel'
 
-type NavTab = 'Jelajah' | 'Aksi' | 'Dampak' | 'Org' | 'Eskalasi' | 'Admin'
+type NavTab = 'Jelajah' | 'Aksi' | 'History' | 'Org' | 'Eskalasi' | 'Admin'
 type Tab = NavTab | 'Profil'
 
 const RAIL_GAP = 16
@@ -179,7 +179,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   }, [filterOpen, notifOpen])
 
   const navTabs = useMemo<NavTab[]>(() => {
-    const base: NavTab[] = ['Jelajah', 'Aksi', 'Dampak', 'Org']
+    const base: NavTab[] = ['Jelajah', 'Aksi', 'History', 'Org']
     if (profile?.role === 'agency') base.push('Eskalasi')
     if (profile?.role === 'admin') base.push('Admin')
     return base
@@ -189,29 +189,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     () => filterRadarItems(radar.events, radar.hazards, radar.satelliteSignals, layers),
     [radar.events, radar.hazards, radar.satelliteSignals, layers],
   )
-
-  const impactStats = useMemo(() => {
-    let wasteKg = 0
-    let trees = 0
-    let resolved = 0
-    const byEco: Record<Ecosystem, { total: number; resolved: number }> = {
-      coastal_mangrove: { total: 0, resolved: 0 },
-      tropical_forest: { total: 0, resolved: 0 },
-      watershed: { total: 0, resolved: 0 },
-    }
-    for (const ev of radar.allEvents) {
-      byEco[ev.ecosystem].total += 1
-      if (ev.status === 'resolved') {
-        resolved += 1
-        byEco[ev.ecosystem].resolved += 1
-      }
-      for (const a of ev.event_actions ?? []) {
-        wasteKg += Number(a.waste_kg) || 0
-        trees += a.trees_planted || 0
-      }
-    }
-    return { total: radar.allEvents.length, resolved, wasteKg, trees, byEco }
-  }, [radar.allEvents])
 
   const resetToIndonesia = () => {
     clearSwitchTimer()
@@ -322,8 +299,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         return <RadarCompassIcon className="relative z-10 size-6" />
       case 'Aksi':
         return <AksiActionIcon className="relative z-10 size-6" />
-      case 'Dampak':
-        return <DampakDuotoneIcon className="relative z-10 size-6" />
+      case 'History':
+        return <HistoryDuotoneIcon className="relative z-10 size-6" />
       case 'Org':
         return <OrgDuotoneIcon className="relative z-10 size-6" />
       case 'Eskalasi':
@@ -530,6 +507,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           locateSignal={radar.locateSignal}
           radarMode={isRadarMode}
           zoomCommand={radar.zoomCommand}
+          focusTarget={radar.focusTarget}
         />
       </div>
 
@@ -665,46 +643,13 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                   <>
                     {(tab === 'Jelajah' || tab === 'Aksi') && radarOrAksiBody(tab)}
 
-                    {tab === 'Dampak' && (
-                  <div className="min-h-0 flex-1 overflow-y-auto p-5">
-                    <h2 className="font-display mb-4 text-xl font-bold tracking-tight text-ink">Dampak</h2>
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        ['Event', impactStats.total],
-                        ['Pulih', impactStats.resolved],
-                        ['Sampah (kg)', impactStats.wasteKg],
-                        ['Bibit', impactStats.trees],
-                      ].map(([label, val]) => (
-                        <div key={label} className="relative rounded-[20px] bg-[#f7faf6] p-4">
-                          <DashedOutline rx={19} />
-                          <p className="num text-3xl text-forest">{val}</p>
-                          <p className="font-display mt-1 text-xs font-semibold text-ink-soft">{label}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="relative mt-4 rounded-[20px] bg-[#f7faf6] p-4">
-                      <DashedOutline rx={19} />
-                      <p className="font-display mb-1 text-[11px] font-semibold tracking-wider text-ink-soft uppercase">
-                        Sebaran Ekosistem
-                      </p>
-                      {(['coastal_mangrove', 'tropical_forest', 'watershed'] as const).map((eco) => (
-                        <DashedRow key={eco} className="flex items-center justify-between gap-3 py-3">
-                          <div className="flex min-w-0 items-center gap-3">
-                            <EcoBadge ecosystem={eco} />
-                            <span className="font-display truncate text-sm font-semibold text-ink">
-                              {ECOSYSTEM_LABEL[eco]}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <p className="num text-base text-ink">{impactStats.byEco[eco].total}</p>
-                            <p className="text-[11px] font-semibold text-leaf">
-                              {impactStats.byEco[eco].resolved} pulih
-                            </p>
-                          </div>
-                        </DashedRow>
-                      ))}
-                    </div>
+                    {tab === 'History' && (
+                  <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-5">
+                    <HistoryPanel
+                      events={radar.allEvents}
+                      onSelectEvent={openDetail}
+                      onFocusLocation={(lat, lng) => radar.focusLocation(lat, lng)}
+                    />
                   </div>
                 )}
 

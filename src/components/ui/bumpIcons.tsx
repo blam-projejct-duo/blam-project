@@ -252,7 +252,7 @@ export function FilterDuotoneIcon({ light = false }: { light?: boolean }) {
   )
 }
 
-export function DampakDuotoneIcon({ className = 'relative z-10 size-6' }: { className?: string }) {
+export function HistoryDuotoneIcon({ className = 'relative z-10 size-6' }: { className?: string }) {
   const gradId = useId()
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
@@ -262,26 +262,29 @@ export function DampakDuotoneIcon({ className = 'relative z-10 size-6' }: { clas
           <stop offset="100%" stopColor="#A7F3D0" />
         </linearGradient>
       </defs>
-      <path
-        d="M12 12.2c0-4.3 3.1-7.4 7.5-7.4.3 4.4-2.8 7.5-7.5 7.4Z"
-        fill="#34D399"
-        stroke="var(--color-leaf)"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12 13.8c0-3.6-2.6-6.2-6.4-6.2-.2 3.7 2.4 6.2 6.4 6.2Z"
+      <circle
+        cx="12.5"
+        cy="12"
+        r="7.8"
         fill={`url(#${gradId})`}
         stroke="var(--color-leaf)"
         strokeWidth="1.8"
+      />
+      <path
+        d="M4.8 9.2A8.2 8.2 0 0 1 12.5 4.2M4.3 6.2v3.3h3.3"
+        fill="none"
+        stroke="var(--color-forest)"
+        strokeWidth="1.9"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M12 11.8v7.6M7.2 19.6h9.6"
+        d="M12.5 8.4v4l2.7 1.6"
         fill="none"
         stroke="var(--color-forest)"
-        strokeWidth="2.1"
+        strokeWidth="2"
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   )

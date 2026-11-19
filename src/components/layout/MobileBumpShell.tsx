@@ -5,6 +5,7 @@ import {
   CalendarPlus,
   CheckSquare,
   ChevronDown,
+  History,
   Shield,
 } from 'lucide-react'
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -34,13 +35,14 @@ const AgencyInboxPanel = lazy(() => import('../../modules/agency/AgencyInboxPane
 const CreateEventForm = lazy(() => import('../../modules/events/CreateEventForm'))
 const EventDetail = lazy(() => import('../../modules/events/EventDetail'))
 const SatelliteSignalDetail = lazy(() => import('../../modules/events/SatelliteSignalDetail'))
+const HistoryPanel = lazy(() => import('../../modules/history/HistoryPanel'))
 const OrgsPanel = lazy(() => import('../../modules/organizations/OrgsPanel'))
 const ProfilePanel = lazy(() => import('../../modules/profile/ProfilePanel'))
 const QuickReportFlow = lazy(() => import('../../modules/reports/QuickReportFlow'))
 const VerificationRadarPanel = lazy(() => import('../../modules/reports/VerificationRadarPanel'))
 
 type Snap = 'peek' | 'half' | 'full'
-type Mode = 'detail' | 'signal' | 'radar' | 'list' | 'orgs' | 'profile' | 'verify' | 'agency' | 'admin' | null
+type Mode = 'detail' | 'signal' | 'radar' | 'list' | 'history' | 'orgs' | 'profile' | 'verify' | 'agency' | 'admin' | null
 
 const SPRING = { type: 'spring', stiffness: 350, damping: 30 } as const
 const PEEK_PX = 214
@@ -225,6 +227,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         fitIndonesiaSignal={radar.fitIndonesiaSignal}
         locateSignal={radar.locateSignal}
         radarMode={mode === 'radar' || mode === 'signal'}
+        focusTarget={radar.focusTarget}
       />
 
       <div className="absolute top-[calc(env(safe-area-inset-top)+14px)] left-1/2 z-[500] -translate-x-1/2">
@@ -273,14 +276,24 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                 )
               })}
             </div>
-            <button
-              type="button"
-              onClick={() => openSheet('orgs', true)}
-              className="font-display relative flex h-10 items-center justify-center gap-2 rounded-full bg-[#f7faf6] text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
-            >
-              <DashedOutline rx={19} />
-              <Building2 className="size-4" /> Organisasi
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => openSheet('history', true)}
+                className="font-display relative flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-[#f7faf6] text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
+              >
+                <DashedOutline rx={19} />
+                <History className="size-4" /> History
+              </button>
+              <button
+                type="button"
+                onClick={() => openSheet('orgs', true)}
+                className="font-display relative flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-[#f7faf6] text-[13px] font-semibold text-forest transition-colors hover:bg-mint/30"
+              >
+                <DashedOutline rx={19} />
+                <Building2 className="size-4" /> Organisasi
+              </button>
+            </div>
             {canOrganize && (
               <div className="flex gap-2">
                 <button
@@ -499,6 +512,16 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                 />
               )}
 
+              {mode === 'history' && (
+                <HistoryPanel
+                  events={radar.allEvents}
+                  onSelectEvent={openDetail}
+                  onFocusLocation={(lat, lng) => {
+                    radar.focusLocation(lat, lng)
+                    setSnap('half')
+                  }}
+                />
+              )}
               {mode === 'orgs' && <OrgsPanel />}
               {mode === 'profile' && <ProfilePanel />}
               {mode === 'verify' && (

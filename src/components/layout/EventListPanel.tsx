@@ -7,20 +7,22 @@ import { formatFloodRiskLabel, formatSignalSource } from '../../modules/map/rada
 import { DashedOutline, EcoBadge } from '../ui/atoms'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 
-export type ListTab = 'Utama' | 'Terbaru' | 'Dampak' | 'Satelit' | 'Berjalan' | 'Verifikasi' | 'Selesai'
+export type ListTab = 'Utama' | 'Terbaru' | 'History' | 'Satelit' | 'Berjalan' | 'Verifikasi' | 'Selesai'
 
-const TABS: ListTab[] = ['Utama', 'Terbaru', 'Dampak', 'Satelit']
+const TABS: ListTab[] = ['Utama', 'Terbaru', 'History', 'Satelit']
 const DOT = { critical: 'bg-critical', progress: 'bg-progress', resolved: 'bg-resolved' } as const
 const RANK = { open: 0, in_progress: 1, resolved: 2, cancelled: 3 } as const
 
 function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListTab; onOpen: () => void }) {
   const action = event.event_actions?.[0]
   const meta =
-    tab === 'Dampak' && action
-      ? `${Number(action.waste_kg)} kg · ${action.trees_planted} bibit`
-      : event.organization?.name
-        ? `${event.organization.name} · ${shortLocation(event.location_name)}`
-        : shortLocation(event.location_name)
+    tab === 'History' && action
+      ? `${EVENT_STATUS_LABEL[event.status]} · ${Number(action.waste_kg)} kg · ${action.trees_planted} bibit`
+      : tab === 'History'
+        ? `${EVENT_STATUS_LABEL[event.status]} · ${shortLocation(event.location_name)}`
+        : event.organization?.name
+          ? `${event.organization.name} · ${shortLocation(event.location_name)}`
+          : shortLocation(event.location_name)
 
   return (
     <li className="relative rounded-[20px] bg-[#f7faf6] transition-colors hover:bg-mint/30">
@@ -254,9 +256,11 @@ export default function EventListPanel({
             +new Date(a.event_actions?.[0]?.completed_at ?? a.updated_at),
         )
     }
-    if (tab === 'Dampak') {
+    if (tab === 'History') {
       const source = (impactEvents ?? events).filter(matches)
-      return source.filter((ev) => ev.status === 'resolved' && (ev.event_actions?.length ?? 0) > 0)
+      return source
+        .filter((ev) => ev.status === 'resolved' || ev.status === 'in_progress')
+        .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at))
     }
     return [...base].sort(
       (a, b) => RANK[a.status] - RANK[b.status] || +new Date(b.created_at) - +new Date(a.created_at),

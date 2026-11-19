@@ -1,0 +1,512 @@
+import {
+  Check,
+  ChevronDown,
+  Droplets,
+  Flame,
+  HeartHandshake,
+  Mountain,
+  Search,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { DashedOutline } from '../../components/ui/atoms'
+import { shortLocation } from '../../lib/constants'
+import type { ConservationEvent, FundraisingCampaign } from '../../types'
+import { formatRupiah, useFundraisings } from '../fundraising/useFundraisings'
+
+type HistoryCategory = 'all' | 'karhutla' | 'banjir' | 'gunung' | 'donasi'
+type HistoryStatusFilter = 'all' | 'done' | 'ongoing'
+
+interface HistoryItem {
+  id: string
+  category: Exclude<HistoryCategory, 'all'>
+  status: 'done' | 'ongoing'
+  statusLabel: string
+  title: string
+  location: string
+  lat: number
+  lng: number
+  dateLabel: string
+  sortTime: number
+  summary: string
+  metaLine: string
+  eventId?: string
+}
+
+const CATEGORY_OPTIONS: { id: HistoryCategory; label: string }[] = [
+  { id: 'all', label: 'Semua' },
+  { id: 'karhutla', label: 'Karhutla' },
+  { id: 'banjir', label: 'Banjir' },
+  { id: 'gunung', label: 'Gunung' },
+  { id: 'donasi', label: 'Donasi' },
+]
+
+const STATUS_FILTERS: { id: HistoryStatusFilter; label: string }[] = [
+  { id: 'all', label: 'Semua' },
+  { id: 'done', label: 'Selesai' },
+  { id: 'ongoing', label: 'Ditangani' },
+]
+
+const CATEGORY_META: Record<
+  Exclude<HistoryCategory, 'all'>,
+  { label: string; Icon: typeof Flame; tone: string }
+> = {
+  karhutla: { label: 'Karhutla', Icon: Flame, tone: 'text-critical' },
+  banjir: { label: 'Banjir', Icon: Droplets, tone: 'text-cobalt' },
+  gunung: { label: 'Gunung', Icon: Mountain, tone: 'text-purple-600' },
+  donasi: { label: 'Donasi', Icon: HeartHandshake, tone: 'text-critical' },
+}
+
+const ARCHIVE_HISTORY: HistoryItem[] = [
+  {
+    id: 'arc-karhutla-oki',
+    category: 'karhutla',
+    status: 'done',
+    statusLabel: 'Selesai',
+    title: 'Karhutla Gambut Ogan Komering Ilir',
+    location: 'OKI, Sumsel',
+    lat: -3.3833,
+    lng: 105.05,
+    dateLabel: '14 Okt',
+    sortTime: Date.parse('2026-10-14T10:00:00Z'),
+    summary: 'Titik api di 3 blok gambut padam melalui sekat kanal dan patroli Manggala Agni bersama relawan.',
+    metaLine: '142 ha terkendali · 64 relawan · Manggala Agni',
+  },
+  {
+    id: 'arc-banjir-demak',
+    category: 'banjir',
+    status: 'done',
+    statusLabel: 'Usai',
+    title: 'Banjir Tanggul Sungai Wulan Demak',
+    location: 'Demak, Jateng',
+    lat: -6.8906,
+    lng: 110.6396,
+    dateLabel: '03 Nov',
+    sortTime: Date.parse('2026-11-03T08:00:00Z'),
+    summary: 'Genangan di 11 desa surut usai penutupan tanggul darurat dan normalisasi pintu air hilir.',
+    metaLine: 'Surut 100% · 11 desa pulih · BPBD Jateng',
+  },
+  {
+    id: 'arc-karhutla-riau',
+    category: 'karhutla',
+    status: 'ongoing',
+    statusLabel: 'Ditangani',
+    title: 'Kebakaran Semak Pesisir Bengkalis',
+    location: 'Bengkalis, Riau',
+    lat: 1.4796,
+    lng: 102.1194,
+    dateLabel: '18 Nov',
+    sortTime: Date.parse('2026-11-18T06:00:00Z'),
+    summary: 'Pendinginan sisa asap bawah permukaan dan pemantauan hotspot satelit masih berlangsung.',
+    metaLine: 'Pendinginan aktif · 28 personel · Satgas Karhutla',
+  },
+  {
+    id: 'arc-donasi-kalsel',
+    category: 'donasi',
+    status: 'done',
+    statusLabel: 'Selesai',
+    title: 'Donasi Banjir Hulu Sungai Tengah',
+    location: 'Barabai, Kalsel',
+    lat: -2.5833,
+    lng: 115.3833,
+    dateLabel: '27 Okt',
+    sortTime: Date.parse('2026-10-27T12:00:00Z'),
+    summary: 'Target tercapai dan seluruh logistik, air bersih, serta bibit bantaran sungai telah tersalurkan.',
+    metaLine: 'Rp 48.500.000 (100%) · 134 donatur',
+  },
+  {
+    id: 'arc-gunung-ruang',
+    category: 'gunung',
+    status: 'done',
+    statusLabel: 'Selesai',
+    title: 'Penanganan Abu Vulkanik Gunung Ruang',
+    location: 'Sitaro, Sulut',
+    lat: 2.3,
+    lng: 125.37,
+    dateLabel: '19 Sep',
+    sortTime: Date.parse('2026-09-19T09:00:00Z'),
+    summary: 'Aktivitas vulkanik melandai; pembersihan abu dan pemulihan vegetasi pesisir pulau rampung.',
+    metaLine: 'Status Normal · 42 relawan · PVMBG',
+  },
+  {
+    id: 'arc-gunung-lewotobi',
+    category: 'gunung',
+    status: 'done',
+    statusLabel: 'Selesai',
+    title: 'Pemulihan Pasca Erupsi Lewotobi',
+    location: 'Flores Timur, NTT',
+    lat: -8.542,
+    lng: 122.775,
+    dateLabel: '08 Okt',
+    sortTime: Date.parse('2026-10-08T11:00:00Z'),
+    summary: 'Filtrasi sumber air desa dan penanaman ulang area terdampak abu selesai dilakukan.',
+    metaLine: '4 sumber air pulih · 350 bibit',
+  },
+  {
+    id: 'arc-banjir-aceh',
+    category: 'banjir',
+    status: 'ongoing',
+    statusLabel: 'Ditangani',
+    title: 'Luapan DAS Krueng Peusangan',
+    location: 'Bireuen, Aceh',
+    lat: 5.203,
+    lng: 96.7009,
+    dateLabel: '17 Nov',
+    sortTime: Date.parse('2026-11-17T07:00:00Z'),
+    summary: 'Pembersihan material kayu hanyutan dan penguatan tebing alur sungai masih berjalan.',
+    metaLine: 'Pembersihan alur · 19 relawan',
+  },
+  {
+    id: 'arc-donasi-bromo',
+    category: 'donasi',
+    status: 'done',
+    statusLabel: 'Selesai',
+    title: 'Donasi Pemulihan Sabana Bromo',
+    location: 'Probolinggo, Jatim',
+    lat: -7.9425,
+    lng: 112.953,
+    dateLabel: '22 Agu',
+    sortTime: Date.parse('2026-08-22T14:00:00Z'),
+    summary: 'Dana terkumpul penuh dan disalurkan untuk bibit cemara gunung serta pemulihan sabana.',
+    metaLine: 'Rp 32.000.000 (100%) · 89 donatur · 1.200 bibit',
+  },
+]
+
+function formatShortDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return 'Baru'
+  return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short' }).format(d)
+}
+
+function classifyEventCategory(ev: ConservationEvent): Exclude<HistoryCategory, 'all'> | null {
+  const text = `${ev.title} ${ev.category} ${ev.description} ${ev.ref_source ?? ''}`.toLowerCase()
+  if (
+    ev.ref_source === 'nasa_firms' ||
+    text.includes('karhutla') ||
+    text.includes('kebakaran') ||
+    text.includes('api') ||
+    text.includes('termal')
+  ) {
+    return 'karhutla'
+  }
+  if (
+    ev.ref_source === 'open_meteo_flood' ||
+    ev.ref_source === 'petabencana' ||
+    text.includes('banjir') ||
+    text.includes('luapan') ||
+    text.includes('genangan')
+  ) {
+    return 'banjir'
+  }
+  if (text.includes('gunung') || text.includes('erupsi') || text.includes('vulkanik')) {
+    return 'gunung'
+  }
+  return null
+}
+
+function eventToHistoryItem(ev: ConservationEvent): HistoryItem | null {
+  if (ev.status !== 'resolved' && ev.status !== 'in_progress') return null
+  const category = classifyEventCategory(ev)
+  if (!category) return null
+
+  const latestAction = ev.event_actions?.[0]
+  const stamp = latestAction?.completed_at ?? ev.updated_at ?? ev.created_at
+  let wasteKg = 0
+  let trees = 0
+  for (const a of ev.event_actions ?? []) {
+    wasteKg += Number(a.waste_kg) || 0
+    trees += a.trees_planted || 0
+  }
+
+  const parts: string[] = []
+  if (ev.organization?.name) parts.push(ev.organization.name)
+  if (wasteKg > 0) parts.push(`${wasteKg} kg`)
+  if (trees > 0) parts.push(`${trees} bibit`)
+  if (latestAction?.ai_recovery_score != null) parts.push(`${latestAction.ai_recovery_score}% pulih`)
+
+  const isDone = ev.status === 'resolved'
+  return {
+    id: `ev-${ev.id}`,
+    category,
+    status: isDone ? 'done' : 'ongoing',
+    statusLabel: isDone ? 'Selesai' : 'Ditangani',
+    title: ev.title,
+    location: shortLocation(ev.location_name),
+    lat: ev.lat,
+    lng: ev.lng,
+    dateLabel: formatShortDate(stamp),
+    sortTime: new Date(stamp).getTime() || 0,
+    summary:
+      latestAction?.ai_comparison_summary?.trim() ||
+      latestAction?.notes?.trim() ||
+      ev.description?.trim() ||
+      'Kegiatan pemulihan lingkungan.',
+    metaLine: parts.join(' · ') || (isDone ? 'Aksi tuntas' : 'Penanganan berjalan'),
+    eventId: ev.id,
+  }
+}
+
+function fundraisingToHistoryItem(f: FundraisingCampaign): HistoryItem {
+  const isDone =
+    f.status === 'completed' || f.status === 'closed' || f.collected_amount >= f.target_amount
+  const pct = Math.min(100, Math.round((f.collected_amount / Math.max(1, f.target_amount)) * 100))
+
+  return {
+    id: `don-${f.id}`,
+    category: 'donasi',
+    status: isDone ? 'done' : 'ongoing',
+    statusLabel: isDone ? 'Selesai' : 'Berjalan',
+    title: f.title,
+    location: shortLocation(f.location_name),
+    lat: f.lat,
+    lng: f.lng,
+    dateLabel: formatShortDate(f.created_at),
+    sortTime: new Date(f.created_at).getTime() || 0,
+    summary: f.description?.trim() || `Penggalangan dana darurat oleh ${f.organizer_name}.`,
+    metaLine: `${formatRupiah(f.collected_amount)} (${pct}%) · ${f.donations.length} donatur`,
+  }
+}
+
+export default function HistoryPanel({
+  events,
+  onSelectEvent,
+  onFocusLocation,
+}: {
+  events: ConservationEvent[]
+  onSelectEvent: (id: string) => void
+  onFocusLocation: (lat: number, lng: number) => void
+}) {
+  const { fundraisings } = useFundraisings()
+  const [category, setCategory] = useState<HistoryCategory>('all')
+  const [statusFilter, setStatusFilter] = useState<HistoryStatusFilter>('all')
+  const [query, setQuery] = useState('')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const filterRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!filterOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false)
+      }
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFilterOpen(false)
+    }
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [filterOpen])
+
+  const allItems = useMemo(() => {
+    const liveEvents = events
+      .map(eventToHistoryItem)
+      .filter((item): item is HistoryItem => item !== null)
+    const liveDonations = fundraisings.map(fundraisingToHistoryItem)
+    return [...liveEvents, ...liveDonations, ...ARCHIVE_HISTORY].sort(
+      (a, b) => b.sortTime - a.sortTime,
+    )
+  }, [events, fundraisings])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return allItems.filter((item) => {
+      if (category !== 'all' && item.category !== category) return false
+      if (statusFilter !== 'all' && item.status !== statusFilter) return false
+      if (!q) return true
+      return (
+        item.title.toLowerCase().includes(q) ||
+        item.location.toLowerCase().includes(q) ||
+        item.summary.toLowerCase().includes(q)
+      )
+    })
+  }, [allItems, category, statusFilter, query])
+
+  const activeCategoryLabel =
+    category === 'all' ? 'Filter' : (CATEGORY_META[category]?.label ?? 'Filter')
+
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <h2 className="font-display text-xl font-bold tracking-tight text-ink">History</h2>
+        <span className="num rounded-full bg-mint/55 px-2 py-0.5 text-[11px] text-forest">
+          {filtered.length}
+        </span>
+      </div>
+
+      <label className="flex h-9 w-full min-w-0 items-center gap-2 rounded-full bg-[#f3f6f2] px-3.5 transition-colors focus-within:bg-mint/35">
+        <Search className="size-3.5 shrink-0 text-leaf" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Cari riwayat…"
+          className="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-soft"
+        />
+        {query && (
+          <button type="button" aria-label="Hapus" onClick={() => setQuery('')}>
+            <X className="size-3.5 text-ink-soft" />
+          </button>
+        )}
+      </label>
+
+      <div className="flex min-w-0 items-center justify-between gap-1.5">
+        <div
+          role="tablist"
+          aria-label="Filter status riwayat"
+          className="flex min-w-0 items-center gap-0.5 rounded-full border border-line/80 bg-[#f3f6f2] p-0.5"
+        >
+          {STATUS_FILTERS.map((sf) => {
+            const active = statusFilter === sf.id
+            return (
+              <button
+                key={sf.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setStatusFilter(sf.id)}
+                className={`font-display inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap transition-all ${
+                  active
+                    ? 'bg-leaf text-white shadow-[0_2px_8px_rgba(29,92,58,0.22)]'
+                    : 'text-ink-soft hover:bg-white/70 hover:text-ink'
+                }`}
+              >
+                {sf.label}
+              </button>
+            )
+          })}
+        </div>
+
+        <div ref={filterRef} className="relative shrink-0">
+          <button
+            type="button"
+            aria-expanded={filterOpen}
+            aria-haspopup="menu"
+            onClick={() => setFilterOpen((v) => !v)}
+            className={`font-display relative inline-flex h-7.5 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold whitespace-nowrap transition-colors ${
+              category !== 'all'
+                ? 'bg-leaf text-white'
+                : 'bg-[#f7faf6] text-ink hover:bg-mint/40'
+            }`}
+          >
+            {category === 'all' && <DashedOutline rx={15} />}
+            <SlidersHorizontal className="size-3.5 shrink-0" />
+            <span>{activeCategoryLabel}</span>
+            <ChevronDown
+              className={`size-3.5 shrink-0 transition-transform ${filterOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {filterOpen && (
+            <div
+              role="menu"
+              aria-label="Filter kategori riwayat"
+              className="absolute top-10 right-0 z-30 min-w-[168px] rounded-[18px] border border-line bg-white p-1.5 shadow-[0_12px_28px_rgba(19,36,26,0.14)]"
+            >
+              {CATEGORY_OPTIONS.map((opt) => {
+                const active = category === opt.id
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={active}
+                    onClick={() => {
+                      setCategory(opt.id)
+                      setFilterOpen(false)
+                    }}
+                    className={`font-display flex w-full items-center justify-between gap-2 rounded-[12px] px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                      active ? 'bg-mint/55 text-forest' : 'text-ink hover:bg-canvas'
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {active && <Check className="size-3.5 shrink-0 text-forest" />}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="relative rounded-[18px] bg-[#f7faf6] p-5 text-center">
+          <DashedOutline rx={17} />
+          <p className="font-display text-xs font-semibold text-ink-soft">Tidak ada riwayat cocok</p>
+        </div>
+      ) : (
+        <ul className="flex min-w-0 flex-col gap-2">
+          {filtered.map((item) => {
+            const meta = CATEGORY_META[item.category]
+            const Icon = meta.Icon
+            const expanded = expandedId === item.id
+            const isDone = item.status === 'done'
+
+            return (
+              <li
+                key={item.id}
+                className="relative min-w-0 rounded-[18px] bg-[#f7faf6] transition-colors hover:bg-mint/25"
+              >
+                <DashedOutline rx={17} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (item.eventId) {
+                      onSelectEvent(item.eventId)
+                    } else {
+                      onFocusLocation(item.lat, item.lng)
+                      setExpandedId((prev) => (prev === item.id ? null : item.id))
+                    }
+                  }}
+                  className="flex w-full min-w-0 flex-col gap-2 px-3 py-2.5 text-left"
+                >
+                  <div className="flex w-full min-w-0 items-center gap-2.5">
+                    <span
+                      className={`grid size-9 shrink-0 place-items-center rounded-[12px] border border-leaf/20 bg-white ${meta.tone}`}
+                    >
+                      <Icon className="size-4" strokeWidth={2} />
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="font-display truncate text-[13.5px] font-semibold text-ink">{item.title}</p>
+                      <p className="truncate text-[11.5px] text-ink-soft">
+                        {meta.label} · {item.location} · {item.dateLabel}
+                      </p>
+                    </div>
+
+                    <div className="flex w-[84px] shrink-0 items-center justify-between gap-1">
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-ink-soft">
+                        <span className={`size-2 shrink-0 rounded-full ${isDone ? 'bg-resolved' : 'bg-progress'}`} />
+                        <span>{item.statusLabel}</span>
+                      </span>
+                      <span className="grid size-3.5 shrink-0 place-items-center">
+                        {!item.eventId && (
+                          <ChevronDown
+                            className={`size-3.5 text-ink-soft transition-transform ${
+                              expanded ? 'rotate-180' : ''
+                            }`}
+                          />
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  {expanded && (
+                    <div className="w-full min-w-0 border-t border-dashed border-dash pt-2 text-[12px] leading-relaxed break-words text-ink-soft">
+                      <p>{item.summary}</p>
+                      <p className="mt-1 font-semibold text-forest">{item.metaLine}</p>
+                    </div>
+                  )}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}

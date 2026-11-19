@@ -107,6 +107,7 @@ interface Props {
   locateSignal: number
   radarMode?: boolean
   zoomCommand?: ZoomCommand | null
+  focusTarget?: { id: number; lat: number; lng: number; zoom?: number } | null
 }
 
 interface MarkerEntry {
@@ -279,6 +280,7 @@ export default function MapView({
   locateSignal,
   radarMode = false,
   zoomCommand,
+  focusTarget = null,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
@@ -287,6 +289,7 @@ export default function MapView({
   const markersRef = useRef<Map<string, MarkerEntry>>(new Map())
   const meRef = useRef<Marker | null>(null)
   const meElRef = useRef<HTMLDivElement | null>(null)
+  const focusMarkerRef = useRef<Marker | null>(null)
   const popupRef = useRef<Popup | null>(null)
   const wipeRafRef = useRef<number>(0)
   const wipeTimerRef = useRef<number>(0)
@@ -881,6 +884,23 @@ export default function MapView({
     const currentZoom = mapRef.current?.getZoom() ?? 0
     focusOn(selectedSignal.lat, selectedSignal.lng, Math.max(currentZoom, 9.5))
   }, [selectedSignal])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!focusTarget || selectedId || selectedSignal) {
+      focusMarkerRef.current?.remove()
+      focusMarkerRef.current = null
+      return
+    }
+    focusOn(focusTarget.lat, focusTarget.lng, focusTarget.zoom ?? 10.5)
+    if (!map) return
+    if (!focusMarkerRef.current) {
+      const el = document.createElement('div')
+      el.className = 'me-dot'
+      focusMarkerRef.current = new Marker({ element: el, anchor: 'center' })
+    }
+    focusMarkerRef.current.setLngLat([focusTarget.lng, focusTarget.lat]).addTo(map)
+  }, [focusTarget, selectedId, selectedSignal])
 
   useEffect(() => {
     if (fitAllSignal === 0) return

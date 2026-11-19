@@ -30,6 +30,7 @@ export function useRadar(currentUserId?: string | null) {
   const [fitIndonesiaSignal, setFitIndonesiaSignal] = useState(0)
   const [locateSignal, setLocateSignal] = useState(0)
   const [zoomCommand, setZoomCommand] = useState<ZoomCommand | null>(null)
+  const [focusTarget, setFocusTarget] = useState<{ id: number; lat: number; lng: number; zoom?: number } | null>(null)
 
   const eventsQuery = useQuery({
     queryKey: ['events'],
@@ -93,6 +94,7 @@ export function useRadar(currentUserId?: string | null) {
   }, [])
 
   const setSelectedId = useCallback((id: string | null) => {
+    setFocusTarget(null)
     setSelectedSignalState(null)
     setSelectedIdState(id)
     setActiveRoute((prev) => (prev && prev.eventId === id ? prev : null))
@@ -100,9 +102,16 @@ export function useRadar(currentUserId?: string | null) {
   }, [])
 
   const setSelectedSignal = useCallback((signal: SatelliteSignal | null) => {
+    setFocusTarget(null)
     setSelectedSignalState(signal)
     setActiveRoute(null)
     setRouteError(null)
+  }, [])
+
+  const focusLocation = useCallback((lat: number, lng: number, zoom = 10.5) => {
+    setSelectedSignalState(null)
+    setSelectedIdState(null)
+    setFocusTarget((prev) => ({ id: (prev?.id ?? 0) + 1, lat, lng, zoom }))
   }, [])
 
   const startDirections = useCallback(
@@ -240,6 +249,8 @@ export function useRadar(currentUserId?: string | null) {
     fitIndonesiaSignal,
     locateSignal,
     zoomCommand,
+    focusTarget,
+    focusLocation,
   }
 }
 
