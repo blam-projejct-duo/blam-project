@@ -20,6 +20,7 @@ import type { ConservationEvent } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import type { ActiveRoute, RouteMode } from '../map/directions'
 import { formatPulseTiles, usePulse } from '../map/usePulse'
+import { placeText, usePlaceName } from '../map/usePlaceName'
 import BeforeAfterSlider from './BeforeAfterSlider'
 import QrActionModal from './QrActionModal'
 import ResolveActionModal from './ResolveActionModal'
@@ -71,6 +72,7 @@ export default function EventDetail({
   const [qrOpen, setQrOpen] = useState(false)
 
   const { pulse, status: pulseStatus } = usePulse(event.lat, event.lng)
+  const place = usePlaceName(event.lat, event.lng)
   const latestAction = [...(event.event_actions ?? [])].sort(
     (a, b) => +new Date(b.completed_at) - +new Date(a.completed_at),
   )[0]
@@ -234,9 +236,7 @@ export default function EventDetail({
       ) : (
         <div className={`${photoClass} flex flex-col items-center justify-center gap-1 bg-canvas px-4 text-center`}>
           <p className="text-[13.5px] font-semibold text-ink">{event.category}</p>
-          <p className="text-[11.5px] font-normal text-ink-soft">
-            {event.lat.toFixed(3)}, {event.lng.toFixed(3)}
-          </p>
+          <p className="text-[11.5px] font-normal text-ink-soft">{placeText(place)}</p>
         </div>
       )}
 

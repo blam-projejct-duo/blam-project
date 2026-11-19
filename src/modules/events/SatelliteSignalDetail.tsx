@@ -16,6 +16,7 @@ import { useAuth } from '../auth/AuthContext'
 import FundraisingSection from '../fundraising/FundraisingSection'
 import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from '../map/radarFilters'
 import { formatFloodPulseTiles, formatPulseTiles, usePulse } from '../map/usePulse'
+import { placeText, usePlaceName } from '../map/usePlaceName'
 
 const KIND_DOT_CLASS: Record<HazardKind, string> = {
   wildfire: 'bg-critical',
@@ -82,6 +83,7 @@ export default function SatelliteSignalDetail({
 }: Props) {
   const { profile } = useAuth()
   const { pulse, status: pulseStatus } = usePulse(signal.lat, signal.lng)
+  const place = usePlaceName(signal.lat, signal.lng)
   const [busyModerate, setBusyModerate] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -130,10 +132,10 @@ export default function SatelliteSignalDetail({
           {signal.title}
         </h2>
 
-        <p className="flex items-center gap-1 text-[12.5px] font-light text-ink-soft">
-          <MapPin className="size-3.5 shrink-0" strokeWidth={2.25} />
-          <span>
-            {signal.lat.toFixed(4)}, {signal.lng.toFixed(4)}
+        <p className="flex items-start gap-1 text-[12.5px] font-light text-ink-soft">
+          <MapPin className="mt-0.5 size-3.5 shrink-0" strokeWidth={2.25} />
+          <span title={`${signal.lat.toFixed(4)}, ${signal.lng.toFixed(4)}`}>
+            {placeText(place)}
             {signal.date ? ` · ${formatSignalDate(signal)}` : ''}
           </span>
         </p>

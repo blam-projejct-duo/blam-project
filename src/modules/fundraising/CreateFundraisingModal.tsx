@@ -34,7 +34,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
 
   const kind = signal.kind ?? 'other'
   const defaultTitle = `Bantuan Darurat ${KIND_LABEL[kind]} — ${signal.title}`
-  const defaultDesc = `Penggalangan dana darurat untuk membantu warga terdampak ${KIND_LABEL[kind].toLowerCase()} di sekitar ${signal.title} (${signal.lat.toFixed(4)}, ${signal.lng.toFixed(4)}).`
+  const defaultDesc = `Penggalangan dana darurat untuk membantu warga terdampak ${KIND_LABEL[kind].toLowerCase()} di sekitar ${signal.title}.`
 
   const [title, setTitle] = useState(defaultTitle)
   const [description, setDescription] = useState(defaultDesc)
