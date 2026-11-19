@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
 import { findFundraisingForSignal, useFundraisings } from '../../modules/fundraising/useFundraisings'
 import { formatFloodRiskLabel, formatSignalSource } from '../../modules/map/radarFilters'
-import { DashedOutline, EcoBadge } from '../ui/atoms'
+import { DashedOutline, EcoBadge, MarkerTierLegend } from '../ui/atoms'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 
 export type ListTab = 'Utama' | 'Terbaru' | 'History' | 'Satelit' | 'Berjalan' | 'Verifikasi' | 'Selesai'
@@ -73,9 +73,13 @@ function SignalRow({
 }) {
   const sourceLabel = formatSignalSource(signal.source)
   const riskLabel = formatFloodRiskLabel(signal)
-  const meta = linked
-    ? `${sourceLabel} · Ada Aksi`
-    : `${sourceLabel} · ${riskLabel ?? signal.categoryLabel}`
+  const isAction = linked || signal.verificationState === 'has_action'
+  const isVerified = !isAction && signal.verificationState === 'verified'
+  const meta = isAction
+    ? `${sourceLabel} · Sudah Ada Aksi`
+    : isVerified
+      ? `${sourceLabel} · Terverifikasi`
+      : `${sourceLabel} · ${riskLabel ?? signal.categoryLabel}`
   const kind = signal.kind ?? 'suspected'
   const SignalIcon = kind === 'flood' ? Droplets : kind === 'volcano' ? Mountain : Flame
 
@@ -92,6 +96,15 @@ function SignalRow({
           <span className="block truncate text-[13.5px] font-normal text-ink">{signal.title}</span>
           <span className="block truncate text-[12px] font-light text-ink-soft">{meta}</span>
         </span>
+        {isAction ? (
+          <span className="shrink-0 rounded-full bg-mint/75 px-2 py-0.5 text-[10.5px] font-medium text-forest">
+            Aksi
+          </span>
+        ) : isVerified ? (
+          <span className="shrink-0 rounded-full bg-teal-50 px-2 py-0.5 text-[10.5px] font-medium text-teal-800">
+            ✓ Valid
+          </span>
+        ) : null}
         {hasFundraising && (
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-critical/10 px-2 py-0.5 text-[10.5px] font-normal text-critical">
             <HeartHandshake className="size-3" />
@@ -99,7 +112,9 @@ function SignalRow({
           </span>
         )}
         <span
-          className={`size-2.5 shrink-0 rounded-full ${linked ? 'bg-resolved' : SIGNAL_DOT_COLOR[kind]}`}
+          className={`size-2.5 shrink-0 rounded-full ${
+            isAction ? 'bg-resolved' : isVerified ? 'bg-teal-600' : SIGNAL_DOT_COLOR[kind]
+          }`}
           aria-label="Sinyal Satelit"
         />
       </button>
@@ -377,6 +392,11 @@ export default function EventListPanel({
 
           {shownSignals.length > 0 && onOpenSignal && (
             <div className={rows.length > 0 ? 'mt-4 pt-1' : 'mt-3'}>
+              {tab === 'Satelit' && (
+                <div className="mb-2.5 rounded-[14px] bg-[#f5f7ff] px-3 py-2">
+                  <MarkerTierLegend compact />
+                </div>
+              )}
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-[10.5px] font-normal tracking-wider text-ink-soft uppercase">
                   {tab === 'Satelit' ? `Satelit (${filteredSignals.length})` : 'Satelit'}

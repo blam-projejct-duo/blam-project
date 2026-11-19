@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { DashedOutline, DashedRow, Orb } from '../ui/atoms'
+import { DashedOutline, DashedRow, MarkerTierLegend, Orb } from '../ui/atoms'
 import {
   AdminDuotoneIcon,
   AksiActionIcon,
@@ -328,7 +328,15 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     if (view === 'detail' && radar.selectedSignal) {
       const sig = radar.selectedSignal
       const linkedEvent =
-        radar.allEvents.find((ev) => ev.ref_source === sig.source && ev.ref_external_id === sig.externalId) ?? null
+        radar.allEvents.find(
+          (ev) =>
+            ev.id === sig.linkedEventId ||
+            (ev.ref_source === sig.source &&
+              Boolean(
+                ev.ref_external_id &&
+                  (ev.ref_external_id === sig.externalId || sig.memberIds?.includes(ev.ref_external_id)),
+              )),
+        ) ?? null
       return (
         <>
           <header className="flex h-16 shrink-0 items-center gap-3 px-5">
@@ -900,6 +908,9 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                       </LayerChip>
                     )
                   })}
+                </div>
+                <div className="mt-3 border-t border-dashed border-dash pt-2.5">
+                  <MarkerTierLegend compact />
                 </div>
               </div>
             </motion.div>

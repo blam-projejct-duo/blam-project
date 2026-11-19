@@ -1,9 +1,9 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { ConservationEvent, HazardKind, Profile } from '../../types'
 
-const HAZARD_COLORS: Record<HazardKind, string> = {
+const VERIFIED_HAZARD_COLORS: Record<HazardKind, string> = {
   wildfire: '#EF4444',
-  suspected: '#F59E0B',
+  suspected: '#EF4444',
   volcano: '#7C3AED',
   flood: '#2563EB',
   storm: '#0891B2',
@@ -84,14 +84,19 @@ const LUCIDE_PATHS: Record<HazardKind, string[]> = {
   ],
 }
 
-function drawHazardGlyph(ctx: CanvasRenderingContext2D, kind: HazardKind, cx: number, cy: number) {
-  const iconSize = 24
-  const targetSize = 24
-  const scale = targetSize / iconSize
+function drawHazardGlyph(
+  ctx: CanvasRenderingContext2D,
+  kind: HazardKind,
+  cx: number,
+  cy: number,
+  color = '#FFFFFF',
+  scale = 1,
+) {
+  const targetSize = 24 * scale
   ctx.save()
   ctx.translate(cx - targetSize / 2, cy - targetSize / 2)
   ctx.scale(scale, scale)
-  ctx.strokeStyle = '#FFFFFF'
+  ctx.strokeStyle = color
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   ctx.lineWidth = 2.2
@@ -108,8 +113,72 @@ function buildHazardCanvas(kind: HazardKind): ImageData {
   canvas.height = size
   const ctx = canvas.getContext('2d')!
   const cx = size / 2
+  const cy = size / 2
+  const r = 26
+
+  ctx.shadowColor = 'rgba(15, 23, 42, 0.22)'
+  ctx.shadowBlur = 6
+  ctx.shadowOffsetY = 2
+
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(255, 251, 235, 0.95)'
+  ctx.fill()
+
+  ctx.shadowColor = 'transparent'
+  ctx.save()
+  ctx.setLineDash([6.5, 4.5])
+  ctx.lineWidth = 3.6
+  ctx.strokeStyle = '#F59E0B'
+  ctx.stroke()
+  ctx.restore()
+
+  drawHazardGlyph(ctx, kind, cx, kind === 'volcano' ? cy + 0.5 : cy - 0.5, '#D97706', 0.95)
+  return ctx.getImageData(0, 0, size, size)
+}
+
+function drawActionBoltBadge(
+  ctx: CanvasRenderingContext2D,
+  bx: number,
+  by: number,
+  br: number,
+  fill: string,
+) {
+  ctx.save()
+  ctx.shadowColor = 'rgba(15, 23, 42, 0.25)'
+  ctx.shadowBlur = 4
+  ctx.shadowOffsetY = 1.5
+  ctx.beginPath()
+  ctx.arc(bx, by, br, 0, Math.PI * 2)
+  ctx.fillStyle = fill
+  ctx.fill()
+  ctx.shadowColor = 'transparent'
+  ctx.lineWidth = 2.6
+  ctx.strokeStyle = '#FFFFFF'
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.moveTo(bx + br * 0.08, by - br * 0.5)
+  ctx.lineTo(bx - br * 0.36, by + br * 0.06)
+  ctx.lineTo(bx + br * 0.02, by + br * 0.06)
+  ctx.lineTo(bx - br * 0.08, by + br * 0.5)
+  ctx.lineTo(bx + br * 0.38, by - br * 0.06)
+  ctx.lineTo(bx, by - br * 0.06)
+  ctx.closePath()
+  ctx.fillStyle = '#FFFFFF'
+  ctx.fill()
+  ctx.restore()
+}
+
+function buildVerifiedHazardCanvas(kind: HazardKind): ImageData {
+  const size = 84
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const cx = size / 2
   const cy = size / 2 + 2
-  const r = 27
+  const r = 28
 
   ctx.shadowColor = 'rgba(15, 23, 42, 0.28)'
   ctx.shadowBlur = 7
@@ -121,7 +190,7 @@ function buildHazardCanvas(kind: HazardKind): ImageData {
   else if (kind === 'storm') drawHexagonPath(ctx, cx, cy - 2, r)
   else drawShieldPath(ctx, cx, cy - 2, r)
 
-  ctx.fillStyle = HAZARD_COLORS[kind]
+  ctx.fillStyle = VERIFIED_HAZARD_COLORS[kind]
   ctx.fill()
 
   ctx.shadowColor = 'transparent'
@@ -133,12 +202,54 @@ function buildHazardCanvas(kind: HazardKind): ImageData {
   return ctx.getImageData(0, 0, size, size)
 }
 
+function buildActionHazardCanvas(kind: HazardKind): ImageData {
+  const size = 90
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const cx = size / 2
+  const cy = size / 2 + 2
+  const r = 29
+
+  ctx.shadowColor = 'rgba(15, 23, 42, 0.3)'
+  ctx.shadowBlur = 8
+  ctx.shadowOffsetY = 3
+
+  drawHexagonPath(ctx, cx, cy - 1, r)
+  ctx.fillStyle = '#15803D'
+  ctx.fill()
+
+  ctx.shadowColor = 'transparent'
+  ctx.lineWidth = 4
+  ctx.strokeStyle = '#FFFFFF'
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.arc(cx, cy - 1, 16.5, 0, Math.PI * 2)
+  ctx.fillStyle = '#FFFFFF'
+  ctx.fill()
+
+  drawHazardGlyph(ctx, kind, cx, cy - 1, '#15803D', 0.85)
+  drawActionBoltBadge(ctx, cx + 20, cy - 19, 11.2, '#2F8A57')
+
+  return ctx.getImageData(0, 0, size, size)
+}
+
 export function registerHazardIcons(map: MapLibreMap): void {
   const kinds: HazardKind[] = ['wildfire', 'suspected', 'volcano', 'flood', 'storm', 'other']
   for (const kind of kinds) {
-    const id = `hazard-${kind}`
-    if (!map.hasImage(id)) {
-      map.addImage(id, buildHazardCanvas(kind), { pixelRatio: 2 })
+    const rawId = `hazard-${kind}`
+    if (!map.hasImage(rawId)) {
+      map.addImage(rawId, buildHazardCanvas(kind), { pixelRatio: 2 })
+    }
+    const verifiedId = `hazard-verified-${kind}`
+    if (!map.hasImage(verifiedId)) {
+      map.addImage(verifiedId, buildVerifiedHazardCanvas(kind), { pixelRatio: 2 })
+    }
+    const actionId = `hazard-action-${kind}`
+    if (!map.hasImage(actionId)) {
+      map.addImage(actionId, buildActionHazardCanvas(kind), { pixelRatio: 2 })
     }
   }
 }
@@ -182,13 +293,11 @@ export function syncUserMarkerElement(el: HTMLDivElement, profile: Profile | nul
   }
 }
 
-const EVENT_TONE_COLOR: Record<string, string> = {
-  critical: '#EF4444',
-  medium: '#F59E0B',
-  open: '#2F8A57',
-  in_progress: '#2563EB',
-  resolved: '#0EA5E9',
-  cancelled: '#6B7280',
+const EVENT_STATUS_STYLE: Record<string, { fill: string; badgeFill: string; halo: string; check?: boolean }> = {
+  open: { fill: '#15803D', badgeFill: '#22C55E', halo: 'rgba(21, 128, 61, 0.26)' },
+  in_progress: { fill: '#2563EB', badgeFill: '#3B82F6', halo: 'rgba(37, 99, 235, 0.26)' },
+  resolved: { fill: '#059669', badgeFill: '#047857', halo: 'rgba(5, 150, 105, 0.24)', check: true },
+  cancelled: { fill: '#6B7280', badgeFill: '#9CA3AF', halo: 'rgba(107, 114, 128, 0.2)' },
 }
 
 function detectEventShapeKind(ev: ConservationEvent): 'flood' | 'wildfire' | 'waste' | 'leaf' {
@@ -206,32 +315,32 @@ export function renderEventMarkerElement(
   selected: boolean,
 ): void {
   const kind = detectEventShapeKind(ev)
-  const fill = EVENT_TONE_COLOR[tone] ?? '#2F8A57'
-  const scale = selected ? 1.18 : 1
+  const palette = EVENT_STATUS_STYLE[ev.status] ?? EVENT_STATUS_STYLE.open
+  const scale = selected ? 1.16 : 1
 
   el.className = 'blam-event-pin'
   el.dataset.status = tone
   el.dataset.selected = String(selected)
-  el.title = ev.title
-  el.style.cssText = `cursor:pointer;transform:scale(${scale});transition:transform 150ms ease;filter:drop-shadow(0 3px 6px rgba(15,23,42,0.28));`
+  el.title = `Aksi: ${ev.title}`
+  el.style.cssText = `cursor:pointer;transform-origin:50% 100%;transform:scale(${scale});transition:transform 150ms ease;filter:${
+    selected
+      ? 'drop-shadow(0 0 9px rgba(21,128,61,0.52)) drop-shadow(0 5px 12px rgba(15,23,42,0.34))'
+      : 'drop-shadow(0 4px 8px rgba(15,23,42,0.3))'
+  };`
 
-  const outerShape =
-    kind === 'flood'
-      ? '<path d="M18 3C18 3 6 15.5 6 24C6 30.6 11.4 36 18 36C24.6 36 30 30.6 30 24C30 15.5 18 3 18 3Z" fill="' + fill + '" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>'
-      : kind === 'wildfire'
-        ? '<path d="M18 2C24 9 30 15.5 30 23C30 30.2 24.6 36 18 36C11.4 36 6 30.2 6 23C6 15.5 12 9 18 2Z" fill="' + fill + '" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>'
-        : kind === 'waste'
-          ? '<polygon points="18,3 31,10.5 31,25.5 18,33 5,25.5 5,10.5" fill="' + fill + '" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>'
-          : '<path d="M18 3C26.5 3 31 11.5 31 20C31 28.5 23.5 34.5 18 36C12.5 34.5 5 28.5 5 20C5 11.5 9.5 3 18 3Z" fill="' + fill + '" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>'
-
+  const glyphColor = palette.fill
   const glyph =
     kind === 'flood'
-      ? '<path d="M12 22.5Q15 19.5 18 22.5T24 22.5M12 27Q15 24 18 27T24 27" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>'
+      ? `<path d="M16.5 18.2Q19.75 15.4 23 18.2T29.5 18.2M16.5 22.4Q19.75 19.6 23 22.4T29.5 22.4" fill="none" stroke="${glyphColor}" stroke-width="2.2" stroke-linecap="round"/>`
       : kind === 'wildfire'
-        ? '<path d="M18 13C21 16.5 22.5 19.5 22.5 22.5C22.5 25.2 20.5 27.5 18 27.5C15.5 27.5 13.5 25.2 13.5 22.5C13.5 19.5 15 16.5 18 13Z" fill="#FFFFFF"/>'
+        ? `<path d="M23 12.2C25.8 15.2 27 17.6 27 20.1C27 22.5 25.2 24.5 23 24.5C20.8 24.5 19 22.5 19 20.1C19 17.6 20.2 15.2 23 12.2Z" fill="${glyphColor}"/>`
         : kind === 'waste'
-          ? '<path d="M13 15H23M15 15V13.5H21V15M14.5 15L15.3 24.5H20.7L21.5 15" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
-          : '<path d="M18 27V17M18 22C14.5 22 12.5 19.5 12.5 16.5C15.5 16.5 18 18.5 18 22ZM18 19.5C21.5 19.5 23.5 17 23.5 14C20.5 14 18 16 18 19.5Z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+          ? `<path d="M18 15.5H28M20 15.5V14H26V15.5M19.4 15.5L20.1 24H25.9L26.6 15.5" fill="none" stroke="${glyphColor}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>`
+          : `<path d="M23 25V16M23 20.5C19.8 20.5 18 18.3 18 15.5C20.8 15.5 23 17.3 23 20.5ZM23 18.3C26.2 18.3 28 16.1 28 13.3C25.2 13.3 23 15.1 23 18.3Z" fill="none" stroke="${glyphColor}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>`
 
-  el.innerHTML = `<svg width="34" height="36" viewBox="0 0 36 38" xmlns="http://www.w3.org/2000/svg">${outerShape}${glyph}</svg>`
+  const cornerBadge = palette.check
+    ? `<circle cx="36" cy="9.5" r="6.4" fill="${palette.badgeFill}" stroke="#FFFFFF" stroke-width="2.2"/><path d="M33.2 9.6l1.9 1.9 3.6-3.7" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`
+    : `<circle cx="36" cy="9.5" r="6.4" fill="${palette.badgeFill}" stroke="#FFFFFF" stroke-width="2.2"/><path d="M36.5 5.8L33.6 9.8H36.1L35.4 13.2L38.4 9.2H35.9L36.5 5.8Z" fill="#FFFFFF"/>`
+
+  el.innerHTML = `<svg width="46" height="56" viewBox="0 0 46 56" xmlns="http://www.w3.org/2000/svg"><ellipse cx="23" cy="50.5" rx="8.5" ry="3" fill="${palette.halo}"/><path d="M23 3.2C13.9 3.2 6.5 10.6 6.5 19.7C6.5 31.2 19.4 44.6 22 47.1C22.6 47.7 23.4 47.7 24 47.1C26.6 44.6 39.5 31.2 39.5 19.7C39.5 10.6 32.1 3.2 23 3.2Z" fill="${palette.fill}" stroke="#FFFFFF" stroke-width="2.8" stroke-linejoin="round"/><circle cx="23" cy="19.2" r="11.2" fill="#FFFFFF"/>${glyph}${cornerBadge}</svg>`
 }

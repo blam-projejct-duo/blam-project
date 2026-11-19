@@ -18,6 +18,7 @@ import type {
   RefSource,
   ReportStatus,
   Severity,
+  VerifiedSignalRecord,
 } from '../types'
 import { isDemoPathname } from './route'
 import { supabase } from './supabase'
@@ -325,6 +326,30 @@ export async function moderateHotspotAdmin(hotspotId: string): Promise<void> {
     requireAuth: true,
     body: JSON.stringify({ hotspotId }),
   })
+}
+
+export async function fetchVerifiedSignals(): Promise<VerifiedSignalRecord[]> {
+  const data = await apiFetch<{ signals: VerifiedSignalRecord[] }>('/env/verified-signals')
+  return data.signals ?? []
+}
+
+export async function verifyRadarSignal(payload: {
+  refSource: RefSource
+  refExternalId: string
+  memberIds?: string[]
+  hazardKind?: HazardKind
+  title: string
+  lat: number
+  lng: number
+  note?: string
+  organizationId?: string
+}): Promise<VerifiedSignalRecord> {
+  const data = await apiFetch<{ ok: true; signal: VerifiedSignalRecord }>('/signals/verify', {
+    method: 'POST',
+    requireAuth: true,
+    body: JSON.stringify(payload),
+  })
+  return data.signal
 }
 
 export async function verifyActionAgency(actionId: string): Promise<void> {

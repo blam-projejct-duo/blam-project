@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
-import { fetchEvents, fetchLandRoute, joinEvent } from '../../lib/api'
-import type { Ecosystem, MapStyle, SatelliteSignal } from '../../types'
+import { fetchEvents, fetchLandRoute, fetchVerifiedSignals, joinEvent } from '../../lib/api'
+import type { Ecosystem, MapStyle, SatelliteSignal, SignalVerificationState } from '../../types'
 import type { ZoomCommand } from './MapView'
 import { buildAirArc, requestUserLocation } from './directions'
 import type { ActiveRoute, RouteMode } from './directions'
 import { hazardToSignal } from './hotspotCluster'
+import type { HazardPoint } from './hotspotCluster'
 import { useNationalHazards } from './useNationalHazards'
 
 export type RadarLoadState = 'loading' | 'live' | 'error'
@@ -22,7 +23,7 @@ export function useRadar(currentUserId?: string | null) {
   const [filter, setFilterState] = useState<Ecosystem | 'all'>('all')
   const [style, setStyle] = useState<MapStyle>('satelit')
   const [selectedId, setSelectedIdState] = useState<string | null>(() => readInitialEventParam())
-  const [selectedSignal, setSelectedSignalState] = useState<SatelliteSignal | null>(null)
+  const [selectedSignalState, setSelectedSignalState] = useState<SatelliteSignal | null>(null)
   const [activeRoute, setActiveRoute] = useState<ActiveRoute | null>(null)
   const [routeLoading, setRouteLoading] = useState(false)
   const [routeError, setRouteError] = useState<string | null>(null)
@@ -39,7 +40,15 @@ export function useRadar(currentUserId?: string | null) {
     refetchOnMount: 'always',
   })
 
+  const verifiedSignalsQuery = useQuery({
+    queryKey: ['verified-signals'],
+    queryFn: () => fetchVerifiedSignals(),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  })
+
   const allEvents = useMemo(() => eventsQuery.data ?? [], [eventsQuery.data])
+  const verifiedSignals = useMemo(() => verifiedSignalsQuery.data ?? [], [verifiedSignalsQuery.data])
   const state: RadarLoadState = eventsQuery.data
     ? 'live'
     : eventsQuery.isError
@@ -74,18 +83,55 @@ export function useRadar(currentUserId?: string | null) {
     [selLat, selLng],
   )
   const national = useNationalHazards(focus)
-  const hazards = useMemo(
-    () =>
+  const hazards = useMemo<HazardPoint[]>(() => {
+    const base =
       filter === 'all'
         ? national.hazards.credible
         : national.hazards.credible.filter(
             (h) => (h.kind === 'flood' ? 'watershed' : 'tropical_forest') === filter,
-          ),
-    [national.hazards.credible, filter],
-  )
+          )
+
+    return base.map((h) => {
+      const members = h.memberIds?.length ? h.memberIds : [h.externalId]
+      const linkedEvent =
+        allEvents.find(
+          (ev) =>
+            ev.status !== 'cancelled' &&
+            ev.ref_source === h.source &&
+            Boolean(
+              ev.ref_external_id &&
+                (ev.ref_external_id === h.externalId || members.includes(ev.ref_external_id)),
+            ),
+        ) ?? null
+      const verifiedInfo =
+        verifiedSignals.find(
+          (v) =>
+            v.ref_source === h.source &&
+            (v.ref_external_id === h.externalId ||
+              members.includes(v.ref_external_id) ||
+              v.member_ids?.some((m) => members.includes(m))),
+        ) ?? null
+      const verificationState: SignalVerificationState = linkedEvent
+        ? 'has_action'
+        : verifiedInfo
+          ? 'verified'
+          : 'unverified'
+      return {
+        ...h,
+        verificationState,
+        verifiedInfo,
+        linkedEventId: linkedEvent?.id ?? null,
+      }
+    })
+  }, [national.hazards.credible, filter, allEvents, verifiedSignals])
 
   // Daftar Satelit hanya berisi kawasan kredibel (karhutla, gunung berapi, banjir, badai)
   const satelliteSignals = useMemo<SatelliteSignal[]>(() => hazards.map(hazardToSignal), [hazards])
+
+  const selectedSignal = useMemo<SatelliteSignal | null>(() => {
+    if (!selectedSignalState) return null
+    return satelliteSignals.find((s) => s.id === selectedSignalState.id) ?? selectedSignalState
+  }, [selectedSignalState, satelliteSignals])
 
   const clearRoute = useCallback(() => {
     setActiveRoute(null)
@@ -183,7 +229,10 @@ export function useRadar(currentUserId?: string | null) {
   }, [])
 
   const refreshLayers = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['layers'] })
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['layers'] }),
+      queryClient.invalidateQueries({ queryKey: ['verified-signals'] }),
+    ])
   }, [queryClient])
 
   const setFilter = useCallback(

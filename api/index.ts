@@ -65,6 +65,7 @@ function getEnvDiagnostics() {
     'VITE_SUPABASE_ANON_KEY',
     'SUPABASE_URL',
     'SUPABASE_SERVICE_ROLE_KEY',
+    'GEMINI_API_KEYS',
     'GEMINI_API_KEY',
     'NASA_FIRMS_MAP_KEY',
   ] as const
@@ -72,6 +73,10 @@ function getEnvDiagnostics() {
   for (const k of keys) {
     const v = env(k)
     out[k] = { set: v.length > 0, length: v.length }
+  }
+  out.GEMINI_KEYS_ACTIVE = {
+    set: getGeminiApiKeys().length > 0,
+    length: getGeminiApiKeys().length,
   }
   return out
 }
@@ -470,6 +475,301 @@ function curateHotspotsForMap(rows: HotspotPoint[], centerLat: number, centerLng
   return [...local, ...regional].slice(0, limit)
 }
 
+const HAZARDS_CURATED_CACHE_KEY = 'hazards:curated:v1'
+const FIRE_MERGE_KM = 15
+const FIRE_MIN_POINTS = 3
+const FIRE_STRONG_FRP = 15
+const FIRE_HUGE_FRP = 50
+const EONET_DEDUPE_KM = 30
+
+type CuratedHazardKind = 'wildfire' | 'suspected' | 'volcano' | 'flood' | 'storm' | 'other'
+
+interface CuratedHazard {
+  id: string
+  kind: CuratedHazardKind
+  kindLabel: string
+  source: string
+  externalId: string
+  memberIds: string[]
+  title: string
+  lat: number
+  lng: number
+  date: string
+  credible: boolean
+  severity: 'high' | 'medium' | 'low'
+  reason: string
+  pointCount: number
+  totalFrp: number
+  maxFrp: number
+  radiusKm: number
+  confidence?: string
+  dischargeM3s?: number | null
+  rainMm?: number | null
+}
+
+const HAZARD_KIND_LABEL: Record<CuratedHazardKind, string> = {
+  wildfire: 'Karhutla',
+  suspected: 'Titik Panas',
+  volcano: 'Gunung Berapi',
+  flood: 'Banjir',
+  storm: 'Badai',
+  other: 'Bencana Alam',
+}
+
+function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const rad = Math.PI / 180
+  const dLat = (bLat - aLat) * rad
+  const dLng = (bLng - aLng) * rad
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * rad) * Math.cos(bLat * rad) * Math.sin(dLng / 2) ** 2
+  return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(s)))
+}
+
+function hotspotKey(h: HotspotPoint): string {
+  return h.id || `firms:${h.acqDate || 'nd'}:${h.acqTime || 'nt'}:${Number(h.lat).toFixed(4)}:${Number(h.lng).toFixed(4)}`
+}
+
+function confLevel(raw: string): 'h' | 'n' | 'l' {
+  const c = String(raw ?? '').toLowerCase()
+  if (c === 'h' || c === 'high') return 'h'
+  if (c === 'l' || c === 'low') return 'l'
+  const num = Number(c)
+  if (Number.isFinite(num) && c !== '') return num >= 80 ? 'h' : num >= 30 ? 'n' : 'l'
+  return 'n'
+}
+
+function isTropicalForestZone(lat: number, lng: number): boolean {
+  const isKalimantan = lat >= -4.5 && lat <= 4.5 && lng >= 108.5 && lng <= 119.0
+  const isSumatera = lat >= -5.5 && lat <= 6.0 && lng >= 95.0 && lng <= 106.5
+  const isPapua = lat >= -9.5 && lat <= 0.0 && lng >= 130.0 && lng <= 141.0
+  return isKalimantan || isSumatera || isPapua
+}
+
+function groupHotspotsForHazards(points: HotspotPoint[]): HotspotPoint[][] {
+  const n = points.length
+  const parent = Array.from({ length: n }, (_, i) => i)
+  const find = (i: number): number => {
+    let x = i
+    while (parent[x] !== x) {
+      parent[x] = parent[parent[x]]
+      x = parent[x]
+    }
+    return x
+  }
+  const cell = 0.15
+  const grid = new Map<string, number[]>()
+  points.forEach((p, i) => {
+    const key = `${Math.floor(p.lat / cell)}:${Math.floor(p.lng / cell)}`
+    const list = grid.get(key)
+    if (list) list.push(i)
+    else grid.set(key, [i])
+  })
+  points.forEach((p, i) => {
+    const cy = Math.floor(p.lat / cell)
+    const cx = Math.floor(p.lng / cell)
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const list = grid.get(`${cy + dy}:${cx + dx}`)
+        if (!list) continue
+        for (const j of list) {
+          if (j <= i) continue
+          if (haversineKm(p.lat, p.lng, points[j].lat, points[j].lng) <= FIRE_MERGE_KM) {
+            parent[find(j)] = find(i)
+          }
+        }
+      }
+    }
+  })
+  const groups = new Map<number, HotspotPoint[]>()
+  points.forEach((p, i) => {
+    const root = find(i)
+    const list = groups.get(root)
+    if (list) list.push(p)
+    else groups.set(root, [p])
+  })
+  return [...groups.values()]
+}
+
+function buildCuratedHazards(
+  hotspots: HotspotPoint[],
+  eonet: EonetPoint[],
+  floods: FloodPoint[] = [],
+): CuratedHazard[] {
+  const validHotspots = hotspots.filter((h) => Number.isFinite(h.lat) && Number.isFinite(h.lng))
+  const fires: CuratedHazard[] = []
+
+  for (const group of groupHotspotsForHazards(validHotspots)) {
+    let peak = group[0]
+    let totalFrp = 0
+    let wSum = 0
+    let lat = 0
+    let lng = 0
+    let nonLowCount = 0
+    let latestDate = ''
+    for (const p of group) {
+      const frp = Number.isFinite(p.frp) ? p.frp : 0
+      totalFrp += frp
+      const w = Math.max(frp, 1)
+      wSum += w
+      lat += p.lat * w
+      lng += p.lng * w
+      if (frp > (Number.isFinite(peak.frp) ? peak.frp : 0)) peak = p
+      if (confLevel(p.confidence) !== 'l') nonLowCount++
+      if (p.acqDate && p.acqDate > latestDate) latestDate = p.acqDate
+    }
+    lat /= wSum
+    lng /= wSum
+    if (isStaticNonWildfireAnomaly(lat, lng)) continue
+
+    let radiusKm = 0
+    for (const p of group) radiusKm = Math.max(radiusKm, haversineKm(lat, lng, p.lat, p.lng))
+    radiusKm = Math.max(1, Math.round(radiusKm))
+
+    const count = group.length
+    const peakConf = confLevel(peak.confidence)
+    const peakFrp = Number.isFinite(peak.frp) ? peak.frp : 0
+    const total = Math.round(totalFrp)
+
+    const ruleCluster = nonLowCount >= FIRE_MIN_POINTS
+    const ruleStrong = (peakConf === 'h' || peakConf === 'n') && peakFrp >= FIRE_STRONG_FRP
+    const ruleHuge = totalFrp >= FIRE_HUGE_FRP
+    if (!ruleCluster && !ruleStrong && !ruleHuge) continue
+
+    const confirmedWildfire =
+      isTropicalForestZone(lat, lng) &&
+      (ruleCluster || ruleHuge || (peakConf === 'h' && peakFrp >= FIRE_STRONG_FRP))
+    const kind: CuratedHazardKind = confirmedWildfire ? 'wildfire' : 'suspected'
+    const severity: CuratedHazard['severity'] = kind === 'wildfire' ? 'high' : 'medium'
+    const title =
+      kind === 'wildfire'
+        ? count > 1
+          ? `Karhutla Aktif · ${count} Titik Api`
+          : peakFrp > 80
+            ? 'Karhutla · Panas Ekstrem'
+            : 'Karhutla · Panas Tinggi'
+        : count > 1
+          ? `Titik Panas Satelit · ${count} Titik`
+          : 'Titik Panas Satelit'
+    const reason =
+      kind === 'wildfire'
+        ? ruleHuge || total >= 100
+          ? 'Satelit NASA mendeteksi titik api karhutla berskala besar di kawasan hutan yang berpotensi meluas.'
+          : `Satelit NASA mendeteksi kumpulan ${count} titik api aktif di kawasan hutan dalam radius ±${radiusKm} km.`
+        : 'Satelit menangkap suhu permukaan yang sangat panas di lokasi ini. Perlu pengecekan relawan di lapangan.'
+
+    const externalId = hotspotKey(peak)
+    fires.push({
+      id: `nasa_firms:${externalId}`,
+      kind,
+      kindLabel: HAZARD_KIND_LABEL[kind],
+      source: 'nasa_firms',
+      externalId,
+      memberIds: group.map(hotspotKey),
+      title,
+      lat: Number(lat.toFixed(4)),
+      lng: Number(lng.toFixed(4)),
+      date: latestDate || peak.acqDate,
+      credible: true,
+      severity,
+      reason,
+      pointCount: count,
+      totalFrp: total,
+      maxFrp: peakFrp,
+      radiusKm,
+      confidence: peakConf,
+    })
+  }
+
+  const floodAreas: CuratedHazard[] = floods
+    .filter((f) => Number.isFinite(f.lat) && Number.isFinite(f.lng))
+    .map((f) => ({
+      id: f.id,
+      kind: 'flood',
+      kindLabel: HAZARD_KIND_LABEL.flood,
+      source: f.source,
+      externalId: f.id,
+      memberIds: [f.id],
+      title: f.title,
+      lat: Number(f.lat.toFixed(4)),
+      lng: Number(f.lng.toFixed(4)),
+      date: f.date,
+      credible: true,
+      severity: f.severity,
+      reason: f.reason,
+      pointCount: 1,
+      totalFrp: 0,
+      maxFrp: 0,
+      radiusKm: 0,
+      dischargeM3s: f.dischargeM3s,
+      rainMm: f.rainMm,
+    }))
+
+  const eonetAreas: CuratedHazard[] = []
+  for (const e of eonet) {
+    if (!Number.isFinite(e.lat) || !Number.isFinite(e.lng)) continue
+    const rawCat = `${e.category} ${e.categoryLabel}`.toLowerCase()
+    const kind: CuratedHazardKind = rawCat.includes('wildfire')
+      ? 'wildfire'
+      : rawCat.includes('volcano')
+        ? 'volcano'
+        : rawCat.includes('flood')
+          ? 'flood'
+          : rawCat.includes('storm')
+            ? 'storm'
+            : 'other'
+    if (kind === 'other') continue
+
+    const hz: CuratedHazard = {
+      id: `nasa_eonet:${e.id}`,
+      kind,
+      kindLabel: HAZARD_KIND_LABEL[kind],
+      source: 'nasa_eonet',
+      externalId: e.id,
+      memberIds: [e.id],
+      title:
+        kind === 'flood' && e.title && !e.title.toLowerCase().includes('sedang banjir')
+          ? `Sedang Banjir · ${e.title}`
+          : e.title || HAZARD_KIND_LABEL[kind],
+      lat: Number(e.lat.toFixed(4)),
+      lng: Number(e.lng.toFixed(4)),
+      date: e.date,
+      credible: true,
+      severity: kind === 'storm' ? 'medium' : 'high',
+      reason: `Peristiwa ${HAZARD_KIND_LABEL[kind].toLowerCase()} terpantau aktif oleh NASA EONET.`,
+      pointCount: 1,
+      totalFrp: 0,
+      maxFrp: 0,
+      radiusKm: 0,
+    }
+
+    if (hz.kind === 'wildfire') {
+      const twin = fires.find((f) => haversineKm(f.lat, f.lng, hz.lat, hz.lng) <= EONET_DEDUPE_KM + f.radiusKm)
+      if (twin) {
+        twin.reason += ` Juga tercatat di NASA EONET: ${hz.title}.`
+        continue
+      }
+    } else if (hz.kind === 'flood') {
+      const twin = floodAreas.find((f) => haversineKm(f.lat, f.lng, hz.lat, hz.lng) <= EONET_DEDUPE_KM)
+      if (twin) {
+        twin.reason += ` Juga tercatat di NASA EONET: ${hz.title}.`
+        continue
+      }
+    }
+    eonetAreas.push(hz)
+  }
+
+  const sevRank: Record<CuratedHazard['severity'], number> = { high: 3, medium: 2, low: 1 }
+  const kindRank: Record<CuratedHazardKind, number> = {
+    volcano: 4,
+    flood: 4,
+    wildfire: 3,
+    suspected: 2,
+    storm: 2,
+    other: 1,
+  }
+  const rank = (h: CuratedHazard) => sevRank[h.severity] * 1000 + kindRank[h.kind] * 100 + Math.min(99, h.totalFrp / 10)
+  return [...fires, ...floodAreas, ...eonetAreas].sort((a, b) => rank(b) - rank(a))
+}
+
 async function fetchNasaFirmsArea(
   bbox: string,
   days = 5,
@@ -809,41 +1109,112 @@ async function fetchInatSpeciesObservations(
 
 const clamp = (n: unknown, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(Number(n) || 0)))
 
+let geminiKeyCursor = 0
+const geminiKeyCooldownUntil = new Map<string, number>()
+const GEMINI_RATE_COOLDOWN_MS = 60_000
+const GEMINI_INVALID_COOLDOWN_MS = 10 * 60_000
+
+function getGeminiApiKeys(): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+  const pushKey = (raw: string) => {
+    const k = raw.trim()
+    if (k && !seen.has(k)) {
+      seen.add(k)
+      result.push(k)
+    }
+  }
+
+  const multi = env('GEMINI_API_KEYS')
+  if (multi) {
+    for (const part of multi.split(',')) pushKey(part)
+  }
+
+  const single = env('GEMINI_API_KEY')
+  if (single) {
+    for (const part of single.split(',')) pushKey(part)
+  }
+  if (typeof process !== 'undefined' && process.env) {
+    const extraNames = Object.keys(process.env)
+      .filter((k) => /^GEMINI_API_KEY_\d+$/.test(k))
+      .sort()
+    for (const name of extraNames) pushKey(env(name))
+  }
+
+  return result
+}
+
+function isGeminiRateLimitError(msg: string): boolean {
+  return /\b429\b|RESOURCE_EXHAUSTED|quota|rate.?limit|too many requests/i.test(msg)
+}
+
+function isGeminiInvalidKeyError(msg: string): boolean {
+  return /\b(401|403)\b|API_KEY_INVALID|permission.?denied|invalid.?api.?key/i.test(msg)
+}
+
 async function generateWithFallback(
   scope: string,
   models: readonly string[],
   contents: unknown,
   config: Record<string, unknown>,
 ): Promise<{ model: string; res: Awaited<ReturnType<GoogleGenAI['models']['generateContent']>> } | { error: string }> {
-  const apiKey = env('GEMINI_API_KEY')
-  if (!apiKey) {
-    log('error', scope, 'GEMINI_API_KEY belum diset di server')
-    return { error: 'GEMINI_API_KEY belum dikonfigurasi di server' }
+  const keys = getGeminiApiKeys()
+  if (keys.length === 0) {
+    log('error', scope, 'GEMINI_API_KEYS / GEMINI_API_KEY belum diset di server')
+    return { error: 'GEMINI_API_KEYS belum dikonfigurasi di server' }
   }
 
-  const genai = new GoogleGenAI({ apiKey })
+  const startIdx = geminiKeyCursor % keys.length
+  geminiKeyCursor = (geminiKeyCursor + 1) % keys.length
+  const rotatedKeys = [...keys.slice(startIdx), ...keys.slice(0, startIdx)]
+
+  const now = Date.now()
+  const readyKeys = rotatedKeys.filter((k) => (geminiKeyCooldownUntil.get(k) ?? 0) <= now)
+  const coolingKeys = rotatedKeys.filter((k) => (geminiKeyCooldownUntil.get(k) ?? 0) > now)
+  const orderedKeys = readyKeys.length > 0 ? [...readyKeys, ...coolingKeys] : rotatedKeys
+
   const override = env('GEMINI_MODEL')
   const candidates = override ? [override, ...models.filter((m) => m !== override)] : [...models]
 
   let lastMsg = 'AI sedang tidak tersedia. Coba lagi.'
-  for (const model of candidates) {
-    try {
-      const modelConfig = model.includes('2.5')
-        ? { ...config, thinkingConfig: { thinkingBudget: 0 } }
-        : config
-      const res = await genai.models.generateContent({
-        model,
-        contents: contents as never,
-        config: { httpOptions: { timeout: 15000 }, ...modelConfig } as never,
-      })
-      return { model, res }
-    } catch (err) {
-      lastMsg = err instanceof Error ? err.message : String(err)
-      log('warn', scope, 'Gagal memanggil model Gemini, mencoba fallback', { model, error: lastMsg })
+  for (const apiKey of orderedKeys) {
+    const keySlot = keys.indexOf(apiKey) + 1
+    const genai = new GoogleGenAI({ apiKey })
+
+    for (const model of candidates) {
+      try {
+        const modelConfig = model.includes('2.5')
+          ? { ...config, thinkingConfig: { thinkingBudget: 0 } }
+          : config
+        const res = await genai.models.generateContent({
+          model,
+          contents: contents as never,
+          config: { httpOptions: { timeout: 15000 }, ...modelConfig } as never,
+        })
+        geminiKeyCooldownUntil.delete(apiKey)
+        return { model, res }
+      } catch (err) {
+        lastMsg = err instanceof Error ? err.message : String(err)
+        if (isGeminiRateLimitError(lastMsg)) {
+          geminiKeyCooldownUntil.set(apiKey, Date.now() + GEMINI_RATE_COOLDOWN_MS)
+          log('warn', scope, 'Key Gemini terkena limit, rotasi ke akun berikutnya', { keySlot, model })
+          break
+        }
+        if (isGeminiInvalidKeyError(lastMsg)) {
+          geminiKeyCooldownUntil.set(apiKey, Date.now() + GEMINI_INVALID_COOLDOWN_MS)
+          log('warn', scope, 'Key Gemini tidak valid, melewati ke akun berikutnya', { keySlot, model })
+          break
+        }
+        log('warn', scope, 'Gagal memanggil model Gemini, mencoba fallback', { keySlot, model, error: lastMsg })
+      }
     }
   }
 
-  log('error', scope, 'Semua model Gemini gagal merespons', { models: candidates, error: lastMsg })
+  log('error', scope, 'Semua akun & model Gemini gagal merespons', {
+    keyCount: keys.length,
+    models: candidates,
+    error: lastMsg,
+  })
   return { error: 'AI sedang tidak tersedia. Coba lagi.' }
 }
 
@@ -1356,8 +1727,11 @@ app.post('/events', async (c) => {
   const normalizedRefSource = typeof refSource === 'string' && refSource.trim() ? refSource.trim() : null
   const normalizedRefExternalId =
     typeof refExternalId === 'string' && refExternalId.trim() ? refExternalId.trim().slice(0, 120) : null
-  if (normalizedRefSource && !['nasa_firms', 'nasa_eonet'].includes(normalizedRefSource)) {
-    return c.json({ error: 'refSource harus nasa_firms atau nasa_eonet' }, 400)
+  if (
+    normalizedRefSource &&
+    !['nasa_firms', 'nasa_eonet', 'open_meteo_flood', 'petabencana'].includes(normalizedRefSource)
+  ) {
+    return c.json({ error: 'refSource harus sumber radar yang valid' }, 400)
   }
   if ((normalizedRefSource && !normalizedRefExternalId) || (!normalizedRefSource && normalizedRefExternalId)) {
     return c.json({ error: 'refSource dan refExternalId wajib berpasangan' }, 400)
@@ -2447,6 +2821,157 @@ app.post('/admin/moderate-event', async (c) => {
 })
 
 const FALSE_HOTSPOTS_CACHE_KEY = 'moderation:false_hotspots'
+const VERIFIED_SIGNALS_CACHE_KEY = 'moderation:verified_signals'
+
+interface StoredVerifiedSignal {
+  id: string
+  ref_source: string
+  ref_external_id: string
+  member_ids: string[]
+  hazard_kind: string
+  title: string
+  lat: number
+  lng: number
+  note: string | null
+  verified_by: string
+  verified_by_name: string
+  verified_org_id: string | null
+  verified_org_name: string | null
+  verified_at: string
+}
+
+async function readVerifiedSignals(
+  supa: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+): Promise<StoredVerifiedSignal[]> {
+  const { data, error } = await supa
+    .from('env_cache')
+    .select('payload_json')
+    .eq('cache_key', VERIFIED_SIGNALS_CACHE_KEY)
+    .maybeSingle()
+
+  if (error || !Array.isArray(data?.payload_json)) return []
+  return data.payload_json as StoredVerifiedSignal[]
+}
+
+app.get('/env/verified-signals', async (c) => {
+  const { supa, error } = requireDb('VERIFIED_SIGNALS_LIST')
+  if (!supa) return c.json({ error }, 503)
+
+  const signals = await readVerifiedSignals(supa)
+  c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+  return c.json({ signals })
+})
+
+app.post('/signals/verify', async (c) => {
+  const { supa, error } = requireDb('SIGNAL_VERIFY')
+  if (!supa) return c.json({ error }, 503)
+
+  const auth = await resolveAuth(c, supa)
+  if (!auth.profile) return c.json({ error: auth.error }, auth.status ?? 401)
+
+  const roleErr = requireRole(auth.profile, ['volunteer', 'agency', 'admin'], 'SIGNAL_VERIFY')
+  if (roleErr) return c.json({ error: roleErr }, 403)
+
+  const body = await c.req.json().catch(() => null)
+  if (!body || typeof body !== 'object') {
+    return c.json({ error: 'Payload JSON tidak valid' }, 400)
+  }
+
+  const {
+    refSource,
+    refExternalId,
+    memberIds,
+    hazardKind = 'other',
+    title,
+    lat,
+    lng,
+    note,
+    organizationId,
+  } = body as Record<string, unknown>
+
+  const normalizedSource = typeof refSource === 'string' ? refSource.trim() : ''
+  const normalizedExtId = typeof refExternalId === 'string' ? refExternalId.trim().slice(0, 120) : ''
+  if (
+    !['nasa_firms', 'nasa_eonet', 'open_meteo_flood', 'petabencana'].includes(normalizedSource) ||
+    !normalizedExtId
+  ) {
+    return c.json({ error: 'Referensi titik sinyal tidak valid' }, 400)
+  }
+
+  const latN = Number(lat)
+  const lngN = Number(lng)
+  if (!Number.isFinite(latN) || !Number.isFinite(lngN) || Math.abs(latN) > 90 || Math.abs(lngN) > 180) {
+    return c.json({ error: 'Koordinat titik sinyal tidak valid' }, 400)
+  }
+
+  let verifiedOrgId: string | null = null
+  let verifiedOrgName: string | null = null
+  const requestedOrgId = typeof organizationId === 'string' && organizationId.trim() ? organizationId.trim() : undefined
+  let memQuery = supa
+    .from('organization_members')
+    .select('organization:organizations(id, name, is_verified)')
+    .eq('user_id', auth.profile.id)
+    .eq('status', 'active')
+  if (requestedOrgId) {
+    memQuery = memQuery.eq('organization_id', requestedOrgId)
+  }
+  const { data: memberships } = await memQuery.limit(5)
+  for (const m of memberships ?? []) {
+    const rawOrg = m.organization as
+      | { id?: string; name?: string; is_verified?: boolean }
+      | { id?: string; name?: string; is_verified?: boolean }[]
+      | null
+      | undefined
+    const org = Array.isArray(rawOrg) ? rawOrg[0] : rawOrg
+    if (org?.id && org?.name && (org.is_verified || auth.profile.role === 'admin' || auth.profile.role === 'agency')) {
+      verifiedOrgId = org.id
+      verifiedOrgName = org.name
+      break
+    }
+  }
+
+  const cleanMembers = Array.isArray(memberIds)
+    ? memberIds.map((x) => String(x).trim()).filter(Boolean).slice(0, 80)
+    : [normalizedExtId]
+  if (!cleanMembers.includes(normalizedExtId)) cleanMembers.unshift(normalizedExtId)
+
+  const nowIso = new Date().toISOString()
+  const recordId = `${normalizedSource}:${normalizedExtId}`
+  const record: StoredVerifiedSignal = {
+    id: recordId,
+    ref_source: normalizedSource,
+    ref_external_id: normalizedExtId,
+    member_ids: cleanMembers,
+    hazard_kind: typeof hazardKind === 'string' && hazardKind.trim() ? hazardKind.trim() : 'other',
+    title: typeof title === 'string' && title.trim() ? title.trim().slice(0, 140) : 'Sinyal Terverifikasi',
+    lat: latN,
+    lng: lngN,
+    note: typeof note === 'string' && note.trim() ? note.trim().slice(0, 280) : null,
+    verified_by: auth.profile.id,
+    verified_by_name: auth.profile.full_name,
+    verified_org_id: verifiedOrgId,
+    verified_org_name: verifiedOrgName,
+    verified_at: nowIso,
+  }
+
+  const current = await readVerifiedSignals(supa)
+  const filtered = current.filter(
+    (item) =>
+      item.id !== recordId &&
+      !(item.ref_source === normalizedSource && item.member_ids.some((m) => cleanMembers.includes(m))),
+  )
+  const next = [record, ...filtered].slice(0, 500)
+
+  const { error: upsertErr } = await supa.from('env_cache').upsert({
+    cache_key: VERIFIED_SIGNALS_CACHE_KEY,
+    payload_json: next,
+    fetched_at: nowIso,
+    expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+  })
+
+  if (upsertErr) return c.json({ error: 'Gagal menyimpan verifikasi titik sinyal' }, 500)
+  return c.json({ ok: true, signal: record })
+})
 
 app.post('/admin/moderate-hotspot', async (c) => {
   const { supa, error } = requireDb('ADMIN_MODERATE_HOTSPOT')
@@ -2871,6 +3396,15 @@ app.get('/env/layers', async (c) => {
       await supa.from('env_cache').upsert({
         cache_key: speciesCacheKey,
         payload_json: speciesRes.species,
+        fetched_at: nowIso,
+        expires_at: expiresAt,
+      })
+    }
+    if ((!cachedHotspots && firmsRes?.state === 'ok') || (!cachedEonet && eonetRes?.state === 'ok') || (!cachedFloods && floodRes?.state === 'ok')) {
+      const curated = buildCuratedHazards(normalizedHotspots, eonet, floods)
+      await supa.from('env_cache').upsert({
+        cache_key: HAZARDS_CURATED_CACHE_KEY,
+        payload_json: curated,
         fetched_at: nowIso,
         expires_at: expiresAt,
       })
@@ -3351,7 +3885,7 @@ const BLAM_CHAT_TOOLS: FunctionDeclaration[] = [
   {
     name: 'focus_map_point',
     description:
-      'Menambahkan tombol aksi langsung di bawah balon chat untuk mengarahkan peta Jelajah ke koordinat titik panas, bencana, atau event tertentu dan membuka detailnya. Panggil tool ini setelah membahas titik spesifik dari hasil get_satellite_signals atau get_events.',
+      'Menambahkan tombol navigasi ke peta Jelajah untuk 1 titik tertentu. Panggil HANYA jika pengguna meminta melihat lokasi di peta ("lihat di peta", "tunjukkan lokasinya", "arahkan ke sana") atau menanyakan 1 titik/event spesifik secara khusus. JANGAN dipanggil untuk pertanyaan ringkasan/jumlah umum.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -3676,14 +4210,22 @@ async function toolGetSatelliteSignals(
   const kindFilter = typeof args.kind === 'string' ? args.kind.trim().toLowerCase() : 'all'
   const regionQuery = typeof args.region === 'string' ? args.region.trim() : ''
   const regionBox = regionQuery ? matchRegionBox(regionQuery) : null
+  const nowIso = new Date().toISOString()
 
-  const keys = ['layers:firms:id:v7', 'layers:eonet:id:v1', 'layers:flood:id:v2', FALSE_HOTSPOTS_CACHE_KEY]
+  const keys = [
+    HAZARDS_CURATED_CACHE_KEY,
+    'layers:firms:id:v7',
+    'layers:eonet:id:v1',
+    'layers:flood:id:v2',
+    FALSE_HOTSPOTS_CACHE_KEY,
+  ]
   const { data: cacheRows } = await supa
     .from('env_cache')
-    .select('cache_key, payload_json, fetched_at')
+    .select('cache_key, payload_json, fetched_at, expires_at')
     .in('cache_key', keys)
 
   let falseIds = new Set<string>()
+  let curatedHazards: CuratedHazard[] | null = null
   let hotspots: HotspotPoint[] = []
   let eonet: EonetPoint[] = []
   let floods: FloodPoint[] = []
@@ -3692,6 +4234,14 @@ async function toolGetSatelliteSignals(
   for (const row of cacheRows ?? []) {
     if (row.cache_key === FALSE_HOTSPOTS_CACHE_KEY && Array.isArray(row.payload_json)) {
       falseIds = new Set(row.payload_json.map(String))
+    } else if (
+      row.cache_key === HAZARDS_CURATED_CACHE_KEY &&
+      Array.isArray(row.payload_json) &&
+      row.expires_at &&
+      row.expires_at > nowIso
+    ) {
+      curatedHazards = row.payload_json as CuratedHazard[]
+      lastFetchedAt = row.fetched_at ?? lastFetchedAt
     } else if (row.cache_key === 'layers:firms:id:v7' && Array.isArray(row.payload_json)) {
       hotspots = row.payload_json as HotspotPoint[]
       lastFetchedAt = row.fetched_at ?? lastFetchedAt
@@ -3702,111 +4252,98 @@ async function toolGetSatelliteSignals(
     }
   }
 
-  const validHotspots = hotspots.filter((h) => !falseIds.has(h.id))
-  const combined: {
-    kind: string
-    title: string
-    source: string
-    lat: number
-    lng: number
-    severityScore: number
-    detail: string
-  }[] = []
-
-  for (const h of validHotspots) {
-    combined.push({
-      kind: 'wildfire',
-      title: `Titik Panas (${h.confidence || 'sedang'})`,
-      source: 'NASA FIRMS',
-      lat: Number(h.lat.toFixed(4)),
-      lng: Number(h.lng.toFixed(4)),
-      severityScore: Number(h.frp) || 0,
-      detail: `FRP ${h.frp ?? 0} MW · ${h.acqDate || ''}`,
-    })
-  }
-  for (const e of eonet) {
-    const k = e.category.toLowerCase().includes('volcano')
-      ? 'volcano'
-      : e.category.toLowerCase().includes('storm')
-        ? 'storm'
-        : e.category.toLowerCase().includes('flood')
-          ? 'flood'
-          : 'wildfire'
-    combined.push({
-      kind: k,
-      title: e.title,
-      source: 'NASA EONET',
-      lat: Number(e.lat.toFixed(4)),
-      lng: Number(e.lng.toFixed(4)),
-      severityScore: 50,
-      detail: e.category,
-    })
-  }
-  for (const f of floods) {
-    combined.push({
-      kind: 'flood',
-      title: `Potensi Banjir ${f.region}`,
-      source: 'Open-Meteo',
-      lat: Number(f.lat.toFixed(4)),
-      lng: Number(f.lng.toFixed(4)),
-      severityScore: Number(f.dischargeM3s) || 0,
-      detail: `Debit ${f.dischargeM3s} m3/s`,
+  if (!curatedHazards && (hotspots.length > 0 || eonet.length > 0 || floods.length > 0)) {
+    const validHotspots = hotspots.filter((h) => !falseIds.has(hotspotKey(h)))
+    curatedHazards = buildCuratedHazards(validHotspots, eonet, floods)
+    await supa.from('env_cache').upsert({
+      cache_key: HAZARDS_CURATED_CACHE_KEY,
+      payload_json: curatedHazards,
+      fetched_at: nowIso,
+      expires_at: new Date(Date.now() + TTL_MS).toISOString(),
     })
   }
 
-  let filtered = kindFilter === 'all' ? combined : combined.filter((s) => s.kind === kindFilter)
+  const allHazards = (curatedHazards ?? []).filter(
+    (h) => !falseIds.has(h.id) && !h.memberIds.some((mid) => falseIds.has(mid)),
+  )
+
+  let filtered =
+    kindFilter === 'all'
+      ? allHazards
+      : kindFilter === 'wildfire'
+        ? allHazards.filter((s) => s.kind === 'wildfire' || s.kind === 'suspected')
+        : allHazards.filter((s) => s.kind === kindFilter)
+
   if (regionBox) {
     filtered = filtered.filter((s) => inBox(s.lat, s.lng, regionBox))
   } else if (regionQuery) {
     const q = regionQuery.toLowerCase()
-    filtered = filtered.filter((s) => `${s.title} ${s.detail}`.toLowerCase().includes(q))
+    filtered = filtered.filter((s) => `${s.title} ${s.reason}`.toLowerCase().includes(q))
   }
 
   // Agregasi sub-wilayah jika wilayah punya daftar subregions (mis. Kalimantan -> Kalteng, Kaltim, dst.)
-  let subregionBreakdown: Record<string, number> | undefined
+  let subregionBreakdown: Record<string, { clusters: number; fire_points: number }> | undefined
   if (regionBox?.subregions && filtered.length > 0) {
-    const counts: Record<string, number> = {}
+    const counts: Record<string, { clusters: number; fire_points: number }> = {}
     for (const sub of regionBox.subregions) {
-      const c = filtered.filter((s) => inBox(s.lat, s.lng, sub)).length
-      if (c > 0) counts[sub.name] = c
+      const subItems = filtered.filter((s) => inBox(s.lat, s.lng, sub))
+      if (subItems.length > 0) {
+        const firePts = subItems.reduce(
+          (sum, s) => sum + (s.kind === 'wildfire' || s.kind === 'suspected' ? s.pointCount : 0),
+          0,
+        )
+        counts[sub.name] = { clusters: subItems.length, fire_points: firePts }
+      }
     }
     if (Object.keys(counts).length > 0) subregionBreakdown = counts
   }
 
-  const topSamples = [...filtered]
-    .sort((a, b) => b.severityScore - a.severityScore)
-    .slice(0, 5)
+  const totalFirePointsMatched = filtered.reduce(
+    (sum, s) => sum + (s.kind === 'wildfire' || s.kind === 'suspected' ? s.pointCount : 0),
+    0,
+  )
 
+  const topSamples = filtered.slice(0, 5)
   const geocodedSamples = await Promise.all(
     topSamples.map(async (s, idx) => ({
-      title: s.title,
+      id: s.id,
+      cluster_title: s.title,
       kind: s.kind,
+      kind_label: s.kindLabel,
       source: s.source,
+      severity: s.severity,
       lat: s.lat,
       lng: s.lng,
+      fire_points_in_cluster: s.pointCount,
+      total_frp_mw: s.totalFrp,
+      max_frp_mw: s.maxFrp,
+      radius_km: s.radiusKm,
+      discharge_m3s: s.dischargeM3s ?? null,
       location_name: idx < 3 ? await reverseGeocodeSimple(s.lat, s.lng) : regionBox?.name ?? `${s.lat}, ${s.lng}`,
-      detail: s.detail,
+      reason: s.reason,
     })),
   )
 
   return {
     region_filter: regionBox?.name ?? (regionQuery || 'Seluruh Indonesia'),
     last_cached_at: lastFetchedAt,
-    counts: {
-      total_matched: filtered.length,
-      national_total: combined.length,
-      wildfire: filtered.filter((s) => s.kind === 'wildfire').length,
-      flood: filtered.filter((s) => s.kind === 'flood').length,
-      volcano: filtered.filter((s) => s.kind === 'volcano').length,
-      storm: filtered.filter((s) => s.kind === 'storm').length,
+    summary: {
+      total_clusters_matched: filtered.length,
+      total_fire_points_in_matched_clusters: totalFirePointsMatched,
+      national_credible_clusters: allHazards.length,
+      wildfire_clusters: filtered.filter((s) => s.kind === 'wildfire').length,
+      suspected_clusters: filtered.filter((s) => s.kind === 'suspected').length,
+      flood_areas: filtered.filter((s) => s.kind === 'flood').length,
+      volcano_areas: filtered.filter((s) => s.kind === 'volcano').length,
+      storm_areas: filtered.filter((s) => s.kind === 'storm').length,
     },
     ...(subregionBreakdown ? { subregion_breakdown: subregionBreakdown } : {}),
     samples: geocodedSamples,
     note:
-      combined.length === 0
-        ? 'Cache radar satelit masih kosong. Sarankan pengguna membuka tab Jelajah untuk memuat sinyal terbaru.'
+      allHazards.length === 0
+        ? 'Cache kawasan radar satelit masih kosong. Sarankan pengguna membuka tab Jelajah untuk memuat sinyal terbaru.'
         : filtered.length === 0 && regionQuery
-          ? `Tidak ditemukan sinyal aktif di wilayah ${regionBox?.name ?? regionQuery} saat ini.`
+          ? `Tidak ditemukan kawasan sinyal aktif kredibel di wilayah ${regionBox?.name ?? regionQuery} saat ini.`
           : undefined,
   }
 }
@@ -4034,13 +4571,16 @@ function buildBlamChatSystemPrompt(ctx: ChatAppContext): string {
     'GAYA & KECEPATAN RESPON:',
     '- Gunakan bahasa Indonesia yang hangat, membumi, ramah, dan praktis seperti rekan lapangan.',
     '- MODE RINGKAS (sapaan, obrolan ringan, tanya cara pakai fitur): jawab super padat dalam 2-4 kalimat (~40-80 kata) tanpa basa-basi.',
-    '- MODE DATA & TAKTIS (minta daftar event, sinyal satelit, donasi, laporan, organisasi, atau tips keselamatan): gunakan poin-poin singkat maksimal ~180 kata.',
+    '- MODE DATA & TAKTIS (minta daftar event, sinyal satelit, donasi, laporan, organisasi, atau tips keselamatan): cukup 1 kalimat pembuka + maksimal 2-4 poin ringkas (1 baris per lokasi/item, JANGAN memecah 1 lokasi menjadi banyak sub-poin seperti Status/Keterangan), maksimal ~120 kata.',
+    '- HINDARI terlalu banyak teks tebal (**bold**): jangan menebalkan label bullet atau angka secara berlebihan; pakai maksimal 1-2 penekanan ringan saja jika benar-benar perlu agar nyaman dibaca di layar ponsel.',
     '',
     'INTEGRASI DATA REAL-TIME & SHORTCUT FITUR (WAJIB TOOL CALL):',
     '- Jika pengguna menanyakan data aktual di Blam (event/aksi, sinyal satelit/hotspot/banjir/gunung api, donasi/kampanye, antrean laporan, atau daftar organisasi), WAJIB panggil tool yang tersedia sebelum menjawab.',
     '- Jika pengguna menanyakan wilayah spesifik (mis. Kalimantan, Riau, Sumatera), isi parameter `region` pada `get_satellite_signals` agar agregasi dan sampelnya terfilter tepat di wilayah tersebut. Sajikan nama wilayah administratif (`location_name`) dan `subregion_breakdown` yang ramah dibaca, hindari menampilkan koordinat mentah kecuali diminta.',
-    '- Setelah membahas titik panas, bencana, atau event spesifik yang memiliki koordinat (`lat`, `lng`), panggil tool `focus_map_point` untuk melampirkan tombol "Lihat Titik Ini di Peta Jelajah" di bawah jawabanmu.',
-    '- Jika pengguna bercerita tentang temuan kerusakan lingkungan dan ingin melaporkannya (atau meminta dibukakan form laporan / Blam Snap), panggil tool `prepare_blam_snap` dengan jenis kejadian & deskripsi ringkas dari ceritanya, lalu beri tahu pengguna untuk menekan tombol shortcut Blam Snap yang muncul untuk melengkapi GPS & foto.',
+    '- KONSISTENSI ANGKA KAWASAN VS TITIK API: bedakan tegas antara jumlah "kawasan" (`wildfire_clusters` / `clusters`) dan jumlah "titik api" (`total_fire_points_in_matched_clusters` / `fire_points_in_cluster` / `fire_points`). Contoh benar: "Tercatat 42 kawasan karhutla (total 750 titik api), dengan klaster terbesar di Kutai Kartanegara (338 titik api)". JANGAN pernah menyebut angka kawasan sebagai "titik" lalu merincinya dengan angka ratusan titik api.',
+    '- ATURAN SHORTCUT (JANGAN SPAM): lampirkan maksimal 1 shortcut dan HANYA jika kondisinya tepat:',
+    '  * Panggil `focus_map_point` HANYA bila pengguna secara spesifik meminta melihat/mengarahkan ke titik di peta, atau membahas 1 titik/event tunggal secara mendalam. JANGAN panggil `focus_map_point` untuk pertanyaan ringkasan/jumlah umum (mis. "berapa banyak kebakaran di Kalimantan?").',
+    '  * Panggil `prepare_blam_snap` HANYA bila pengguna menceritakan temuan nyata di lapangan atau menyatakan ingin membuat laporan sekarang. JANGAN panggil jika pengguna hanya bertanya "bagaimana cara lapor pakai Blam Snap?".',
     '- JANGAN memanggil tool untuk sapaan sederhana atau pertanyaan konseptual/tips umum.',
     '- Sebutkan nama, status, lokasi, dan angka PERSIS sesuai hasil tool. DILARANG mengarang data atau memperkirakan angka. Jika hasil tool kosong, sampaikan jujur dan arahkan ke tab Jelajah atau Aksi.',
     '',
@@ -4170,7 +4710,7 @@ app.post('/chat', async (c) => {
 
   return c.json({
     reply: finalReply,
-    ...(chatActions.length > 0 ? { actions: chatActions } : {}),
+    ...(chatActions.length > 0 ? { actions: chatActions.slice(0, 1) } : {}),
   })
 })
 

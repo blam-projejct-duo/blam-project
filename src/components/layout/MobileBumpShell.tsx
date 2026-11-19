@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { DashedOutline, Orb } from '../../components/ui/atoms'
+import { DashedOutline, MarkerTierLegend, Orb } from '../../components/ui/atoms'
 import {
   AksiActionIcon,
   BellSolidIcon,
@@ -388,6 +388,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                     )
                   })}
                 </div>
+                <div className="pt-1">
+                  <MarkerTierLegend compact />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-1.5 border-t border-leaf/12 pt-2.5">
@@ -750,8 +753,13 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                   linkedEvent={
                     radar.allEvents.find(
                       (ev) =>
-                        ev.ref_source === radar.selectedSignal?.source &&
-                        ev.ref_external_id === radar.selectedSignal?.externalId,
+                        ev.id === radar.selectedSignal?.linkedEventId ||
+                        (ev.ref_source === radar.selectedSignal?.source &&
+                          Boolean(
+                            ev.ref_external_id &&
+                              (ev.ref_external_id === radar.selectedSignal?.externalId ||
+                                radar.selectedSignal?.memberIds?.includes(ev.ref_external_id)),
+                          )),
                     ) ?? null
                   }
                   onOpenEvent={openDetail}

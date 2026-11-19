@@ -153,13 +153,13 @@ function syncFlatRotationLock(map: MapLibreMap): void {
   }
 }
 
-const HAZARD_COLOR = [
+const VERIFIED_HAZARD_COLOR = [
   'match',
   ['get', 'kind'],
   'wildfire',
   '#EF4444',
   'suspected',
-  '#F59E0B',
+  '#EF4444',
   'volcano',
   '#7C3AED',
   'flood',
@@ -169,23 +169,27 @@ const HAZARD_COLOR = [
   '#F59E0B',
 ] as never
 
-function buildHazardGeoJson(list: HazardPoint[]) {
+function buildHazardGeoJson(list: HazardPoint[], visibleEvents: ConservationEvent[] = []) {
+  const visibleEventIds = new Set(visibleEvents.map((ev) => ev.id))
   return {
     type: 'FeatureCollection' as const,
-    features: list.map((h) => ({
-      type: 'Feature' as const,
-      properties: {
-        id: h.id,
-        kind: h.kind,
-        kindLabel: h.kindLabel,
-        sev: severityRank(h.severity),
-        n: h.pointCount,
-      },
-      geometry: {
-        type: 'Point' as const,
-        coordinates: [h.lng, h.lat],
-      },
-    })),
+    features: list
+      .filter((h) => !(h.verificationState === 'has_action' && h.linkedEventId && visibleEventIds.has(h.linkedEventId)))
+      .map((h) => ({
+        type: 'Feature' as const,
+        properties: {
+          id: h.id,
+          kind: h.kind,
+          kindLabel: h.kindLabel,
+          tier: h.verificationState ?? 'unverified',
+          sev: severityRank(h.severity),
+          n: h.pointCount,
+        },
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [h.lng, h.lat],
+        },
+      })),
   }
 }
 
@@ -202,7 +206,13 @@ function createHazardPopupNode(h: HazardPoint): HTMLDivElement {
   const src = formatSignalSource(h.source)
   const riskLabel = formatFloodRiskLabel(h)
   const dateLabel = formatSignalDate(h)
-  meta.textContent = `${riskLabel ?? h.kindLabel} · ${src}${dateLabel ? ` · ${dateLabel}` : ''}`
+  const tierLabel =
+    h.verificationState === 'has_action'
+      ? 'Sudah Ada Aksi'
+      : h.verificationState === 'verified'
+        ? 'Terverifikasi'
+        : 'Prediksi Satelit'
+  meta.textContent = `${tierLabel} · ${riskLabel ?? h.kindLabel} · ${src}${dateLabel ? ` · ${dateLabel}` : ''}`
 
   root.append(title, meta)
   return root
@@ -635,12 +645,26 @@ export default function MapView({
       // Kawasan radar: digabung otomatis saat zoom-out, terpecah saat zoom-in
       map.addSource('blam-hazards', {
         type: 'geojson',
-        data: buildHazardGeoJson(hazardsRef.current),
+        data: buildHazardGeoJson(hazardsRef.current, eventsRef.current),
         cluster: true,
         clusterRadius: 48,
         clusterMaxZoom: 8,
         clusterProperties: {
           sev: ['max', ['get', 'sev']],
+          hasAction: ['max', ['case', ['==', ['get', 'tier'], 'has_action'], 1, 0]],
+          hasVerified: ['max', ['case', ['==', ['get', 'tier'], 'verified'], 1, 0]],
+          hasVerifiedVolcano: [
+            'max',
+            ['case', ['all', ['==', ['get', 'tier'], 'verified'], ['==', ['get', 'kind'], 'volcano']], 1, 0],
+          ],
+          hasVerifiedFlood: [
+            'max',
+            ['case', ['all', ['==', ['get', 'tier'], 'verified'], ['==', ['get', 'kind'], 'flood']], 1, 0],
+          ],
+          hasVerifiedStorm: [
+            'max',
+            ['case', ['all', ['==', ['get', 'tier'], 'verified'], ['==', ['get', 'kind'], 'storm']], 1, 0],
+          ],
           hasWildfire: ['max', ['case', ['==', ['get', 'kind'], 'wildfire'], 1, 0]],
           hasVolcano: ['max', ['case', ['==', ['get', 'kind'], 'volcano'], 1, 0]],
           hasFlood: ['max', ['case', ['==', ['get', 'kind'], 'flood'], 1, 0]],
@@ -655,6 +679,16 @@ export default function MapView({
         layout: {
           'icon-image': [
             'case',
+            ['==', ['get', 'hasAction'], 1],
+            'hazard-action-wildfire',
+            ['==', ['get', 'hasVerifiedVolcano'], 1],
+            'hazard-verified-volcano',
+            ['==', ['get', 'hasVerifiedFlood'], 1],
+            'hazard-verified-flood',
+            ['==', ['get', 'hasVerifiedStorm'], 1],
+            'hazard-verified-storm',
+            ['==', ['get', 'hasVerified'], 1],
+            'hazard-verified-wildfire',
             ['==', ['get', 'hasWildfire'], 1],
             'hazard-wildfire',
             ['==', ['get', 'hasVolcano'], 1],
@@ -670,11 +704,11 @@ export default function MapView({
             ['linear'],
             ['zoom'],
             2.5,
-            ['step', ['get', 'point_count'], 0.58, 4, 0.68, 10, 0.78],
+            ['step', ['get', 'point_count'], 0.68, 4, 0.78, 10, 0.88],
             5.5,
-            ['step', ['get', 'point_count'], 0.78, 4, 0.9, 10, 1.04],
+            ['step', ['get', 'point_count'], 0.88, 4, 1.0, 10, 1.14],
             8,
-            ['step', ['get', 'point_count'], 0.96, 4, 1.12, 10, 1.28],
+            ['step', ['get', 'point_count'], 1.04, 4, 1.18, 10, 1.34],
           ],
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
@@ -716,8 +750,15 @@ export default function MapView({
             9,
             ['interpolate', ['linear'], ['get', 'sev'], 1, 12, 3, 20],
           ],
-          'circle-color': HAZARD_COLOR,
-          'circle-opacity': 0.22,
+          'circle-color': [
+            'case',
+            ['==', ['get', 'tier'], 'has_action'],
+            '#15803D',
+            ['==', ['get', 'tier'], 'verified'],
+            VERIFIED_HAZARD_COLOR,
+            '#F59E0B',
+          ],
+          'circle-opacity': ['case', ['==', ['get', 'tier'], 'unverified'], 0.14, 0.25],
         },
       })
 
@@ -727,17 +768,24 @@ export default function MapView({
         source: 'blam-hazards',
         filter: ['!', ['has', 'point_count']],
         layout: {
-          'icon-image': ['concat', 'hazard-', ['get', 'kind']],
+          'icon-image': [
+            'case',
+            ['==', ['get', 'tier'], 'has_action'],
+            ['concat', 'hazard-action-', ['get', 'kind']],
+            ['==', ['get', 'tier'], 'verified'],
+            ['concat', 'hazard-verified-', ['get', 'kind']],
+            ['concat', 'hazard-', ['get', 'kind']],
+          ],
           'icon-size': [
             'interpolate',
             ['linear'],
             ['zoom'],
             2.5,
-            ['interpolate', ['linear'], ['get', 'sev'], 1, 0.42, 3, 0.56],
+            ['interpolate', ['linear'], ['get', 'sev'], 1, 0.56, 3, 0.68],
             6,
-            ['interpolate', ['linear'], ['get', 'sev'], 1, 0.58, 3, 0.74],
+            ['interpolate', ['linear'], ['get', 'sev'], 1, 0.74, 3, 0.9],
             9,
-            ['interpolate', ['linear'], ['get', 'sev'], 1, 0.72, 3, 0.94],
+            ['interpolate', ['linear'], ['get', 'sev'], 1, 0.9, 3, 1.08],
           ],
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
@@ -750,10 +798,17 @@ export default function MapView({
         minzoom: 5,
         filter: ['!', ['has', 'point_count']],
         layout: {
-          'text-field': ['get', 'kindLabel'],
+          'text-field': [
+            'case',
+            ['==', ['get', 'tier'], 'has_action'],
+            ['concat', '⚡ ', ['get', 'kindLabel']],
+            ['==', ['get', 'tier'], 'verified'],
+            ['concat', '✓ ', ['get', 'kindLabel']],
+            ['get', 'kindLabel'],
+          ],
           'text-font': ['Noto Sans Bold'],
           'text-size': 11,
-          'text-offset': [0, 1.7],
+          'text-offset': [0, 1.9],
           'text-anchor': 'top',
         },
         paint: {
@@ -882,7 +937,7 @@ export default function MapView({
           onSelectRef.current(ev.id)
         })
 
-        const marker = new Marker({ element: wrapper, anchor: 'center' })
+        const marker = new Marker({ element: wrapper, anchor: 'bottom' })
           .setLngLat([ev.lng, ev.lat])
           .addTo(map)
         markers.set(ev.id, { marker, wrapper, el })
@@ -894,8 +949,8 @@ export default function MapView({
     const map = mapRef.current
     if (!map || !readyRef.current) return
     const src = map.getSource('blam-hazards') as GeoJSONSource | undefined
-    src?.setData(buildHazardGeoJson(hazards))
-  }, [hazards])
+    src?.setData(buildHazardGeoJson(hazards, events))
+  }, [hazards, events])
 
   useEffect(() => {
     const map = mapRef.current

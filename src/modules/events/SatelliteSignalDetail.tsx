@@ -1,16 +1,19 @@
+import { useQueryClient } from '@tanstack/react-query'
 import {
   Ban,
   CalendarPlus,
+  CheckCircle2,
   Droplets,
   ExternalLink,
   Flame,
   MapPin,
   Mountain,
   ShieldAlert,
+  ShieldCheck,
 } from 'lucide-react'
 import { useState } from 'react'
 import { DashedOutline, Pill } from '../../components/ui/atoms'
-import { moderateHotspotAdmin } from '../../lib/api'
+import { moderateHotspotAdmin, verifyRadarSignal } from '../../lib/api'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import FundraisingSection from '../fundraising/FundraisingSection'
@@ -81,10 +84,12 @@ export default function SatelliteSignalDetail({
   onCreateEvent,
   onModerated,
 }: Props) {
-  const { profile } = useAuth()
+  const queryClient = useQueryClient()
+  const { profile, memberships } = useAuth()
   const { pulse, status: pulseStatus } = usePulse(signal.lat, signal.lng)
   const place = usePlaceName(signal.lat, signal.lng)
   const [busyModerate, setBusyModerate] = useState(false)
+  const [busyVerify, setBusyVerify] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const canOrganize = Boolean(
@@ -92,6 +97,31 @@ export default function SatelliteSignalDetail({
   )
   const isAgency = profile?.role === 'agency'
   const isAdmin = profile?.role === 'admin'
+  const activeOrgId = memberships.find((m) => m.status === 'active' && m.organization?.is_verified)?.organization_id
+  const verifiedInfo = signal.verifiedInfo ?? null
+  const isVerified = Boolean(verifiedInfo || signal.verificationState === 'verified')
+
+  const handleVerifySignal = async () => {
+    setBusyVerify(true)
+    setError(null)
+    try {
+      await verifyRadarSignal({
+        refSource: signal.source,
+        refExternalId: signal.externalId,
+        memberIds: signal.memberIds,
+        hazardKind: signal.kind ?? 'suspected',
+        title: signal.title,
+        lat: signal.lat,
+        lng: signal.lng,
+        organizationId: activeOrgId,
+      })
+      await queryClient.invalidateQueries({ queryKey: ['verified-signals'] })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal memverifikasi titik sinyal')
+    } finally {
+      setBusyVerify(false)
+    }
+  }
 
   const dismissFalseHotspot = async () => {
     setBusyModerate(true)
@@ -117,10 +147,22 @@ export default function SatelliteSignalDetail({
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-1.5">
         <div className="flex flex-wrap items-center gap-2 text-[11.5px] font-light text-ink-soft">
-          <span className="inline-flex items-center gap-1.5 text-ink">
-            <span className={`size-2 rounded-full ${KIND_DOT_CLASS[kind]}`} />
-            Sinyal Satelit
-          </span>
+          {linkedEvent ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-mint/70 px-2.5 py-0.5 font-medium text-forest">
+              <CheckCircle2 className="size-3.5 text-leaf" />
+              Sudah Ada Aksi
+            </span>
+          ) : isVerified ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-0.5 font-medium text-teal-800">
+              <ShieldCheck className="size-3.5 text-teal-600" />
+              Terverifikasi Lapangan
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-ink">
+              <span className={`size-2 rounded-full ${KIND_DOT_CLASS[kind]}`} />
+              Prediksi Satelit · Belum Diverifikasi
+            </span>
+          )}
           {isAgency && !linkedEvent && (
             <span className="inline-flex items-center gap-1 text-critical">
               <ShieldAlert className="size-3.5" /> Darurat
@@ -198,6 +240,23 @@ export default function SatelliteSignalDetail({
         </p>
       )}
 
+      {verifiedInfo && !linkedEvent && (
+        <section className="relative rounded-[20px] bg-teal-50/75 p-3.5">
+          <DashedOutline rx={19} />
+          <div className="flex items-start gap-2.5">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-teal-700" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[12.5px] font-medium text-teal-950">
+                Terverifikasi oleh {verifiedInfo.verified_org_name ?? verifiedInfo.verified_by_name}
+              </p>
+              <p className="mt-0.5 text-[11.5px] font-light text-teal-800">
+                Kondisi lapangan sudah dikonfirmasi valid. Menunggu organisasi membuka aksi penanganan.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
       <FundraisingSection signal={signal} />
 
       <div className="flex flex-col gap-2">
@@ -213,21 +272,30 @@ export default function SatelliteSignalDetail({
         ) : !canOrganize ? (
           <div className="relative rounded-[20px] bg-[#f5f7ff] px-4 py-3 text-center text-[13px] font-normal text-ink-soft">
             <DashedOutline rx={19} />
-            {signal.kind === 'suspected'
-              ? 'Menunggu cek relawan'
-              : 'Belum ada aksi'}
+            {isVerified
+              ? 'Sudah terverifikasi · menunggu aksi dari organisasi'
+              : 'Menunggu verifikasi relawan di lapangan'}
           </div>
         ) : (
           <>
+            {!isVerified && (
+              <button
+                type="button"
+                disabled={busyVerify}
+                onClick={() => void handleVerifySignal()}
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-teal-700 px-5 text-[14px] font-medium text-white transition-colors hover:bg-teal-800 disabled:opacity-50"
+              >
+                <ShieldCheck className="size-4" />
+                {busyVerify ? 'Memverifikasi…' : 'Verifikasi Titik Ini'}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onCreateEvent(signal)}
               className="btn-primary h-12 w-full text-[14px]"
             >
               <CalendarPlus className="size-4" />
-              {signal.kind === 'suspected'
-                ? 'Cek Titik Ini'
-                : 'Buat Aksi di Sini'}
+              Buat Aksi di Sini
             </button>
             {isAdmin && signal.source === 'nasa_firms' && (
               <button

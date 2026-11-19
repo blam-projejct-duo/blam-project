@@ -166,6 +166,25 @@ export interface HotspotPoint {
   daynight: string
 }
 
+export type SignalVerificationState = 'unverified' | 'verified' | 'has_action'
+
+export interface VerifiedSignalRecord {
+  id: string
+  ref_source: RefSource
+  ref_external_id: string
+  member_ids: string[]
+  hazard_kind: HazardKind
+  title: string
+  lat: number
+  lng: number
+  note: string | null
+  verified_by: string
+  verified_by_name: string
+  verified_org_id: string | null
+  verified_org_name: string | null
+  verified_at: string
+}
+
 export interface SatelliteSignal {
   id: string
   source: RefSource
@@ -189,6 +208,9 @@ export interface SatelliteSignal {
   rainMm?: number | null
   memberIds?: string[]
   credible?: boolean
+  verificationState?: SignalVerificationState
+  verifiedInfo?: VerifiedSignalRecord | null
+  linkedEventId?: string | null
 }
 
 export interface FloodPoint {

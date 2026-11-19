@@ -1,4 +1,13 @@
-import type { EonetPoint, FloodPoint, HazardKind, HotspotPoint, RefSource, SatelliteSignal } from '../../types'
+import type {
+    EonetPoint,
+    FloodPoint,
+    HazardKind,
+    HotspotPoint,
+    RefSource,
+    SatelliteSignal,
+    SignalVerificationState,
+    VerifiedSignalRecord,
+} from '../../types'
 
 /**
  * Aturan "hotspot" Blam (satu tempat, supaya mudah diubah & dijelaskan ke juri).
@@ -43,6 +52,9 @@ export interface HazardPoint {
     dischargeM3s?: number | null
     dischargeRatio?: number | null
     rainMm?: number | null
+    verificationState?: SignalVerificationState
+    verifiedInfo?: VerifiedSignalRecord | null
+    linkedEventId?: string | null
 }
 
 export interface HazardSet {
@@ -407,5 +419,8 @@ export function hazardToSignal(h: HazardPoint): SatelliteSignal {
         rainMm: h.rainMm,
         memberIds: h.memberIds,
         credible: h.credible,
+        verificationState: h.verificationState ?? 'unverified',
+        verifiedInfo: h.verifiedInfo ?? null,
+        linkedEventId: h.linkedEventId ?? null,
     }
 }
