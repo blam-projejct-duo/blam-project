@@ -6,6 +6,7 @@ import { ROLE_LABEL } from '../../lib/constants'
 import { navigateApp } from '../../lib/route'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import { useAuth } from './AuthContext'
+import GoogleSignInButton, { isGoogleClientConfigured } from './GoogleSignInButton'
 
 const field =
   'h-12 w-full rounded-full border border-line bg-canvas px-4 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-leaf focus:bg-white focus:outline-none'
@@ -52,6 +53,7 @@ export function AuthPanel({
     loginWithEmail,
     registerWithEmail,
     loginWithGoogle,
+    loginWithGoogleIdToken,
     logout,
     closeAuthModal,
   } = useAuth()
@@ -143,9 +145,8 @@ export function AuthPanel({
                   type="button"
                   disabled={busy}
                   onClick={() => void pickDemo(acc.id)}
-                  className={`flex flex-col items-start rounded-[20px] p-3.5 text-left transition-colors disabled:opacity-60 ${
-                    active ? 'bg-mint/65' : 'bg-[#f5f7ff] hover:bg-mint/35'
-                  }`}
+                  className={`flex flex-col items-start rounded-[20px] p-3.5 text-left transition-colors disabled:opacity-60 ${active ? 'bg-mint/65' : 'bg-[#f5f7ff] hover:bg-mint/35'
+                    }`}
                 >
                   <span className="text-xs font-light text-ink-soft">{ROLE_LABEL[acc.role]}</span>
                   <span className="mt-1 truncate text-sm font-normal text-ink">{acc.full_name}</span>
@@ -249,15 +250,35 @@ export function AuthPanel({
         </button>
 
         {isSupabaseConfigured ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void loginWithGoogle().catch((e) => setError(e instanceof Error ? e.message : 'Gagal OAuth'))}
-            className="flex h-12 items-center justify-center gap-2.5 rounded-full bg-[#f5f7ff] px-4 text-sm font-normal text-ink transition-colors hover:bg-mint/45 disabled:opacity-50"
-          >
-            <GoogleIcon className="size-[18px] shrink-0" />
-            <span>Masuk dengan Google</span>
-          </button>
+          isGoogleClientConfigured ? (
+            <GoogleSignInButton
+              disabled={busy}
+              onCredential={async (idToken) => {
+                setError(null)
+                setBusy(true)
+                try {
+                  await loginWithGoogleIdToken(idToken)
+                  onDone?.()
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : 'Gagal masuk dengan Google')
+                } finally {
+                  setBusy(false)
+                }
+              }}
+              onError={(msg) => setError(msg)}
+            />
+          ) : (
+            // Fallback: OAuth redirect lewat Supabase (muncul domain supabase.co)
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void loginWithGoogle().catch((e) => setError(e instanceof Error ? e.message : 'Gagal OAuth'))}
+              className="flex h-12 items-center justify-center gap-2.5 rounded-full bg-[#f5f7ff] px-4 text-sm font-normal text-ink transition-colors hover:bg-mint/45 disabled:opacity-50"
+            >
+              <GoogleIcon className="size-[18px] shrink-0" />
+              <span>Masuk dengan Google</span>
+            </button>
+          )
         ) : (
           <p className="text-center text-xs font-light text-ink-soft">
             Konfigurasi Supabase Auth di .env belum tersedia.
