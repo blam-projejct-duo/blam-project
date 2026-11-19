@@ -23,6 +23,9 @@ const INDONESIA_BOUNDS: [[number, number], [number, number]] = [
 const DEFAULT_CENTER: [number, number] = [102.262, -3.8]
 const LOCATE_ZOOM = 17.2
 const FLAT_MODE_ZOOM = 4.25
+/** Di bawah zoom ini proyeksi masih globe penuh — bola bumi digeser ke area yang tidak tertutup panel. */
+const GLOBE_INSET_MAX_ZOOM = 3.45
+const ZERO_PADDING = { top: 0, bottom: 0, left: 0, right: 0 }
 
 const WIPE_DURATION_MS = 760
 
@@ -108,6 +111,8 @@ interface Props {
   radarMode?: boolean
   zoomCommand?: ZoomCommand | null
   focusTarget?: { id: number; lat: number; lng: number; zoom?: number } | null
+  /** Lebar (px) area kiri yang tertutup panel; di mode globe bumi digeser ke kanan sebesar setengahnya. */
+  globeInsetLeft?: number
 }
 
 interface MarkerEntry {
@@ -252,16 +257,21 @@ function fitBox(
   }
 
   // Always clear stale persistent padding so cameraForBounds never double-subtracts it.
+  // Padding lama (mis. inset globe) dipulihkan lagi sebelum render agar tidak ada lompatan,
+  // lalu dianimasikan ke nol bersama kamera.
   map.stop()
-  map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 })
+  const prevPad = map.getPadding()
+  map.setPadding(ZERO_PADDING)
   const cam = map.cameraForBounds(bounds, { padding: safePad, maxZoom })
+  map.setPadding(prevPad)
   if (!cam?.center || cam.zoom === undefined) return
 
   const farJump = Math.abs(map.getZoom() - cam.zoom) > 5
+  const opts = { center: cam.center, zoom: cam.zoom, bearing: 0, pitch: 0, padding: ZERO_PADDING, duration, essential: true }
   if (duration > 0 && farJump) {
-    map.flyTo({ center: cam.center, zoom: cam.zoom, bearing: 0, pitch: 0, duration, essential: true })
+    map.flyTo(opts)
   } else {
-    map.easeTo({ center: cam.center, zoom: cam.zoom, bearing: 0, pitch: 0, duration, essential: true })
+    map.easeTo(opts)
   }
 }
 
@@ -281,6 +291,7 @@ export default function MapView({
   radarMode = false,
   zoomCommand,
   focusTarget = null,
+  globeInsetLeft = 0,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
@@ -315,7 +326,29 @@ export default function MapView({
   const internalBearingRef = useRef(false)
   const prevZoomRef = useRef(4.3)
   const zoomStartRef = useRef(4.3)
+  const globeInsetRef = useRef(globeInsetLeft)
 
+  /** Padding kamera untuk zoom tertentu: penuh di mode globe, memudar ke nol saat transisi ke peta datar. */
+  const globePaddingFor = (zoom: number) => {
+    const inset = globeInsetRef.current
+    if (inset <= 0 || zoom >= FLAT_MODE_ZOOM) return ZERO_PADDING
+    const t = Math.min(1, Math.max(0, (FLAT_MODE_ZOOM - zoom) / (FLAT_MODE_ZOOM - GLOBE_INSET_MAX_ZOOM)))
+    return { top: 0, bottom: 0, right: 0, left: Math.round(inset * t) }
+  }
+
+  /** Geser bumi (animasi) bila padding saat ini tidak sesuai target untuk zoom sekarang. */
+  const syncGlobeInset = (duration: number) => {
+    const map = mapRef.current
+    if (!map || map.isMoving()) return
+    const target = globePaddingFor(map.getZoom())
+    if (Math.abs((map.getPadding().left ?? 0) - target.left) < 1) return
+    map.easeTo({ padding: target, duration: reducedMotion() ? 0 : duration, essential: true })
+  }
+
+  useEffect(() => {
+    globeInsetRef.current = globeInsetLeft
+    syncGlobeInset(420)
+  }, [globeInsetLeft])
   useEffect(() => {
     onSelectRef.current = onSelect
     onSelectSignalRef.current = onSelectSignal
@@ -343,12 +376,12 @@ export default function MapView({
     if (!map) return
     const farJump = Math.abs(map.getZoom() - zoom) > 6
     const duration = animate && !reducedMotion() ? (farJump ? 1150 : 850) : 0
-    map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 })
     map.flyTo({
       center: [lng, lat],
       zoom,
       bearing: 0,
       pitch: 0,
+      padding: globePaddingFor(zoom),
       offset: visualOffset(paddingRef.current),
       duration,
       essential: true,
@@ -403,9 +436,14 @@ export default function MapView({
       if (!rotatingRef.current) rotatedGestureRef.current = false
     })
 
-    map.on('zoom', () => {
+    map.on('zoom', (e) => {
       syncFlatRotationLock(map)
       const z = map.getZoom()
+      // Zoom oleh gesture pengguna: inset globe mengikuti zoom secara mulus (animasi program sudah membawa padding sendiri).
+      if (e.originalEvent) {
+        const target = globePaddingFor(z)
+        if (Math.abs((map.getPadding().left ?? 0) - target.left) >= 1) map.setPadding(target)
+      }
       const dz = z - prevZoomRef.current
       prevZoomRef.current = z
       if (internalBearingRef.current || rotatingRef.current || map.isZooming() || Math.abs(dz) < 1e-4) return
@@ -456,6 +494,11 @@ export default function MapView({
 
     mapRef.current = map
     readyRef.current = false
+
+    // Setelah setiap pergerakan selesai, pastikan bumi berada di area yang tidak tertutup panel.
+    map.on('moveend', () => {
+      window.setTimeout(() => syncGlobeInset(260), 0)
+    })
 
     const meEl = document.createElement('div')
     syncUserMarkerElement(meEl, null)
@@ -754,10 +797,11 @@ export default function MapView({
         void src
           .getClusterExpansionZoom(clusterId)
           .then((zoom) => {
-            map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 })
+            const nextZoom = Math.min(zoom + 0.3, 12)
             map.easeTo({
               center: [lng, lat],
-              zoom: Math.min(zoom + 0.3, 12),
+              zoom: nextZoom,
+              padding: globePaddingFor(nextZoom),
               offset: visualOffset(paddingRef.current),
               duration: reducedMotion() ? 0 : 600,
             })
@@ -962,10 +1006,13 @@ export default function MapView({
             ? Math.round(64 + Math.max(0, host.clientHeight - 64 - prevPad.bottom) * 0.68)
             : Math.round(host.clientHeight / 2)
           const visibleCenter = map.unproject([visibleCenterX, visibleCenterY])
-          map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 })
+          const globePad = globePaddingFor(map.getZoom())
           map.easeTo({
             center: visibleCenter,
-            offset: shiftedBottom ? [0, -14] : [Math.round((currentLeft - currentRight) / 2), 0],
+            padding: globePad,
+            offset: shiftedBottom
+              ? [0, -14]
+              : [Math.round((currentLeft - currentRight - globePad.left) / 2), 0],
             duration: reducedMotion() ? 0 : 400,
           })
         }
@@ -1060,12 +1107,12 @@ export default function MapView({
       const offsetY = -Math.round(bottom * 0.25)
 
       map.stop()
-      map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 })
       map.easeTo({
         center: [118.0, -0.5],
         zoom: targetZoom,
         bearing: 0,
         pitch: 0,
+        padding: ZERO_PADDING,
         offset: [0, offsetY],
         duration: fitDuration,
         essential: true,
@@ -1118,16 +1165,20 @@ export default function MapView({
     if (zoomCommand.dir > 0) {
       const b = normalizeAngle(map.getBearing())
       const nextB = Math.abs(b) < 0.8 ? 0 : b * 0.72
+      const nextZoom = Math.min(map.getMaxZoom(), map.getZoom() + 1)
       map.easeTo({
-        zoom: Math.min(map.getMaxZoom(), map.getZoom() + 1),
+        zoom: nextZoom,
+        padding: globePaddingFor(nextZoom),
         bearing: nextB,
         pitch: 0,
         duration,
         essential: true,
       })
     } else {
+      const nextZoom = Math.max(map.getMinZoom(), map.getZoom() - 1)
       map.easeTo({
-        zoom: Math.max(map.getMinZoom(), map.getZoom() - 1),
+        zoom: nextZoom,
+        padding: globePaddingFor(nextZoom),
         bearing: 0,
         pitch: 0,
         duration,

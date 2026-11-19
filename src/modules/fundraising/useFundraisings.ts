@@ -29,6 +29,19 @@ export function findFundraisingForSignal(
   )
 }
 
+export function findSignalForFundraising(
+  signals: SatelliteSignal[],
+  campaign: FundraisingCampaign,
+): SatelliteSignal | null {
+  return (
+    signals.find(
+      (sig) =>
+        sig.source === campaign.ref_source &&
+        (sig.externalId === campaign.ref_external_id || sig.memberIds?.includes(campaign.ref_external_id)),
+    ) ?? null
+  )
+}
+
 export function useFundraisings() {
   const queryClient = useQueryClient()
 

@@ -12,8 +12,9 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DashedOutline } from '../../components/ui/atoms'
 import { shortLocation } from '../../lib/constants'
-import type { ConservationEvent, FundraisingCampaign } from '../../types'
-import { formatRupiah, useFundraisings } from '../fundraising/useFundraisings'
+import type { ConservationEvent, FundraisingCampaign, SatelliteSignal } from '../../types'
+import DonateModal from '../fundraising/DonateModal'
+import { findSignalForFundraising, formatRupiah, useFundraisings } from '../fundraising/useFundraisings'
 
 type HistoryCategory = 'all' | 'karhutla' | 'banjir' | 'gunung' | 'donasi'
 type HistoryStatusFilter = 'all' | 'done' | 'ongoing'
@@ -32,6 +33,7 @@ interface HistoryItem {
   summary: string
   metaLine: string
   eventId?: string
+  fundraising?: FundraisingCampaign
 }
 
 const CATEGORY_OPTIONS: { id: HistoryCategory; label: string }[] = [
@@ -102,20 +104,6 @@ const ARCHIVE_HISTORY: HistoryItem[] = [
     metaLine: 'Pendinginan aktif · 28 personel · Satgas Karhutla',
   },
   {
-    id: 'arc-donasi-kalsel',
-    category: 'donasi',
-    status: 'done',
-    statusLabel: 'Selesai',
-    title: 'Donasi Banjir Hulu Sungai Tengah',
-    location: 'Barabai, Kalsel',
-    lat: -2.5833,
-    lng: 115.3833,
-    dateLabel: '27 Okt',
-    sortTime: Date.parse('2026-10-27T12:00:00Z'),
-    summary: 'Target tercapai dan seluruh logistik, air bersih, serta bibit bantaran sungai telah tersalurkan.',
-    metaLine: 'Rp 48.500.000 (100%) · 134 donatur',
-  },
-  {
     id: 'arc-gunung-ruang',
     category: 'gunung',
     status: 'done',
@@ -156,20 +144,6 @@ const ARCHIVE_HISTORY: HistoryItem[] = [
     sortTime: Date.parse('2026-11-17T07:00:00Z'),
     summary: 'Pembersihan material kayu hanyutan dan penguatan tebing alur sungai masih berjalan.',
     metaLine: 'Pembersihan alur · 19 relawan',
-  },
-  {
-    id: 'arc-donasi-bromo',
-    category: 'donasi',
-    status: 'done',
-    statusLabel: 'Selesai',
-    title: 'Donasi Pemulihan Sabana Bromo',
-    location: 'Probolinggo, Jatim',
-    lat: -7.9425,
-    lng: 112.953,
-    dateLabel: '22 Agu',
-    sortTime: Date.parse('2026-08-22T14:00:00Z'),
-    summary: 'Dana terkumpul penuh dan disalurkan untuk bibit cemara gunung serta pemulihan sabana.',
-    metaLine: 'Rp 32.000.000 (100%) · 89 donatur · 1.200 bibit',
   },
 ]
 
@@ -264,25 +238,31 @@ function fundraisingToHistoryItem(f: FundraisingCampaign): HistoryItem {
     dateLabel: formatShortDate(f.created_at),
     sortTime: new Date(f.created_at).getTime() || 0,
     summary: f.description?.trim() || `Penggalangan dana darurat oleh ${f.organizer_name}.`,
-    metaLine: `${formatRupiah(f.collected_amount)} (${pct}%) · ${f.donations.length} donatur`,
+    metaLine: `${formatRupiah(f.collected_amount)} / ${formatRupiah(f.target_amount)} (${pct}%) · ${f.donations.length} donatur`,
+    fundraising: f,
   }
 }
 
 export default function HistoryPanel({
   events,
+  signals = [],
   onSelectEvent,
+  onOpenSignal,
   onFocusLocation,
 }: {
   events: ConservationEvent[]
+  signals?: SatelliteSignal[]
   onSelectEvent: (id: string) => void
+  onOpenSignal?: (signal: SatelliteSignal) => void
   onFocusLocation: (lat: number, lng: number) => void
 }) {
-  const { fundraisings } = useFundraisings()
+  const { fundraisings, refreshFundraisings } = useFundraisings()
   const [category, setCategory] = useState<HistoryCategory>('all')
   const [statusFilter, setStatusFilter] = useState<HistoryStatusFilter>('all')
   const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [donateCampaign, setDonateCampaign] = useState<FundraisingCampaign | null>(null)
   const filterRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -445,6 +425,11 @@ export default function HistoryPanel({
             const Icon = meta.Icon
             const expanded = expandedId === item.id
             const isDone = item.status === 'done'
+            const matchedSignal =
+              item.fundraising && onOpenSignal
+                ? findSignalForFundraising(signals, item.fundraising)
+                : null
+            const opensDirect = Boolean(item.eventId || matchedSignal)
 
             return (
               <li
@@ -457,6 +442,8 @@ export default function HistoryPanel({
                   onClick={() => {
                     if (item.eventId) {
                       onSelectEvent(item.eventId)
+                    } else if (matchedSignal && onOpenSignal) {
+                      onOpenSignal(matchedSignal)
                     } else {
                       onFocusLocation(item.lat, item.lng)
                       setExpandedId((prev) => (prev === item.id ? null : item.id))
@@ -484,7 +471,7 @@ export default function HistoryPanel({
                         <span>{item.statusLabel}</span>
                       </span>
                       <span className="grid size-3.5 shrink-0 place-items-center">
-                        {!item.eventId && (
+                        {!opensDirect && (
                           <ChevronDown
                             className={`size-3.5 text-ink-soft transition-transform ${
                               expanded ? 'rotate-180' : ''
@@ -499,6 +486,27 @@ export default function HistoryPanel({
                     <div className="w-full min-w-0 border-t border-dashed border-dash pt-2 text-[12px] leading-relaxed break-words text-ink-soft">
                       <p>{item.summary}</p>
                       <p className="mt-1 font-semibold text-forest">{item.metaLine}</p>
+                      {item.fundraising && item.fundraising.status === 'active' && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDonateCampaign(item.fundraising ?? null)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setDonateCampaign(item.fundraising ?? null)
+                            }
+                          }}
+                          className="btn-primary mt-2 inline-flex h-8 px-3.5 text-[11.5px]"
+                        >
+                          <HeartHandshake className="size-3.5" />
+                          Donasi Sekarang
+                        </span>
+                      )}
                     </div>
                   )}
                 </button>
@@ -506,6 +514,14 @@ export default function HistoryPanel({
             )
           })}
         </ul>
+      )}
+
+      {donateCampaign && (
+        <DonateModal
+          campaign={donateCampaign}
+          onClose={() => setDonateCampaign(null)}
+          onDonated={refreshFundraisings}
+        />
       )}
     </div>
   )

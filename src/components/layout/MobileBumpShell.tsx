@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { DashedOutline, ModalShell, Orb } from '../../components/ui/atoms'
+import { DashedOutline, Orb } from '../../components/ui/atoms'
 import {
   AksiActionIcon,
   BellSolidIcon,
@@ -52,6 +52,7 @@ const OrgsPanel = lazy(() => import('../../modules/organizations/OrgsPanel'))
 const ProfilePanel = lazy(() => import('../../modules/profile/ProfilePanel'))
 const QuickReportFlow = lazy(() => import('../../modules/reports/QuickReportFlow'))
 const VerificationRadarPanel = lazy(() => import('../../modules/reports/VerificationRadarPanel'))
+const BlamDonasiModal = lazy(() => import('../../modules/fundraising/BlamDonasiModal'))
 
 type Snap = 'peek' | 'half' | 'full'
 type Mode = 'detail' | 'signal' | 'radar' | 'list' | 'history' | 'orgs' | 'profile' | 'verify' | 'agency' | 'admin' | null
@@ -796,7 +797,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               {mode === 'history' && (
                 <HistoryPanel
                   events={radar.allEvents}
+                  signals={radar.satelliteSignals}
                   onSelectEvent={openDetail}
+                  onOpenSignal={openSignalDetail}
                   onFocusLocation={(lat, lng) => {
                     radar.focusLocation(lat, lng)
                     setSnap('half')
@@ -920,30 +923,18 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         )}
 
         {donasiOpen && (
-          <ModalShell key="blam-donasi-modal" title="Blam Donasi" onClose={() => setDonasiOpen(false)}>
-            <div className="flex flex-col gap-4">
-              <div className="relative flex flex-col items-center gap-3 rounded-[20px] bg-[#f5f7ff] p-5 text-center">
-                <DashedOutline rx={19} />
-                <div className="grid size-14 place-items-center rounded-full bg-white shadow-[0_4px_12px_rgba(19,36,26,0.08)]">
-                  <DonateHeartDuotoneIcon className="size-7" />
-                </div>
-                <span className="font-display rounded-full bg-mint/70 px-3 py-0.5 text-[11px] font-semibold text-forest">
-                  Segera Hadir
-                </span>
-                <p className="font-display text-base font-bold text-ink">Dukungan Cepat Kampanye Konservasi</p>
-                <p className="text-xs leading-relaxed text-ink-soft">
-                  Placeholder untuk Blam Donasi — nantinya menampilkan akses cepat untuk berdonasi langsung ke titik konservasi dan aksi yang membutuhkan dana.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDonasiOpen(false)}
-                className="btn-primary h-11 w-full text-sm"
-              >
-                Oke, Mengerti
-              </button>
-            </div>
-          </ModalShell>
+          <Suspense fallback={null}>
+            <BlamDonasiModal
+              key="blam-donasi-modal"
+              signals={radar.satelliteSignals}
+              onClose={() => setDonasiOpen(false)}
+              onOpenSignal={(sig) => openSignalDetail(sig)}
+              onFocusLocation={(lat, lng) => {
+                setMode(null)
+                radar.focusLocation(lat, lng, 10)
+              }}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
     </div>

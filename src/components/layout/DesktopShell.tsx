@@ -511,6 +511,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           radarMode={isRadarMode}
           zoomCommand={radar.zoomCommand}
           focusTarget={radar.focusTarget}
+          globeInsetLeft={drawerOpen ? edge : 0}
         />
       </div>
 
@@ -651,7 +652,9 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                   <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-5">
                     <HistoryPanel
                       events={radar.allEvents}
+                      signals={radar.satelliteSignals}
                       onSelectEvent={openDetail}
+                      onOpenSignal={openSignalDetail}
                       onFocusLocation={(lat, lng) => radar.focusLocation(lat, lng)}
                     />
                   </div>
