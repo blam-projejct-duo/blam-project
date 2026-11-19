@@ -37,10 +37,10 @@ export default function ProfilePanel() {
   if (!profile) {
     return (
       <div className="flex flex-col gap-4">
-        <h2 className="text-[22px] font-bold tracking-tight text-ink">
+        <h2 className="text-[20px] font-semibold tracking-tight text-ink">
           {isDemo ? 'Peran Demo' : 'Masuk'}
         </h2>
-        <div className="relative rounded-[20px] bg-[#f7faf6] p-5">
+        <div className="relative rounded-[20px] bg-[#f5f7ff] p-5">
           <DashedOutline rx={19} />
           <AuthPanel />
         </div>
@@ -52,7 +52,7 @@ export default function ProfilePanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="relative rounded-[20px] bg-[#f7faf6] p-4 sm:p-5">
+      <section className="relative rounded-[20px] bg-[#f5f7ff] p-4 sm:p-5">
         <DashedOutline rx={19} />
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -90,14 +90,14 @@ export default function ProfilePanel() {
 
             <div className="min-w-0">
               <Pill>{ROLE_LABEL[profile.role]}</Pill>
-              <h2 className="mt-1 truncate text-[18px] font-bold text-ink sm:text-[20px]">{profile.full_name}</h2>
-              {profile.email && <p className="truncate text-xs text-ink-soft">{profile.email}</p>}
+              <h2 className="mt-1 truncate text-[18px] font-semibold text-ink sm:text-[20px]">{profile.full_name}</h2>
+              {profile.email && <p className="truncate text-[12px] font-light text-ink-soft">{profile.email}</p>}
             </div>
           </div>
           <div className="relative shrink-0 rounded-2xl bg-white px-3 py-1.5 text-center">
             <DashedOutline rx={15} />
             <p className="num text-xl leading-none text-forest sm:text-2xl">{profile.points}</p>
-            <p className="mt-0.5 text-[10px] font-bold tracking-wide text-ink-soft uppercase">Poin</p>
+            <p className="mt-0.5 text-[10px] font-light tracking-wide text-ink-soft uppercase">Poin</p>
           </div>
         </div>
 
@@ -112,7 +112,7 @@ export default function ProfilePanel() {
             type="button"
             disabled={avatarBusy}
             onClick={() => fileRef.current?.click()}
-            className="font-display inline-flex h-10 items-center justify-center gap-1.5 rounded-full border-[1.5px] border-dashed border-leaf/35 bg-white px-3 text-xs font-semibold whitespace-nowrap text-forest transition hover:bg-mint/40 disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-white px-3 text-[12px] font-normal whitespace-nowrap text-forest shadow-[0_1px_2px_rgba(18,29,79,0.04)] transition hover:bg-mint/40 disabled:opacity-60"
           >
             <Camera className="size-3.5 shrink-0" /> {avatarBusy ? 'Mengunggah…' : 'Edit Foto'}
           </button>
@@ -120,7 +120,7 @@ export default function ProfilePanel() {
             <button
               type="button"
               onClick={openAuthModal}
-              className="font-display inline-flex h-10 items-center justify-center rounded-full border-[1.5px] border-dashed border-leaf/35 bg-white px-3 text-xs font-semibold whitespace-nowrap text-forest transition hover:bg-mint/40"
+              className="inline-flex h-10 items-center justify-center rounded-full bg-white px-3 text-[12px] font-normal whitespace-nowrap text-forest shadow-[0_1px_2px_rgba(18,29,79,0.04)] transition hover:bg-mint/40"
             >
               Ganti Peran
             </button>
@@ -128,7 +128,7 @@ export default function ProfilePanel() {
           <button
             type="button"
             onClick={() => void logout()}
-            className={`font-display inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-line bg-white/80 px-4 text-xs font-semibold whitespace-nowrap text-ink-soft transition hover:border-critical/30 hover:bg-critical/5 hover:text-critical ${
+            className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-white px-4 text-[12px] font-normal whitespace-nowrap text-ink-soft shadow-[0_1px_2px_rgba(18,29,79,0.04)] transition hover:bg-critical/8 hover:text-critical ${
               isDemo ? 'col-span-2' : ''
             }`}
           >
@@ -137,18 +137,18 @@ export default function ProfilePanel() {
         </div>
       </section>
 
-      <section className="relative rounded-[20px] bg-[#f7faf6] p-4">
+      <section className="relative rounded-[20px] bg-[#f5f7ff] p-4">
         <DashedOutline rx={19} />
-        <p className="font-display text-xs font-semibold text-ink-soft uppercase">Organisasi ({memberships.length})</p>
+        <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Organisasi ({memberships.length})</p>
         {memberships.length === 0 ? (
-          <p className="mt-2 text-xs font-medium text-ink-soft">Kosong</p>
+          <p className="mt-2 text-xs font-light text-ink-soft">Kosong</p>
         ) : (
           <div className="mt-1">
             {memberships.map((m) => (
               <DashedRow key={m.id} className="flex items-center justify-between gap-2 py-2.5">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-ink">{m.organization?.name ?? 'Organisasi'}</p>
-                  <p className="text-[11px] font-semibold text-ink-soft">
+                  <p className="truncate text-[13.5px] font-normal text-ink">{m.organization?.name ?? 'Organisasi'}</p>
+                  <p className="text-[11px] font-light text-ink-soft">
                     {m.member_role === 'lead' ? 'Ketua' : 'Anggota'} · {m.status === 'active' ? 'Aktif' : 'Menunggu'}
                   </p>
                 </div>
@@ -159,24 +159,24 @@ export default function ProfilePanel() {
         )}
       </section>
 
-      <section className="relative rounded-[20px] bg-[#f7faf6] p-4">
+      <section className="relative rounded-[20px] bg-[#f5f7ff] p-4">
         <DashedOutline rx={19} />
-        <p className="font-display text-xs font-semibold text-ink-soft uppercase">Notifikasi ({notifications.length})</p>
+        <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Notifikasi ({notifications.length})</p>
         {notifications.length === 0 ? (
-          <p className="mt-2 text-xs font-medium text-ink-soft">Kosong</p>
+          <p className="mt-2 text-xs font-light text-ink-soft">Kosong</p>
         ) : (
           <div className="mt-1">
             {notifications.map((n) => (
               <DashedRow key={n.id} className="flex items-start justify-between gap-2 py-2.5">
                 <div className="min-w-0">
-                  <p className={`text-xs font-bold ${n.is_read ? 'text-ink-soft' : 'text-ink'}`}>{n.title}</p>
-                  <p className="mt-0.5 text-[11px] text-ink-soft">{n.detail}</p>
+                  <p className={`text-[13px] font-normal ${n.is_read ? 'text-ink-soft' : 'text-ink'}`}>{n.title}</p>
+                  <p className="mt-0.5 text-[11.5px] font-light text-ink-soft">{n.detail}</p>
                 </div>
                 {!n.is_read && (
                   <button
                     type="button"
                     onClick={() => void readNotification(n.id)}
-                    className="shrink-0 rounded-full bg-canvas px-2.5 py-1 text-[10px] font-bold text-ink-soft"
+                    className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10.5px] font-normal text-ink-soft"
                   >
                     Tandai
                   </button>

@@ -47,7 +47,7 @@ function Tile({
   value,
   unit,
   label,
-  surface = 'bg-[#f7faf6]',
+  surface = 'bg-[#f5f7ff]',
 }: {
   value: string
   unit?: string
@@ -59,9 +59,9 @@ function Tile({
       <DashedOutline rx={13} />
       <p className="num flex flex-wrap items-baseline gap-x-1 text-[16px] leading-snug text-ink">
         <span>{value}</span>
-        {unit && <span className="text-xs font-bold text-ink-soft">{unit}</span>}
+        {unit && <span className="text-xs font-normal text-ink-soft">{unit}</span>}
       </p>
-      <p className="mt-1.5 text-xs font-medium text-ink-soft">{label}</p>
+      <p className="mt-1.5 text-xs font-light text-ink-soft">{label}</p>
     </div>
   )
 }
@@ -113,24 +113,24 @@ export default function SatelliteSignalDetail({
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-ink-soft">
+      <header className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center gap-2 text-[11.5px] font-light text-ink-soft">
           <span className="inline-flex items-center gap-1.5 text-ink">
             <span className={`size-2 rounded-full ${KIND_DOT_CLASS[kind]}`} />
             Sinyal Satelit
           </span>
           {isAgency && !linkedEvent && (
             <span className="inline-flex items-center gap-1 text-critical">
-              <ShieldAlert className="size-3.5" /> Prioritas Darurat
+              <ShieldAlert className="size-3.5" /> Darurat
             </span>
           )}
         </div>
 
-        <h2 className="mt-1 text-[22px] leading-tight font-extrabold tracking-tight text-ink">
+        <h2 className="mt-0.5 text-[20px] leading-tight font-semibold tracking-tight text-ink">
           {signal.title}
         </h2>
 
-        <p className="flex items-center gap-1 text-sm font-medium text-ink-soft">
+        <p className="flex items-center gap-1 text-[12.5px] font-light text-ink-soft">
           <MapPin className="size-3.5 shrink-0" strokeWidth={2.25} />
           <span>
             {signal.lat.toFixed(4)}, {signal.lng.toFixed(4)}
@@ -158,10 +158,10 @@ export default function SatelliteSignalDetail({
       </header>
 
       {signal.reason && (
-        <section className="relative rounded-[20px] bg-[#f7faf6] p-4">
+        <section className="relative rounded-[20px] bg-[#f5f7ff] p-4">
           <DashedOutline rx={19} />
-          <h3 className="font-display text-xs font-semibold tracking-wider text-ink-soft uppercase">Detail Radar</h3>
-          <p className="mt-1.5 text-sm leading-relaxed font-medium text-ink">{signal.reason}</p>
+          <h3 className="font-sans text-[10.5px] font-light tracking-wider text-ink-soft uppercase">Info Radar</h3>
+          <p className="mt-1.5 text-[13px] leading-relaxed font-normal text-ink">{signal.reason}</p>
           {(signal.kind === 'wildfire' || signal.kind === 'suspected') && (signal.pointCount ?? 0) > 0 && (
             <div className="mt-3 grid grid-cols-3 gap-2">
               <Tile
@@ -190,7 +190,7 @@ export default function SatelliteSignalDetail({
       </div>
 
       {error && (
-        <p role="alert" className="relative rounded-[20px] bg-[#f7faf6] px-4 py-3 text-xs font-semibold text-ink">
+        <p role="alert" className="relative rounded-[20px] bg-[#f5f7ff] px-4 py-3 text-xs font-semibold text-ink">
           <DashedOutline rx={19} />
           {error}
         </p>
@@ -209,30 +209,30 @@ export default function SatelliteSignalDetail({
             Lihat Event Resmi
           </button>
         ) : !canOrganize ? (
-          <div className="relative rounded-[20px] bg-[#f7faf6] px-4 py-3.5 text-center text-sm font-semibold text-ink-soft">
+          <div className="relative rounded-[20px] bg-[#f5f7ff] px-4 py-3 text-center text-[13px] font-normal text-ink-soft">
             <DashedOutline rx={19} />
             {signal.kind === 'suspected'
-              ? 'Menunggu verifikasi langsung relawan di lapangan'
-              : 'Belum ada event organisasi'}
+              ? 'Menunggu cek relawan'
+              : 'Belum ada aksi'}
           </div>
         ) : (
           <>
             <button
               type="button"
               onClick={() => onCreateEvent(signal)}
-              className="btn-primary h-13 w-full text-[15px]"
+              className="btn-primary h-12 w-full text-[14px]"
             >
               <CalendarPlus className="size-4" />
               {signal.kind === 'suspected'
-                ? 'Bantu Verifikasi Langsung di Titik Ini'
-                : 'Adakan Event di Titik Ini'}
+                ? 'Cek Titik Ini'
+                : 'Buat Aksi di Sini'}
             </button>
             {isAdmin && signal.source === 'nasa_firms' && (
               <button
                 type="button"
                 disabled={busyModerate}
                 onClick={() => void dismissFalseHotspot()}
-                className="font-display relative inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-[#f7faf6] text-xs font-semibold text-ink-soft transition-colors hover:bg-mint/35 hover:text-forest disabled:opacity-50"
+                className="font-display relative inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-[#f5f7ff] text-xs font-semibold text-ink-soft transition-colors hover:bg-mint/35 hover:text-forest disabled:opacity-50"
               >
                 <DashedOutline rx={21} />
                 <Ban className="size-3.5" />

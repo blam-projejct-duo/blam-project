@@ -425,4 +425,64 @@ export async function donateToFundraising(
   )
 }
 
+export type BlamSnapIncident = 'Sampah' | 'Banjir' | 'Kebakaran' | 'Lainnya'
+
+export interface BlamSnapPrefill {
+  incident?: BlamSnapIncident
+  description?: string
+  locationHint?: string
+  isAnonymous?: boolean
+}
+
+export interface MapFocusTarget {
+  title: string
+  lat: number
+  lng: number
+  kind?: string
+  eventId?: string
+}
+
+export type BlamChatAction =
+  | {
+      type: 'open_blam_snap'
+      label: string
+      prefill: BlamSnapPrefill
+    }
+  | {
+      type: 'focus_map_point'
+      label: string
+      target: MapFocusTarget
+    }
+
+export interface BlamChatTurn {
+  role: 'user' | 'assistant'
+  text: string
+  actions?: BlamChatAction[]
+}
+
+export interface BlamChatContext {
+  userName?: string
+  userRole?: string
+  mapStyle?: string
+  selectedTitle?: string
+  selectedLocation?: string
+  activeEvents?: { title: string; ecosystem: string; status: string; locationName: string }[]
+  signals?: { title: string; kindLabel: string; source: string; categoryLabel: string }[]
+}
+
+export async function sendBlamChat(
+  messages: BlamChatTurn[],
+  context: BlamChatContext,
+  signal?: AbortSignal,
+): Promise<{ reply: string; actions?: BlamChatAction[] }> {
+  return apiFetch<{ reply: string; actions?: BlamChatAction[] }>('/chat', {
+    method: 'POST',
+    body: JSON.stringify({
+      messages: messages.map((m) => ({ role: m.role, text: m.text })),
+      context,
+    }),
+    signal,
+  })
+}
+
 

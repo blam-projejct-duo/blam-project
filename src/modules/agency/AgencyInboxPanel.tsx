@@ -52,24 +52,24 @@ export default function AgencyInboxPanel({
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-xl font-extrabold tracking-tight text-ink">Eskalasi</h2>
+      <h2 className="text-xl font-semibold tracking-tight text-ink">Eskalasi</h2>
 
       {error && (
-        <p role="alert" className="relative rounded-[20px] bg-[#f7faf6] px-4 py-3 text-xs font-semibold text-ink">
+        <p role="alert" className="relative rounded-[20px] bg-[#f5f7ff] px-4 py-3 text-xs font-light text-ink">
           <DashedOutline rx={19} />
           {error}
         </p>
       )}
 
       {agencyNotifs.length > 0 && (
-        <section className="relative rounded-[20px] bg-[#f7faf6] p-4">
+        <section className="relative rounded-[20px] bg-[#f5f7ff] p-4">
           <DashedOutline rx={19} />
-          <p className="font-display text-xs font-semibold text-ink-soft uppercase">Notifikasi ({agencyNotifs.length})</p>
+          <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Notifikasi ({agencyNotifs.length})</p>
           <ul className="mt-2 space-y-2">
             {agencyNotifs.slice(0, 5).map((n) => (
               <li key={n.id} className="dashed-row pt-2 text-xs">
-                <p className="font-bold text-ink">{n.title}</p>
-                <p className="mt-0.5 text-ink-soft">{n.detail}</p>
+                <p className="font-normal text-ink">{n.title}</p>
+                <p className="mt-0.5 font-light text-ink-soft">{n.detail}</p>
               </li>
             ))}
           </ul>
@@ -77,23 +77,23 @@ export default function AgencyInboxPanel({
       )}
 
       <section className="flex flex-col gap-2.5">
-        <p className="font-display text-xs font-semibold text-ink-soft uppercase">Kritis ({escalated.length})</p>
+        <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Kritis ({escalated.length})</p>
         {escalated.length === 0 ? (
-          <p className="relative rounded-[20px] bg-[#f7faf6] p-4 text-sm font-semibold text-ink-soft">
+          <p className="relative rounded-[20px] bg-[#f5f7ff] p-4 text-sm font-light text-ink-soft">
             <DashedOutline rx={19} />
             Kosong
           </p>
         ) : (
           escalated.map((r) => (
-            <div key={r.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f7faf6] p-4">
+            <div key={r.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f5f7ff] p-4">
               <DashedOutline rx={19} />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <ReportStatusPill status={r.status} />
-                  <span className="num text-xs text-ink-soft">AI {r.ai_confidence}%</span>
+                  <span className="num text-xs font-normal text-ink-soft">AI {r.ai_confidence}%</span>
                 </div>
-                <p className="mt-1.5 truncate text-sm font-extrabold text-ink">{r.title}</p>
-                <p className="mt-0.5 truncate text-xs text-ink-soft">{r.location_name}</p>
+                <p className="mt-1.5 truncate text-[13.5px] font-normal text-ink">{r.title}</p>
+                <p className="mt-0.5 truncate text-xs font-light text-ink-soft">{r.location_name}</p>
               </div>
               <button
                 type="button"
@@ -109,20 +109,20 @@ export default function AgencyInboxPanel({
 
       {pendingStamp.length > 0 && (
         <section className="flex flex-col gap-2.5">
-          <p className="font-display text-xs font-semibold text-ink-soft uppercase">Menunggu Sah</p>
+          <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Menunggu Sah</p>
           {pendingStamp.map((ev) => {
             const action = ev.event_actions?.find((a) => !a.verified_by_agency)
             if (!action) return null
             return (
-              <div key={action.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f7faf6] p-4">
+              <div key={action.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f5f7ff] p-4">
                 <DashedOutline rx={19} />
                 <button
                   type="button"
                   onClick={() => onSelectEvent(ev.id)}
                   className="min-w-0 flex-1 text-left"
                 >
-                  <p className="truncate text-sm font-extrabold text-ink">{ev.title}</p>
-                  <p className="mt-0.5 truncate text-xs text-ink-soft">{action.notes}</p>
+                  <p className="truncate text-[13.5px] font-normal text-ink">{ev.title}</p>
+                  <p className="mt-0.5 truncate text-xs font-light text-ink-soft">{action.notes}</p>
                 </button>
                 <button
                   type="button"

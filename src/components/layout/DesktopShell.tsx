@@ -75,7 +75,7 @@ function RailItem({
       <span
         className={`relative grid h-10 w-12 place-items-center rounded-full transition-colors ${
           active
-            ? 'border-[1.5px] border-dashed border-leaf/35 bg-mint/75 text-forest'
+            ? 'border border-leaf/15 bg-mint/75 text-forest'
             : 'text-ink-soft group-hover:bg-canvas group-hover:text-forest'
         }`}
       >
@@ -86,7 +86,7 @@ function RailItem({
           </span>
         )}
       </span>
-      <span className={`font-display text-[11px] font-semibold ${active ? 'text-forest' : 'text-ink-soft'}`}>
+      <span className={`text-[11px] ${active ? 'font-medium text-forest' : 'font-light text-ink-soft'}`}>
         {label}
       </span>
     </button>
@@ -102,7 +102,7 @@ function LayerChip({ active, onClick, children }: { active: boolean; onClick: ()
       className={`font-display relative flex h-9 items-center gap-2 rounded-full px-3.5 text-[12px] font-semibold whitespace-nowrap transition-colors ${
         active
           ? 'bg-leaf text-white shadow-[0_2px_8px_rgba(29,92,58,0.2)]'
-          : 'bg-[#f7faf6] text-ink hover:bg-mint/40'
+          : 'bg-[#f5f7ff] text-ink hover:bg-mint/40'
       }`}
     >
       {!active && <DashedOutline rx={17} />}
@@ -153,7 +153,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     profile && (profile.role === 'volunteer' || profile.role === 'agency' || profile.role === 'admin'),
   )
   const openCount = radar.events.filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled').length
-  const isRadarMode = drawerOpen && ((tab === 'Jelajah' && view === 'list') || Boolean(radar.selectedSignal))
+  const isRadarMode = drawerOpen && tab === 'Jelajah' && view === 'list' && !radar.selectedId && !radar.selectedSignal
 
   useEffect(() => {
     if (!filterOpen && !notifOpen) return
@@ -337,9 +337,10 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               onClick={() => {
                 radar.setSelectedSignal(null)
                 setView('list')
+                if (mode === 'Jelajah') radar.fitIndonesia()
               }}
               aria-label="Kembali ke daftar"
-              className="grid size-10 place-items-center rounded-full border-[1.5px] border-dashed border-leaf/30 bg-canvas text-forest transition-colors hover:bg-mint/40"
+              className="grid size-10 place-items-center rounded-full border border-leaf/15 bg-canvas text-forest transition-colors hover:bg-mint/40"
             >
               <ChevronLeft className="size-5" />
             </button>
@@ -355,6 +356,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               onModerated={async () => {
                 radar.setSelectedSignal(null)
                 setView('list')
+                if (mode === 'Jelajah') radar.fitIndonesia()
                 await radar.refreshLayers()
               }}
             />
@@ -372,9 +374,10 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               onClick={() => {
                 radar.setSelectedId(null)
                 setView('list')
+                if (mode === 'Jelajah') radar.fitIndonesia()
               }}
               aria-label="Kembali ke daftar"
-              className="grid size-10 place-items-center rounded-full border-[1.5px] border-dashed border-leaf/30 bg-canvas text-forest transition-colors hover:bg-mint/40"
+              className="grid size-10 place-items-center rounded-full border border-leaf/15 bg-canvas text-forest transition-colors hover:bg-mint/40"
             >
               <ChevronLeft className="size-5" />
             </button>
@@ -413,9 +416,9 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     return (
       <>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-5">
-          <h2 className="font-display text-xl font-bold tracking-tight text-ink">{mode}</h2>
+          <h2 className="font-display text-xl font-semibold tracking-tight text-ink">{mode}</h2>
           <div className="flex items-center gap-2">
-            <span className="font-display rounded-full bg-mint/55 px-2.5 py-1 text-xs font-semibold text-forest">
+            <span className="rounded-full bg-mint/55 px-2.5 py-1 text-xs font-normal text-forest">
               {countText}
             </span>
             {canOrganize && (
@@ -450,7 +453,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                     if (subTab !== 'Verifikasi') return null
                     if (!canOrganize) {
                       return (
-                        <div className="relative rounded-[20px] bg-[#f7faf6] p-5 text-center">
+                        <div className="relative rounded-[20px] bg-[#f5f7ff] p-5 text-center">
                           <DashedOutline rx={19} />
                           <p className="font-display text-sm font-bold text-ink">Khusus Verifikator Terdaftar</p>
                           <p className="mt-1 text-xs leading-relaxed text-ink-soft">
@@ -521,9 +524,10 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           onClick={resetToIndonesia}
           aria-label="Blam — Reset ke Indonesia"
           title="Reset ke tampilan Indonesia"
-          className="mb-3 grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#3fb473] to-[#1d5c3a] shadow-[0_3px_10px_rgba(29,92,58,0.22)] transition-transform duration-120 active:scale-95"
+          className="relative mb-3 grid size-13 shrink-0 place-items-center rounded-full transition-transform duration-120 active:scale-95"
         >
-          <BlamNatureIcon className="size-7" />
+          <span aria-hidden="true" className="orb-sheen z-20 scale-110" />
+          <BlamNatureIcon className="relative z-10 size-full scale-115 drop-shadow-[0_2px_6px_rgba(11,27,77,0.22)]" />
         </button>
 
         <div className="flex w-full flex-1 flex-col overflow-y-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -794,9 +798,9 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             >
               <DashedOutline rx={27} />
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="font-display text-base font-bold text-ink">Notifikasi</h3>
+                <h3 className="font-display text-base font-semibold text-ink">Notifikasi</h3>
                 {unreadCount > 0 && (
-                  <span className="font-display rounded-full bg-mint/70 px-2.5 py-0.5 text-[11px] font-semibold text-forest">
+                  <span className="rounded-full bg-mint/70 px-2.5 py-0.5 text-[11px] font-normal text-forest">
                     {unreadCount} baru
                   </span>
                 )}
@@ -804,7 +808,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
 
               {!profile ? (
                 <div className="py-3 text-center">
-                  <p className="text-xs font-semibold text-ink-soft">Masuk untuk melihat notifikasi aksi &amp; verifikasi.</p>
+                  <p className="text-xs font-light text-ink-soft">Masuk untuk melihat notifikasi aksi &amp; verifikasi.</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -817,7 +821,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                   </button>
                 </div>
               ) : notifications.length === 0 ? (
-                <p className="py-6 text-center text-xs font-semibold text-ink-soft">Belum ada notifikasi</p>
+                <p className="py-6 text-center text-xs font-light text-ink-soft">Belum ada notifikasi</p>
               ) : (
                 <div className="max-h-[320px] overflow-y-auto pr-1">
                   {notifications.map((n) => (
@@ -837,8 +841,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                           className={`mt-1.5 size-2 shrink-0 rounded-full ${n.is_read ? 'bg-line' : 'bg-critical'}`}
                         />
                         <span className="min-w-0 flex-1">
-                          <span className="font-display block text-[13px] font-semibold text-ink">{n.title}</span>
-                          {n.detail && <span className="mt-0.5 block text-xs text-ink-soft">{n.detail}</span>}
+                          <span className="block text-[13px] font-normal text-ink">{n.title}</span>
+                          {n.detail && <span className="mt-0.5 block text-xs font-light text-ink-soft">{n.detail}</span>}
                         </span>
                       </button>
                     </DashedRow>
@@ -862,22 +866,22 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             >
               <DashedOutline rx={27} />
               <div>
-                <p className="font-display mb-2 text-xs font-semibold tracking-wider text-ink-soft uppercase">
+                <p className="mb-2 text-[11px] font-light tracking-wider text-ink-soft uppercase">
                   Gaya Peta
                 </p>
                 <MapStyleSwitcher value={radar.style} onChange={radar.setStyle} className="w-full [&>button]:flex-1" />
               </div>
 
-              <div className="border-t-[1.5px] border-dashed border-dash pt-3">
+              <div className="pt-1">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="font-display text-xs font-semibold tracking-wider text-ink-soft uppercase">
+                  <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">
                     Lapisan
                   </span>
                   {layers.size > 0 && (
                     <button
                       type="button"
                       onClick={() => setLayers(new Set())}
-                      className="font-display text-xs font-semibold text-leaf hover:underline"
+                      className="text-xs font-normal text-leaf hover:underline"
                     >
                       Reset
                     </button>

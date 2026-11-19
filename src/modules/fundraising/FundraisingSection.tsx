@@ -53,28 +53,28 @@ export default function FundraisingSection({ signal }: Props) {
   if (!campaign) {
     return (
       <>
-        <section className="relative flex flex-col gap-3 rounded-[20px] bg-[#f7faf6] p-4">
+        <section className="relative flex flex-col gap-3 rounded-[20px] bg-[#f5f7ff] p-4">
           <DashedOutline rx={19} />
           <div className="flex items-start gap-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-critical/12 text-critical">
               <HeartHandshake className="size-4.5" />
             </span>
             <div className="min-w-0">
-              <h3 className="text-xs font-extrabold tracking-wide text-critical uppercase">
-                Titik Kritis · Penggalangan Dana
+              <h3 className="font-sans text-[11px] font-normal tracking-wider text-critical uppercase">
+                Galang Dana
               </h3>
-              <p className="mt-1 text-xs leading-relaxed font-medium text-ink-soft">
-                Buka penggalangan dana darurat untuk membantu warga terdampak di titik radar ini.
+              <p className="mt-1 text-[12px] leading-relaxed font-light text-ink-soft">
+                Buka donasi cepat untuk warga terdampak di titik ini.
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setShowCreate(true)}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-critical/30 bg-surface px-4 text-xs font-extrabold text-critical shadow-xs transition hover:bg-critical/8"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-white px-4 text-[12.5px] font-normal text-critical shadow-[0_1px_2px_rgba(18,29,79,0.04)] transition hover:bg-critical/8"
           >
             <HeartHandshake className="size-4" />
-            Buka Penggalangan Dana Darurat
+            Buka Galang Dana
           </button>
         </section>
 
@@ -95,14 +95,14 @@ export default function FundraisingSection({ signal }: Props) {
 
   return (
     <>
-      <section className="relative flex flex-col gap-3.5 rounded-[20px] bg-[#f7faf6] p-4">
+      <section className="relative flex flex-col gap-3.5 rounded-[20px] bg-[#f5f7ff] p-4">
         <DashedOutline rx={19} />
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-critical/10 px-2.5 py-1 text-[11px] font-extrabold text-critical">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-critical/10 px-2.5 py-1 text-[11px] font-normal text-critical">
             <HeartHandshake className="size-3.5" />
-            Penggalangan Dana
+            Galang Dana
           </span>
-          <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-bold text-ink">
+          <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-light text-ink">
             <BadgeIcon className="size-3 shrink-0 text-leaf" />
             <span className="truncate">
               {badge.label} · {campaign.organizer_name}
@@ -111,9 +111,9 @@ export default function FundraisingSection({ signal }: Props) {
         </div>
 
         <div>
-          <h3 className="text-[15px] leading-snug font-bold text-ink">{campaign.title}</h3>
+          <h3 className="font-sans text-[14.5px] leading-snug font-normal text-ink">{campaign.title}</h3>
           {campaign.description && (
-            <p className="mt-1 text-xs leading-relaxed font-medium text-ink-soft">{campaign.description}</p>
+            <p className="mt-1 text-[12px] leading-relaxed font-light text-ink-soft">{campaign.description}</p>
           )}
         </div>
 
@@ -121,7 +121,7 @@ export default function FundraisingSection({ signal }: Props) {
           <DashedOutline rx={13} />
           <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
             <p className="num text-lg text-forest">{formatRupiah(campaign.collected_amount)}</p>
-            <p className="text-xs font-semibold text-ink-soft">
+            <p className="text-xs font-light text-ink-soft">
               dari {formatRupiah(campaign.target_amount)} ({pct}%)
             </p>
           </div>
@@ -131,13 +131,13 @@ export default function FundraisingSection({ signal }: Props) {
               style={{ width: `${pct}%` }}
             />
           </div>
-          <div className="flex items-center justify-between text-[11px] font-bold text-ink-soft">
+          <div className="flex items-center justify-between text-[11px] font-light text-ink-soft">
             <span className="inline-flex items-center gap-1">
               <Users className="size-3.5 text-leaf" />
               {campaign.donations.length} Donatur
             </span>
             {campaign.collected_amount >= campaign.target_amount && (
-              <span className="rounded-full bg-mint px-2 py-0.5 text-[10px] font-extrabold text-forest">
+              <span className="rounded-full bg-mint px-2 py-0.5 text-[10px] font-medium text-forest">
                 Target Tercapai!
               </span>
             )}
@@ -154,13 +154,13 @@ export default function FundraisingSection({ signal }: Props) {
         </button>
 
         <div className="flex flex-col gap-2 pt-1">
-          <h4 className="text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
-            Catatan Pemberi ({campaign.donations.length})
+          <h4 className="text-[10.5px] font-light tracking-wider text-ink-soft uppercase">
+            Donatur ({campaign.donations.length})
           </h4>
           {campaign.donations.length === 0 ? (
-            <p className="relative rounded-[16px] bg-white px-3.5 py-3 text-center text-xs font-medium text-ink-soft">
+            <p className="relative rounded-[16px] bg-white px-3.5 py-3 text-center text-[12px] font-light text-ink-soft">
               <DashedOutline rx={15} />
-              Belum ada donasi. Jadilah yang pertama membantu warga terdampak!
+              Belum ada donasi
             </p>
           ) : (
             <ul className="flex max-h-60 flex-col gap-2 overflow-y-auto pr-0.5">
@@ -168,14 +168,14 @@ export default function FundraisingSection({ signal }: Props) {
                 <li key={d.id} className="relative rounded-[16px] bg-white px-3.5 py-2.5">
                   <DashedOutline rx={15} />
                   <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-extrabold text-ink">
+                    <span className="inline-flex min-w-0 items-center gap-1.5 text-[12.5px] font-normal text-ink">
                       {d.is_anonymous && <EyeOff className="size-3 shrink-0 text-ink-soft" />}
                       <span className="truncate">{d.donor_name}</span>
                     </span>
                     <span className="num shrink-0 text-xs text-forest">+{formatRupiah(d.amount)}</span>
                   </div>
-                  <div className="mt-1 flex items-center justify-between text-[11px] font-medium text-ink-soft">
-                    <span className="rounded-full bg-canvas px-2 py-0.5 text-[10px] font-bold text-ink-soft">
+                  <div className="mt-1 flex items-center justify-between text-[11px] font-light text-ink-soft">
+                    <span className="rounded-full bg-canvas px-2 py-0.5 text-[10px] font-normal text-ink-soft">
                       {d.payment_method === 'qris' ? 'QRIS' : `m-Banking ${d.bank_name ?? ''}`.trim()}
                     </span>
                     <span>{formatTimeAgo(d.created_at)}</span>

@@ -16,7 +16,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ReportStatusPill } from '../../components/ui/atoms'
 import { reverseGeocode, verifyAndCreateReport } from '../../lib/api'
-import type { VerifyReportResult } from '../../lib/api'
+import type { BlamSnapPrefill, VerifyReportResult } from '../../lib/api'
 import { compressImage } from '../../lib/imageCompress'
 import type { CompressedImage } from '../../lib/imageCompress'
 import type { Ecosystem } from '../../types'
@@ -26,6 +26,7 @@ interface Props {
   onClose: () => void
   onSubmitted?: () => void
   onOpenVerification?: () => void
+  initialPrefill?: BlamSnapPrefill
 }
 
 const INCIDENTS = ['Sampah', 'Banjir', 'Kebakaran', 'Lainnya'] as const
@@ -64,16 +65,16 @@ function formatSeconds(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerification }: Props) {
+export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerification, initialPrefill }: Props) {
   const queryClient = useQueryClient()
   const { profile, refreshMe } = useAuth()
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
-  const [incident, setIncident] = useState<IncidentType>('Sampah')
+  const [incident, setIncident] = useState<IncidentType>(() => initialPrefill?.incident ?? 'Sampah')
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [region, setRegion] = useState<{ name: string; detail: string; fullAddress: string } | null>(null)
   const [gpsBusy, setGpsBusy] = useState(false)
-  const [note, setNote] = useState('')
-  const [anon, setAnon] = useState(false)
+  const [note, setNote] = useState(() => initialPrefill?.description ?? '')
+  const [anon, setAnon] = useState(() => Boolean(initialPrefill?.isAnonymous))
   const [photo, setPhoto] = useState<CompressedImage | null>(null)
   const [voice, setVoice] = useState<VoiceNote | null>(null)
   const [recording, setRecording] = useState(false)
@@ -132,7 +133,7 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
       },
       () => {
         setGpsBusy(false)
-        setError('Hidupkan & izinkan lokasi GPS di browser untuk mengambil koordinat serta wilayah otomatis.')
+        setError('Aktifkan izin lokasi di browser dulu ya.')
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
     )
@@ -279,13 +280,13 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
   const scanning = step === 3 && !result && !error
 
   return (
-    <div className="relative flex h-full flex-col bg-canvas">
+    <div className="relative flex h-full flex-col bg-white">
       <header className="flex h-16 shrink-0 items-center justify-between px-4 pt-[env(safe-area-inset-top)]">
         <button
           type="button"
           onClick={step === 1 || step === 4 ? onClose : back}
           aria-label={step === 1 || step === 4 ? 'Tutup' : 'Kembali'}
-          className="grid size-12 place-items-center rounded-full border border-line bg-white text-ink"
+          className="grid size-11 place-items-center rounded-full bg-[#f5f7ff] text-forest transition-colors hover:bg-mint/60"
         >
           {step === 1 || step === 4 ? <X className="size-5" /> : <ArrowLeft className="size-5" />}
         </button>
@@ -302,11 +303,18 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
         {step === 1 && (
-          <section className="flex flex-col gap-4">
-            <h2 className="text-2xl font-extrabold tracking-tight">Lokasi &amp; Kejadian</h2>
+          <section className="flex flex-col gap-3.5">
+            <h2 className="text-[20px] font-semibold tracking-tight">Di mana ini?</h2>
+
+            {initialPrefill && (
+              <div className="rounded-card bg-mint/45 px-3.5 py-2 text-[12px] font-light text-forest">
+                Terisi dari Blam AI
+                {initialPrefill.locationHint ? ` · ${initialPrefill.locationHint}` : ''}
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
-              <p className="text-xs font-extrabold tracking-wide text-ink-soft uppercase">Kejadian Cepat</p>
+              <p className="text-[11px] font-light tracking-wide text-ink-soft uppercase">Kejadian</p>
               <div className="grid grid-cols-2 gap-2">
                 {INCIDENTS.map((item) => (
                   <button
@@ -314,8 +322,10 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
                     type="button"
                     aria-pressed={incident === item}
                     onClick={() => setIncident(item)}
-                    className={`h-11 rounded-full border text-sm font-bold transition-colors ${
-                      incident === item ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink'
+                    className={`h-10.5 rounded-full text-[13px] transition-colors ${
+                      incident === item
+                        ? 'bg-ink font-medium text-white'
+                        : 'bg-[#f5f7ff] font-normal text-ink hover:bg-mint/45'
                     }`}
                   >
                     {item}
@@ -324,25 +334,25 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
               </div>
             </div>
 
-            <div className="rounded-card border border-line bg-white p-4">
+            <div className="rounded-card bg-[#f5f7ff] p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 text-xs font-extrabold tracking-wide text-ink-soft uppercase">
-                    <MapPin className="size-3.5 text-emerald" /> Wilayah Otomatis
+                  <p className="flex items-center gap-1.5 text-[11px] font-light tracking-wide text-ink-soft uppercase">
+                    <MapPin className="size-3.5 text-emerald" /> Lokasi
                   </p>
                   {region ? (
                     <>
-                      <p className="mt-1.5 text-sm font-extrabold text-ink">{region.name}</p>
-                      <p className="text-xs font-medium text-ink-soft">{region.detail}</p>
+                      <p className="mt-1.5 text-[14px] font-normal text-ink">{region.name}</p>
+                      <p className="text-[12px] font-light text-ink-soft">{region.detail}</p>
                     </>
                   ) : (
-                    <p className="mt-1.5 text-xs font-semibold text-ink-soft">
-                      {gpsBusy ? 'Mengambil lokasi GPS & wilayah…' : 'Lokasi GPS belum aktif'}
+                    <p className="mt-1.5 text-[12px] font-light text-ink-soft">
+                      {gpsBusy ? 'Mencari lokasi…' : 'GPS belum aktif'}
                     </p>
                   )}
                 </div>
                 {coords && (
-                  <span className="num shrink-0 rounded-full bg-canvas px-2.5 py-1 text-[11px] font-bold text-ink-soft">
+                  <span className="num shrink-0 rounded-full bg-white px-2.5 py-1 text-[11px] font-normal text-ink-soft">
                     {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
                   </span>
                 )}
@@ -352,18 +362,18 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
                 type="button"
                 onClick={() => locateUser(true)}
                 disabled={gpsBusy}
-                className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-full border border-line bg-canvas text-xs font-bold text-ink hover:bg-muted disabled:opacity-60"
+                className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-full bg-white text-[12px] font-normal text-ink shadow-[0_1px_2px_rgba(18,29,79,0.04)] hover:bg-mint/35 disabled:opacity-60"
               >
-                <LocateFixed className="size-4" />
-                {gpsBusy ? 'Mencari Lokasi…' : coords ? 'Perbarui Lokasi GPS' : 'Hidupkan Lokasi GPS'}
+                <LocateFixed className="size-4 text-leaf" />
+                {gpsBusy ? 'Mencari lokasi…' : coords ? 'Perbarui GPS' : 'Aktifkan GPS'}
               </button>
             </div>
           </section>
         )}
 
         {step === 2 && (
-          <section className="flex flex-col gap-4">
-            <h2 className="text-2xl font-extrabold tracking-tight">Foto &amp; Keterangan</h2>
+          <section className="flex flex-col gap-3.5">
+            <h2 className="text-[20px] font-semibold tracking-tight">Foto &amp; suara</h2>
             <input
               ref={fileRef}
               type="file"
@@ -375,13 +385,13 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-card border-[1.5px] border-dashed border-dash bg-white text-ink-soft"
+              className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-card border-[1.5px] border-dashed border-leaf/25 bg-[#f5f7ff]/70 text-ink-soft"
             >
               {photo ? (
                 <img src={photo.previewUrl} alt="Foto laporan" className="size-full object-cover" />
               ) : (
-                <span className="flex flex-col items-center gap-2 text-sm font-bold">
-                  <ImagePlus className="size-8" /> Ambil / pilih foto tempat
+                <span className="flex flex-col items-center gap-2 text-[13px] font-light">
+                  <ImagePlus className="size-7 text-leaf" /> Ambil foto
                 </span>
               )}
             </button>
@@ -391,17 +401,17 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={300}
-              placeholder="Deskripsi kondisi (opsional)"
-              className="w-full resize-none rounded-card border border-line bg-white px-4 py-3 text-sm font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft focus:border-ink focus:outline-none"
+              placeholder="Catatan singkat (opsional)"
+              className="w-full resize-none rounded-card bg-[#f5f7ff] px-4 py-3 text-[13.5px] font-normal text-ink placeholder:font-light placeholder:text-ink-soft focus:bg-mint/35 focus:outline-none"
             />
 
-            <div className="rounded-card border border-line bg-white p-3.5">
+            <div className="rounded-card bg-[#f5f7ff] p-3.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-extrabold tracking-wide text-ink-soft uppercase">
-                  Laporan Suara (Opsional)
+                <span className="text-[11px] font-light tracking-wide text-ink-soft uppercase">
+                  Suara (opsional)
                 </span>
                 {recording && (
-                  <span className="num text-xs font-bold text-critical">Merekam · {formatSeconds(recordSeconds)}</span>
+                  <span className="num text-[12px] font-normal text-critical">Merekam · {formatSeconds(recordSeconds)}</span>
                 )}
               </div>
 
@@ -409,19 +419,19 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
                 <button
                   type="button"
                   onClick={() => (recording ? stopVoice() : void startVoice())}
-                  className={`mt-2.5 flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-bold transition-colors ${
+                  className={`mt-2.5 flex h-10.5 w-full items-center justify-center gap-2 rounded-full text-[13px] font-normal transition-colors ${
                     recording
                       ? 'bg-critical text-white'
-                      : 'border border-line bg-canvas text-ink hover:bg-muted'
+                      : 'bg-white text-ink shadow-[0_1px_2px_rgba(18,29,79,0.04)] hover:bg-mint/35'
                   }`}
                 >
                   {recording ? (
                     <>
-                      <Square className="size-4 fill-current" /> Berhenti Merekam
+                      <Square className="size-4 fill-current" /> Berhenti
                     </>
                   ) : (
                     <>
-                      <Mic className="size-4" /> Rekam Suara
+                      <Mic className="size-4 text-leaf" /> Rekam suara
                     </>
                   )}
                 </button>
@@ -432,7 +442,7 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
                     type="button"
                     onClick={removeVoice}
                     aria-label="Hapus rekaman suara"
-                    className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-canvas text-ink-soft hover:text-critical"
+                    className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-ink-soft hover:text-critical"
                   >
                     <Trash2 className="size-4" />
                   </button>
@@ -440,14 +450,14 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
               )}
             </div>
 
-            <label className="flex h-12 items-center justify-between rounded-full border border-line bg-white px-4 text-sm font-bold">
+            <label className="flex h-11.5 items-center justify-between rounded-full bg-[#f5f7ff] px-4 text-[13.5px] font-normal">
               Lapor anonim
               <input
                 type="checkbox"
                 checked={!profile || anon}
                 disabled={!profile}
                 onChange={(e) => setAnon(e.target.checked)}
-                className="size-5 accent-ink disabled:opacity-60"
+                className="size-4.5 accent-leaf disabled:opacity-60"
               />
             </label>
           </section>
@@ -455,7 +465,7 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
 
         {step === 3 && (
           <section className="flex flex-col items-center gap-4 text-center">
-            <h2 className="self-start text-2xl font-extrabold tracking-tight">AI Vision</h2>
+            <h2 className="self-start text-[20px] font-semibold tracking-tight">Cek AI</h2>
             {photo && (
               <div className="relative aspect-[4/3] w-full overflow-hidden rounded-card bg-muted">
                 <img src={photo.previewUrl} alt="" className="size-full object-cover" />
@@ -468,12 +478,12 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
                 )}
               </div>
             )}
-            {scanning && <p className="text-sm font-bold text-ink-soft">Memindai…</p>}
+            {scanning && <p className="text-[13px] font-light text-ink-soft">Mengecek foto…</p>}
             {result && !result.isValid && (
-              <div className="w-full rounded-card border border-line bg-white p-5 text-left">
-                <p className="text-base font-extrabold text-ink-soft">Ditolak</p>
-                <p className="mt-1 text-sm text-ink/80">{result.reason}</p>
-                <p className="num mt-2 text-xs text-ink-soft">Skor {result.confidence}%</p>
+              <div className="w-full rounded-card border border-line bg-white p-4.5 text-left">
+                <p className="text-[14px] font-medium text-ink-soft">Belum cocok</p>
+                <p className="mt-1 text-[13px] font-light text-ink/80">{result.reason}</p>
+                <p className="num mt-2 text-[11.5px] font-normal text-ink-soft">Skor {result.confidence}%</p>
               </div>
             )}
           </section>
@@ -481,27 +491,27 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
 
         {step === 4 && result && (
           <section className="relative flex flex-col items-center gap-4 pt-6 text-center">
-            <span className="grid size-20 place-items-center rounded-full border border-line bg-white text-emerald">
-              <Check className="size-10" strokeWidth={3} />
+            <span className="grid size-18 place-items-center rounded-full border border-line bg-white text-emerald">
+              <Check className="size-9" strokeWidth={2.75} />
             </span>
-            <h2 className="text-2xl font-extrabold tracking-tight">
-              Merci!{result.pointsAwarded ? ` +${result.pointsAwarded}` : ''}
+            <h2 className="text-[22px] font-semibold tracking-tight">
+              Terkirim!{result.pointsAwarded ? ` +${result.pointsAwarded}` : ''}
             </h2>
-            <div className="w-full rounded-card border border-line bg-white p-5 text-left">
+            <div className="w-full rounded-card border border-line bg-white p-4.5 text-left">
               <div className="flex items-center justify-between gap-2">
                 <ReportStatusPill status={result.status ?? 'pending_verification'} />
-                <span className="flex items-center gap-1.5 text-sm font-bold text-ink-soft">
+                <span className="flex items-center gap-1.5 text-[12.5px] font-light text-ink-soft">
                   <ShieldCheck className="size-4" />
-                  <span className="num text-lg text-ink">{result.confidence}%</span>
+                  <span className="num text-[15px] font-semibold text-ink">{result.confidence}%</span>
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="text-sm font-semibold">{result.threatCategory}</span>
+                <span className="text-[13.5px] font-normal">{result.threatCategory}</span>
               </div>
               {result.recommendations.length > 0 && (
-                <div className="mt-3 border-t-[1.5px] border-dashed border-dash text-sm text-ink/80">
+                <div className="mt-3 border-t border-leaf/10 text-[13px] text-ink/80">
                   {result.recommendations.slice(0, 2).map((r) => (
-                    <p key={r} className="dashed-row py-2.5">
+                    <p key={r} className="dashed-row py-2">
                       {r}
                     </p>
                   ))}
@@ -512,7 +522,7 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
         )}
 
         {error && (
-          <p role="alert" className="mt-4 rounded-card border border-line bg-white px-4 py-3 text-sm font-semibold text-ink">
+          <p role="alert" className="mt-4 rounded-card border border-line bg-white px-4 py-3 text-[13px] font-medium text-ink">
             {error}
           </p>
         )}
@@ -524,9 +534,9 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
             type="button"
             disabled={!step1Ok}
             onClick={() => setStep(2)}
-            className="btn-primary h-13 w-full text-[15px] disabled:opacity-40"
+            className="btn-primary h-12 w-full text-[14px] disabled:opacity-40"
           >
-            Lanjutkan
+            Lanjut
           </button>
         )}
         {step === 2 && (
@@ -534,16 +544,16 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
             type="button"
             disabled={!photo || recording}
             onClick={() => void scan()}
-            className="btn-primary h-13 w-full text-[15px] disabled:opacity-40"
+            className="btn-primary h-12 w-full text-[14px] disabled:opacity-40"
           >
-            <Camera className="size-5" /> Pindai
+            <Camera className="size-4.5" /> Cek &amp; kirim
           </button>
         )}
         {step === 3 && (result || error) && (
           <button
             type="button"
             onClick={() => (result && !result.isValid ? setStep(2) : void scan())}
-            className="btn-primary h-13 w-full text-[15px]"
+            className="btn-primary h-12 w-full text-[14px]"
           >
             {result && !result.isValid ? 'Ganti foto' : 'Coba lagi'}
           </button>
@@ -552,9 +562,9 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
           <button
             type="button"
             onClick={() => (canVerify && onOpenVerification ? onOpenVerification() : onClose())}
-            className="btn-primary h-13 w-full text-[15px]"
+            className="btn-primary h-12 w-full text-[14px]"
           >
-            {canVerify && onOpenVerification ? 'Buka Verifikasi' : 'Selesai'}
+            {canVerify && onOpenVerification ? 'Buka verifikasi' : 'Selesai'}
           </button>
         )}
       </footer>

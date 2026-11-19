@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import { Droplets, TreePine, Waves, X } from 'lucide-react'
 import { useId } from 'react'
 import type { ReactNode } from 'react'
@@ -18,7 +19,7 @@ const DOT = {
 
 export function StatusPill({ status }: { status: EventStatus }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-ink">
+    <span className="inline-flex items-center gap-1.5 text-xs font-normal text-ink">
       <span className={`size-2 rounded-full ${DOT[eventPinTone(status)]}`} />
       {EVENT_STATUS_LABEL[status]}
     </span>
@@ -27,7 +28,7 @@ export function StatusPill({ status }: { status: EventStatus }) {
 
 export function ReportStatusPill({ status }: { status: ReportStatus }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-ink">
+    <span className="inline-flex items-center gap-1.5 text-xs font-normal text-ink">
       <span className={`size-2 rounded-full ${DOT[reportPinTone(status)]}`} />
       {REPORT_STATUS_LABEL[status]}
     </span>
@@ -51,28 +52,13 @@ export function EcoIcon({
   return <Icon className={className} strokeWidth={2} aria-label={ECOSYSTEM_LABEL[ecosystem]} />
 }
 
-export function DashedOutline({ rx = 19 }: { rx?: number }) {
-  return (
-    <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
-      <rect
-        x="0.75"
-        y="0.75"
-        rx={rx}
-        ry={rx}
-        fill="none"
-        stroke="rgba(47, 138, 87, 0.24)"
-        strokeWidth="1.5"
-        strokeDasharray="10 7"
-        strokeLinecap="round"
-        style={{ width: 'calc(100% - 1.5px)', height: 'calc(100% - 1.5px)' }}
-      />
-    </svg>
-  )
+export function DashedOutline(_props: { rx?: number }) {
+  return null
 }
 
 export function EcoBadge({ ecosystem }: { ecosystem: Ecosystem }) {
   return (
-    <span className="grid size-11 shrink-0 place-items-center rounded-[14px] border-[1.5px] border-leaf/30 bg-white text-forest">
+    <span className="grid size-11 shrink-0 place-items-center rounded-[14px] bg-white text-forest shadow-[0_1px_2px_rgba(18,29,79,0.04)]">
       <EcoIcon ecosystem={ecosystem} />
     </span>
   )
@@ -139,7 +125,7 @@ export function Pill({
 }) {
   return (
     <span
-      className={`font-display inline-flex items-center gap-1.5 rounded-full border-[1.5px] border-dashed border-leaf/30 bg-mint/35 px-3 py-1 text-xs font-semibold text-forest ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full bg-mint/55 px-3 py-1 text-[11.5px] font-normal text-forest ${className}`}
     >
       {children}
     </span>
@@ -166,26 +152,36 @@ export function ModalShell({
   children: ReactNode
 }) {
   return (
-    <div
+    <motion.div
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.22 }}
       className="fixed inset-0 z-[1000] flex items-end justify-center bg-ink/35 p-0 backdrop-blur-[2px] md:items-center md:p-6"
     >
-      <div className="flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-line bg-white md:max-w-[520px] md:rounded-[28px]">
+      <motion.div
+        initial={{ y: 40, opacity: 0, scale: 0.98 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 28, opacity: 0, scale: 0.98 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-line bg-white md:max-w-[520px] md:rounded-[28px]"
+      >
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
-          <h2 className="text-lg font-extrabold tracking-tight text-ink">{title}</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-ink">{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Tutup"
-            className="grid size-10 place-items-center rounded-full border-[1.5px] border-dashed border-leaf/30 bg-canvas text-forest hover:bg-mint/40"
+            className="grid size-10 place-items-center rounded-full bg-canvas text-forest hover:bg-mint/40"
           >
             <X className="size-4" />
           </button>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

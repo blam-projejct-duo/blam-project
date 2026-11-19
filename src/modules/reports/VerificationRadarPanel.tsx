@@ -77,13 +77,13 @@ export default function VerificationRadarPanel({
     <div className="flex flex-col gap-4">
       {!embedded && (
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-[22px] font-bold tracking-tight text-ink">Verifikasi</h2>
+          <h2 className="text-[21px] font-semibold tracking-tight text-ink">Verifikasi</h2>
           <button
             type="button"
             onClick={onCreateStandaloneEvent}
-            className="btn-primary h-10 px-4 text-xs"
+            className="btn-primary h-9 px-3.5 text-xs"
           >
-            <Plus className="size-4" />
+            <Plus className="size-3.5" />
             Event
           </button>
         </div>
@@ -95,10 +95,10 @@ export default function VerificationRadarPanel({
             key={t.id}
             type="button"
             onClick={() => setFilter(t.id)}
-            className={`font-display h-9 rounded-full px-3.5 text-xs font-semibold transition-colors ${
+            className={`h-8 rounded-full px-3 text-[11.5px] transition-colors ${
               filter === t.id
-                ? 'bg-leaf text-white'
-                : 'border-[1.5px] border-dashed border-leaf/30 bg-white text-ink-soft hover:text-forest'
+                ? 'bg-leaf font-medium text-white'
+                : 'bg-[#f5f7ff] font-light text-ink-soft hover:text-forest'
             }`}
           >
             {t.label}
@@ -107,29 +107,29 @@ export default function VerificationRadarPanel({
       </div>
 
       {error && (
-        <p role="alert" className="rounded-card border border-line bg-white px-4 py-3 text-xs font-semibold text-ink">
+        <p role="alert" className="rounded-card bg-[#f5f7ff] px-4 py-3 text-xs font-light text-ink">
           {error}
         </p>
       )}
 
       {queueQuery.isPending && !queueQuery.data ? (
-        <p className="py-8 text-center text-sm font-semibold text-ink-soft">Memuat antrean…</p>
+        <p className="py-8 text-center text-sm font-light text-ink-soft">Memuat antrean…</p>
       ) : queueQuery.isError && !queueQuery.data ? (
-        <div className="relative rounded-[20px] bg-[#f7faf6] p-5 text-center">
+        <div className="relative rounded-[20px] bg-[#f5f7ff] p-5 text-center">
           <DashedOutline rx={19} />
-          <p className="text-xs font-semibold text-ink-soft">
+          <p className="text-xs font-light text-ink-soft">
             {queueQuery.error instanceof Error ? queueQuery.error.message : 'Gagal memuat antrean'}
           </p>
           <button
             type="button"
             onClick={() => void queueQuery.refetch()}
-            className="mt-3 h-9 rounded-full border border-line bg-white px-4 text-xs font-bold text-ink"
+            className="mt-3 h-9 rounded-full bg-white px-4 text-xs font-normal text-ink shadow-[0_1px_2px_rgba(18,29,79,0.04)]"
           >
             Muat Ulang
           </button>
         </div>
       ) : reports.length === 0 ? (
-        <p className="relative rounded-[20px] bg-[#f7faf6] p-6 text-center text-sm font-semibold text-ink-soft">
+        <p className="relative rounded-[20px] bg-[#f5f7ff] p-6 text-center text-sm font-semibold text-ink-soft">
           <DashedOutline rx={19} />
           Kosong
         </p>
@@ -140,7 +140,7 @@ export default function VerificationRadarPanel({
             const canCreateEvent = r.status === 'verified' || r.status === 'escalated'
             const isPending = r.status === 'pending_verification' || r.status === 'escalated'
             return (
-              <article key={r.id} className="relative overflow-hidden rounded-[20px] bg-[#f7faf6]">
+              <article key={r.id} className="relative overflow-hidden rounded-[20px] bg-[#f5f7ff]">
                 <DashedOutline rx={19} />
                 {r.before_image_url && (
                   <div className="relative aspect-[16/9] w-full bg-muted">
@@ -158,12 +158,12 @@ export default function VerificationRadarPanel({
                   </div>
 
                   <div>
-                    <h3 className="text-base font-extrabold leading-snug text-ink">{r.title}</h3>
-                    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-ink-soft">
+                    <h3 className="font-sans text-[14.5px] leading-snug font-medium text-ink">{r.title}</h3>
+                    <p className="mt-1 flex items-center gap-1 text-[12px] font-normal text-ink-soft">
                       <MapPin className="size-3.5 shrink-0" />
                       <span className="truncate">{r.location_name}</span>
                     </p>
-                    <p className="mt-0.5 text-[11px] font-semibold text-ink-soft">
+                    <p className="mt-0.5 text-[11px] font-normal text-ink-soft">
                       {r.is_anonymous ? 'Anonim' : r.reporter?.full_name ?? 'Warga'} · {r.threat_category}
                     </p>
                   </div>

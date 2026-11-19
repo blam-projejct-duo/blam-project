@@ -127,13 +127,13 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
         <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-1 flex-col gap-4 overflow-y-auto p-5">
           {profile?.role !== 'admin' && profile?.role !== 'agency' && activeOrgs.length > 1 && (
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
+              <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">
                 Organisasi Penyelenggara
               </span>
               <select
                 value={organizationId}
                 onChange={(e) => setOrganizationId(e.target.value)}
-                className="h-11 w-full rounded-2xl border border-line bg-canvas px-3.5 text-sm font-semibold text-ink transition focus:border-leaf focus:bg-surface focus:outline-none"
+                className="h-11 w-full rounded-2xl bg-[#f5f7ff] px-3.5 text-sm font-normal text-ink transition focus:bg-mint/35 focus:outline-none"
               >
                 {activeOrgs.map((m) => (
                   <option key={m.organization_id} value={m.organization_id}>
@@ -145,8 +145,8 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
           )}
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
-              Judul Penggalangan Dana
+            <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">
+              Judul Galang Dana
             </span>
             <input
               type="text"
@@ -154,26 +154,26 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
               onChange={(e) => setTitle(e.target.value)}
               maxLength={140}
               required
-              className="h-11 w-full rounded-2xl border border-line bg-canvas px-3.5 text-sm font-semibold text-ink transition focus:border-leaf focus:bg-surface focus:outline-none"
+              className="h-11 w-full rounded-2xl bg-[#f5f7ff] px-3.5 text-sm font-normal text-ink transition focus:bg-mint/35 focus:outline-none"
             />
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">
-              Deskripsi & Kebutuhan Warga
+            <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">
+              Deskripsi
             </span>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               maxLength={1200}
-              className="w-full resize-none rounded-2xl border border-line bg-canvas p-3.5 text-sm leading-relaxed font-medium text-ink transition focus:border-leaf focus:bg-surface focus:outline-none"
+              className="w-full resize-none rounded-2xl bg-[#f5f7ff] p-3.5 text-sm leading-relaxed font-light text-ink transition focus:bg-mint/35 focus:outline-none"
             />
           </label>
 
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">Target Dana</span>
+              <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">Target Dana</span>
               {targetAmount > 0 && (
                 <span className="num rounded-full bg-mint px-2.5 py-0.5 text-xs text-forest">
                   {formatRupiah(targetAmount)}
@@ -189,10 +189,10 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
                     key={preset.value}
                     type="button"
                     onClick={() => handleSelectPreset(preset.value)}
-                    className={`h-10 rounded-2xl border px-3 text-xs font-extrabold whitespace-nowrap transition ${
+                    className={`h-10 rounded-2xl px-3 text-xs whitespace-nowrap transition ${
                       active
-                        ? 'border-leaf bg-mint text-forest shadow-xs'
-                        : 'border-line bg-canvas text-ink hover:bg-muted'
+                        ? 'bg-mint font-medium text-forest'
+                        : 'bg-[#f5f7ff] font-normal text-ink hover:bg-mint/45'
                     }`}
                   >
                     {preset.label}
@@ -202,7 +202,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
             </div>
 
             <div className="relative">
-              <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-xs font-extrabold text-ink-soft">
+              <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-xs font-normal text-ink-soft">
                 Rp
               </span>
               <input
@@ -211,7 +211,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
                 value={customTarget}
                 onChange={(e) => handleCustomChange(e.target.value)}
                 placeholder="Atau ketik nominal target..."
-                className="num h-11 w-full rounded-2xl border border-line bg-canvas pr-3.5 pl-10 text-sm text-ink transition focus:border-leaf focus:bg-surface focus:outline-none"
+                className="num h-11 w-full rounded-2xl bg-[#f5f7ff] pr-3.5 pl-10 text-sm text-ink placeholder:font-sans placeholder:font-light transition focus:bg-mint/35 focus:outline-none"
               />
             </div>
           </div>
@@ -219,7 +219,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
           {error && (
             <p
               role="alert"
-              className="rounded-2xl border border-critical/30 bg-critical/8 px-3.5 py-2.5 text-xs font-bold text-critical"
+              className="rounded-2xl bg-critical/8 px-3.5 py-2.5 text-xs font-normal text-critical"
             >
               {error}
             </p>
@@ -229,7 +229,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
             <button
               type="button"
               onClick={onClose}
-              className="h-12 w-full rounded-full border border-line bg-surface px-5 text-sm font-bold text-ink-soft transition hover:bg-canvas hover:text-ink sm:w-auto sm:min-w-28"
+              className="h-12 w-full rounded-full bg-[#f5f7ff] px-5 text-sm font-normal text-ink-soft transition hover:bg-mint/45 hover:text-ink sm:w-auto sm:min-w-28"
             >
               Batal
             </button>

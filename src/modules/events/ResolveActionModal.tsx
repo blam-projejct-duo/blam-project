@@ -92,24 +92,24 @@ export default function ResolveActionModal({
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="relative grid aspect-[16/10] w-full place-items-center overflow-hidden rounded-card border-[1.5px] border-dashed border-dash bg-canvas text-ink-soft"
+          className="relative grid aspect-[16/10] w-full place-items-center overflow-hidden rounded-card border-[1.5px] border-dashed border-leaf/25 bg-[#f5f7ff]/70 text-ink-soft"
         >
           {photo ? (
             <img src={photo.previewUrl} alt="Foto After" className="size-full object-cover" />
           ) : (
-            <span className="flex flex-col items-center gap-2 text-sm font-bold">
-              <ImagePlus className="size-7" /> Foto sesudah
+            <span className="flex flex-col items-center gap-2 text-sm font-light">
+              <ImagePlus className="size-7 text-leaf" /> Foto sesudah
             </span>
           )}
         </button>
 
         <div className="grid grid-cols-2 gap-2.5">
           <div>
-            <label className="mb-1 block text-xs font-bold text-ink-soft">Sampah (kg)</label>
+            <label className="mb-1 block text-xs font-light text-ink-soft">Sampah (kg)</label>
             <input type="number" min="0" step="0.5" className={field} value={wasteKg} onChange={(e) => setWasteKg(e.target.value)} />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-bold text-ink-soft">Bibit</label>
+            <label className="mb-1 block text-xs font-light text-ink-soft">Bibit</label>
             <input type="number" min="0" step="1" className={field} value={treesPlanted} onChange={(e) => setTreesPlanted(e.target.value)} />
           </div>
         </div>
@@ -123,7 +123,7 @@ export default function ResolveActionModal({
         />
 
         {error && (
-          <p role="alert" className="rounded-card border border-line bg-white px-4 py-3 text-sm font-semibold text-ink">
+          <p role="alert" className="rounded-card bg-[#f5f7ff] px-4 py-3 text-sm font-light text-ink">
             {error}
           </p>
         )}

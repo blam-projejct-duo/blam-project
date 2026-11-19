@@ -92,30 +92,30 @@ export default function AdminPanel({
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-xl font-extrabold tracking-tight text-ink">Admin</h2>
+      <h2 className="text-xl font-semibold tracking-tight text-ink">Admin</h2>
 
       {error && (
-        <p role="alert" className="relative rounded-[20px] bg-[#f7faf6] px-4 py-3 text-xs font-semibold text-ink">
+        <p role="alert" className="relative rounded-[20px] bg-[#f5f7ff] px-4 py-3 text-xs font-light text-ink">
           <DashedOutline rx={19} />
           {error}
         </p>
       )}
 
       <section className="flex flex-col gap-2.5">
-        <p className="font-display text-xs font-semibold text-ink-soft uppercase">Organisasi ({orgs.length})</p>
+        <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Organisasi ({orgs.length})</p>
         {orgs.length === 0 ? (
-          <p className="relative rounded-[20px] bg-[#f7faf6] p-4 text-sm font-semibold text-ink-soft">
+          <p className="relative rounded-[20px] bg-[#f5f7ff] p-4 text-sm font-light text-ink-soft">
             <DashedOutline rx={19} />
             Kosong
           </p>
         ) : (
           orgs.map((o) => (
-            <div key={o.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f7faf6] p-4">
+            <div key={o.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f5f7ff] p-4">
               <DashedOutline rx={19} />
               <div className="min-w-0">
                 <Pill>{o.type === 'agency' ? 'Instansi' : 'Komunitas'}</Pill>
-                <p className="mt-1.5 truncate text-sm font-extrabold text-ink">{o.name}</p>
-                <p className="text-xs text-ink-soft">{o.region}</p>
+                <p className="mt-1.5 truncate text-[13.5px] font-normal text-ink">{o.name}</p>
+                <p className="text-xs font-light text-ink-soft">{o.region}</p>
               </div>
               <div className="flex shrink-0 gap-1.5">
                 <button
@@ -130,7 +130,7 @@ export default function AdminPanel({
                   type="button"
                   disabled={busyId === o.id}
                   onClick={() => void handleOrg(o.id, false)}
-                  className="inline-flex h-9 items-center gap-1 rounded-full border border-line bg-canvas px-3 text-xs font-bold text-ink-soft"
+                  className="inline-flex h-9 items-center gap-1 rounded-full bg-white px-3 text-xs font-normal text-ink-soft"
                 >
                   <Ban className="size-3.5" /> Tolak
                 </button>
@@ -141,25 +141,25 @@ export default function AdminPanel({
       </section>
 
       <section className="flex flex-col gap-2.5">
-        <p className="font-display text-xs font-semibold text-ink-soft uppercase">Laporan Warga ({reports.length})</p>
+        <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Laporan Warga ({reports.length})</p>
         {reports.length === 0 ? (
-          <p className="relative rounded-[20px] bg-[#f7faf6] p-4 text-sm font-semibold text-ink-soft">
+          <p className="relative rounded-[20px] bg-[#f5f7ff] p-4 text-sm font-light text-ink-soft">
             <DashedOutline rx={19} />
             Kosong
           </p>
         ) : (
           reports.slice(0, 8).map((r) => (
-            <div key={r.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f7faf6] p-3.5">
+            <div key={r.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f5f7ff] p-3.5">
               <DashedOutline rx={19} />
               <div className="min-w-0">
                 <ReportStatusPill status={r.status} />
-                <p className="mt-1 truncate text-sm font-bold text-ink">{r.title}</p>
+                <p className="mt-1 truncate text-[13.5px] font-normal text-ink">{r.title}</p>
               </div>
               <button
                 type="button"
                 disabled={busyId === r.id}
                 onClick={() => void rejectReport(r.id)}
-                className="h-8 shrink-0 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink-soft"
+                className="h-8 shrink-0 rounded-full bg-white px-3 text-xs font-normal text-ink-soft"
               >
                 Tolak
               </button>
@@ -169,19 +169,19 @@ export default function AdminPanel({
       </section>
 
       <section className="flex flex-col gap-2.5">
-        <p className="font-display text-xs font-semibold text-ink-soft uppercase">Event Radar ({events.length})</p>
+        <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Event Radar ({events.length})</p>
         {events.slice(0, 8).map((ev) => (
-          <div key={ev.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f7faf6] p-3.5">
+          <div key={ev.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f5f7ff] p-3.5">
             <DashedOutline rx={19} />
             <div className="min-w-0">
               <StatusPill status={ev.status} />
-              <p className="mt-1 truncate text-sm font-bold text-ink">{ev.title}</p>
+              <p className="mt-1 truncate text-[13.5px] font-normal text-ink">{ev.title}</p>
             </div>
             <button
               type="button"
               disabled={busyId === ev.id}
               onClick={() => void cancelEvent(ev.id)}
-              className="h-8 shrink-0 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink-soft"
+              className="h-8 shrink-0 rounded-full bg-white px-3 text-xs font-normal text-ink-soft"
             >
               Batalkan
             </button>

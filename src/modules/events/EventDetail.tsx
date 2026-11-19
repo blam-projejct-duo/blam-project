@@ -39,7 +39,7 @@ interface Props {
 
 function Tile({ value, unit, label }: { value: string; unit?: string; label: string }) {
   return (
-    <div className="relative rounded-tile bg-[#f7faf6] p-3.5">
+    <div className="relative rounded-tile bg-[#f5f7ff] p-3.5">
       <DashedOutline rx={13} />
       <p className="num flex flex-wrap items-baseline gap-x-1 text-[16px] leading-snug text-ink">
         <span>{value}</span>
@@ -156,15 +156,15 @@ export default function EventDetail({
     <div className="@container flex flex-col gap-5">
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-ink-soft">
+          <div className="flex flex-wrap items-center gap-2 text-[11.5px] font-light text-ink-soft">
             <StatusPill status={event.status} />
             {score !== null && <span>AI {score}%</span>}
             {event.visibility === 'members_only' && <Lock className="size-3" aria-label="Khusus anggota" />}
           </div>
-          <h2 className="mt-3 text-[22px] leading-tight font-extrabold tracking-tight text-ink">
+          <h2 className="mt-2.5 text-[20px] leading-tight font-semibold tracking-tight text-ink">
             {event.title}
           </h2>
-          <p className="mt-1 flex items-center gap-1 text-sm font-medium text-ink-soft">
+          <p className="mt-1 flex items-center gap-1 text-[13px] font-light text-ink-soft">
             <MapPin className="size-3.5 shrink-0" strokeWidth={2.25} />
             <span className="truncate">{event.location_name}</span>
           </p>
@@ -189,10 +189,10 @@ export default function EventDetail({
               onClick={() => (routeForEvent ? onClearRoute?.() : void onStartRoute())}
               aria-label="Arahkan ke lokasi"
               aria-pressed={Boolean(routeForEvent)}
-              className={`grid size-11 place-items-center rounded-full border-[1.5px] transition-colors ${
+              className={`grid size-11 place-items-center rounded-full border transition-colors ${
                 routeForEvent
                   ? 'border-leaf bg-leaf text-white'
-                  : 'border-dashed border-leaf/30 bg-white text-forest hover:bg-mint/30'
+                  : 'border-leaf/15 bg-white text-forest hover:bg-mint/30'
               } disabled:opacity-60`}
             >
               <Navigation className="size-4.5" />
@@ -203,7 +203,7 @@ export default function EventDetail({
               type="button"
               onClick={() => setQrOpen(true)}
               aria-label="QR Aksi"
-              className="grid size-11 place-items-center rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white text-forest transition-colors hover:bg-mint/30"
+              className="grid size-11 place-items-center rounded-full border border-leaf/15 bg-white text-forest transition-colors hover:bg-mint/30"
             >
               <QrCode className="size-4.5" />
             </button>
@@ -212,7 +212,7 @@ export default function EventDetail({
             type="button"
             onClick={() => void copyLink()}
             aria-label="Salin tautan event"
-            className="grid size-11 place-items-center rounded-full border-[1.5px] border-dashed border-leaf/30 bg-white text-forest transition-colors hover:bg-mint/30"
+            className="grid size-11 place-items-center rounded-full border border-leaf/15 bg-white text-forest transition-colors hover:bg-mint/30"
           >
             {copied ? <Check className="size-5" strokeWidth={2.5} /> : <Link2 className="size-5" strokeWidth={2} />}
           </button>
@@ -233,23 +233,23 @@ export default function EventDetail({
         </div>
       ) : (
         <div className={`${photoClass} flex flex-col items-center justify-center gap-1 bg-canvas px-4 text-center`}>
-          <p className="text-sm font-extrabold text-ink">{event.category}</p>
-          <p className="text-xs font-semibold text-ink-soft">
+          <p className="text-[13.5px] font-semibold text-ink">{event.category}</p>
+          <p className="text-[11.5px] font-normal text-ink-soft">
             {event.lat.toFixed(3)}, {event.lng.toFixed(3)}
           </p>
         </div>
       )}
 
       {(routeLoading || routeError || routeForEvent) && (
-        <section className="relative rounded-[20px] bg-[#f7faf6] p-4">
+        <section className="relative rounded-[20px] bg-[#f5f7ff] p-4">
           <DashedOutline rx={19} />
           {routeLoading && (
-            <p className="text-xs font-bold text-ink-soft">Meminta izin GPS &amp; menghitung rute…</p>
+            <p className="text-[12px] font-medium text-ink-soft">Menghitung rute…</p>
           )}
 
           {routeError && !routeLoading && (
             <div className="flex flex-col gap-2.5">
-              <p role="alert" className="text-xs font-semibold text-ink">
+              <p role="alert" className="text-[12px] font-medium text-ink">
                 {routeError}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -257,16 +257,16 @@ export default function EventDetail({
                   <button
                     type="button"
                     onClick={() => void onStartRoute()}
-                    className="btn-primary h-9 px-3.5 text-xs"
+                    className="btn-primary h-9 px-3.5 text-[12px]"
                   >
-                    Coba Lagi
+                    Coba lagi
                   </button>
                 )}
                 <a
                   href={googleMapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-xs font-bold text-ink hover:bg-muted"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-[12px] font-medium text-ink hover:bg-muted"
                 >
                   <ExternalLink className="size-3.5" /> Google Maps
                 </a>
@@ -283,7 +283,7 @@ export default function EventDetail({
                     disabled={!routeForEvent.landAvailable}
                     onClick={() => onSwitchRouteMode?.('land')}
                     aria-pressed={routeForEvent.mode === 'land'}
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition-colors ${
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition-colors ${
                       routeForEvent.mode === 'land'
                         ? 'bg-leaf text-white'
                         : 'border border-line bg-white text-ink hover:bg-muted'
@@ -295,7 +295,7 @@ export default function EventDetail({
                     type="button"
                     onClick={() => onSwitchRouteMode?.('air')}
                     aria-pressed={routeForEvent.mode === 'air'}
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition-colors ${
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition-colors ${
                       routeForEvent.mode === 'air'
                         ? 'bg-leaf text-white'
                         : 'border border-line bg-white text-ink hover:bg-muted'
@@ -319,15 +319,15 @@ export default function EventDetail({
               <div className="flex items-baseline justify-between gap-2">
                 <div>
                   <p className="num text-xl text-ink">{distanceLabel} km</p>
-                  <p className="text-xs font-semibold text-ink-soft">
-                    {routeForEvent.mode === 'land' ? 'Jalur darat tercepat' : 'Jalur udara (garis lurus)'}
+                  <p className="text-[12px] font-normal text-ink-soft">
+                    {routeForEvent.mode === 'land' ? 'Jalur darat tercepat' : 'Jalur udara'}
                   </p>
                 </div>
                 <a
                   href={googleMapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink hover:bg-muted"
+                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-line bg-white px-3 text-[12px] font-medium text-ink hover:bg-muted"
                 >
                   <ExternalLink className="size-3.5" /> Google Maps
                 </a>
@@ -354,7 +354,7 @@ export default function EventDetail({
       </p>
 
       {recommendations.length > 0 && (
-        <div className="relative rounded-[20px] bg-[#f7faf6] px-4 py-1 text-[13px] font-medium text-ink-soft">
+        <div className="relative rounded-[20px] bg-[#f5f7ff] px-4 py-1 text-[13px] font-normal text-ink-soft">
           <DashedOutline rx={19} />
           {recommendations.slice(0, 2).map((rec) => (
             <p key={rec} className="dashed-row py-2.5">
@@ -365,14 +365,14 @@ export default function EventDetail({
       )}
 
       {latestAction && (
-        <div className="relative flex flex-wrap items-center justify-between gap-2 rounded-[20px] bg-[#f7faf6] px-4 py-3 text-[13px] font-semibold text-ink-soft">
+        <div className="relative flex flex-wrap items-center justify-between gap-2 rounded-[20px] bg-[#f5f7ff] px-4 py-3 text-[13px] font-medium text-ink-soft">
           <DashedOutline rx={19} />
           <p>
-            <span className="text-ink">{Number(latestAction.waste_kg)} kg</span> ·{' '}
-            <span className="text-ink">{latestAction.trees_planted}</span> bibit
+            <span className="font-semibold text-ink">{Number(latestAction.waste_kg)} kg</span> ·{' '}
+            <span className="font-semibold text-ink">{latestAction.trees_planted}</span> bibit
           </p>
           {latestAction.verified_by_agency && (
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-forest">
+            <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-forest">
               <ShieldCheck className="size-3.5" /> Sah
             </span>
           )}
@@ -380,7 +380,7 @@ export default function EventDetail({
       )}
 
       {actionError && (
-        <p role="alert" className="relative rounded-[20px] bg-[#f7faf6] px-4 py-3 text-xs font-semibold text-ink">
+        <p role="alert" className="relative rounded-[20px] bg-[#f5f7ff] px-4 py-3 text-[12px] font-medium text-ink">
           <DashedOutline rx={19} />
           {actionError}
         </p>
@@ -392,11 +392,11 @@ export default function EventDetail({
             type="button"
             disabled={routeLoading}
             onClick={() => void onStartRoute()}
-            className="font-display relative flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#f7faf6] text-sm font-semibold text-forest transition-colors hover:bg-mint/35 disabled:opacity-60"
+            className="relative flex h-11.5 w-full items-center justify-center gap-2 rounded-full bg-[#f5f7ff] text-[13.5px] font-normal text-forest transition-colors hover:bg-mint/35 disabled:opacity-60"
           >
             <DashedOutline rx={23} />
             <Navigation className="size-4" />
-            {routeLoading ? 'Mencari Rute…' : 'Arahkan ke Lokasi'}
+            {routeLoading ? 'Menghitung rute…' : 'Rute ke lokasi'}
           </button>
         )}
 
@@ -406,10 +406,10 @@ export default function EventDetail({
             disabled={busyJoin || joined}
             onClick={() => void handleJoin()}
             aria-pressed={joined}
-            className={`h-13 w-full text-[15px] ${joined ? 'btn-joined' : 'btn-primary'} disabled:opacity-80`}
+            className={`h-12 w-full text-[14px] ${joined ? 'btn-joined' : 'btn-primary'} disabled:opacity-80`}
           >
-            {joined && <Check className="size-5" strokeWidth={2.75} />}
-            {joined ? 'Tergabung' : membersOnlyLocked ? 'Khusus Anggota' : 'Gabung'} · {quotaText}
+            {joined && <Check className="size-4.5" strokeWidth={2.75} />}
+            {joined ? 'Tergabung' : membersOnlyLocked ? 'Khusus anggota' : 'Gabung'} · {quotaText}
           </button>
         )}
 
@@ -417,11 +417,11 @@ export default function EventDetail({
           <button
             type="button"
             onClick={() => setResolveOpen(true)}
-            className="font-display relative flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#f7faf6] text-sm font-semibold text-forest transition-colors hover:bg-mint/35"
+            className="relative flex h-11.5 w-full items-center justify-center gap-2 rounded-full bg-[#f5f7ff] text-[13.5px] font-normal text-forest transition-colors hover:bg-mint/35"
           >
             <DashedOutline rx={23} />
             <Camera className="size-4" />
-            Foto After
+            Foto sesudah
           </button>
         )}
 
@@ -430,7 +430,7 @@ export default function EventDetail({
             type="button"
             disabled={busyVis}
             onClick={() => void toggleVisibility()}
-            className="h-11 w-full rounded-full text-xs font-bold text-ink-soft hover:text-ink disabled:opacity-50"
+            className="h-10 w-full rounded-full text-[12px] font-light text-ink-soft hover:text-ink disabled:opacity-50"
           >
             {event.visibility === 'public' ? 'Khusus anggota' : 'Buka untuk publik'}
           </button>
