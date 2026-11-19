@@ -133,14 +133,14 @@ function FormattedText({ text }: { text: string }) {
     line.split(/(\*\*[^*]+\*\*|\*[^*\n]+\*)/g).map((part, idx) => {
       if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
         return (
-          <strong key={idx} className="font-semibold text-ink">
+          <strong key={idx} className="font-medium text-ink">
             {part.slice(2, -2)}
           </strong>
         )
       }
       if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
         return (
-          <em key={idx} className="italic text-ink">
+          <em key={idx} className="italic text-ink/90">
             {part.slice(1, -1)}
           </em>
         )
@@ -150,14 +150,14 @@ function FormattedText({ text }: { text: string }) {
 
   const lines = text.split('\n')
   return (
-    <div className="flex flex-col gap-1 text-[12.5px] leading-[1.45]">
+    <div className="flex flex-col gap-1 text-[12px] leading-[1.5] text-ink/85">
       {lines.map((raw, i) => {
         const trimmed = raw.trim()
         if (!trimmed) return <span key={i} className="h-0.5" />
         if (/^[-*•]\s+/.test(trimmed)) {
           return (
             <div key={i} className="flex items-start gap-2 pl-0.5">
-              <span className="mt-2 size-1.5 shrink-0 rounded-full bg-leaf" />
+              <span className="mt-[7px] size-1 shrink-0 rounded-full bg-leaf/65" />
               <span>{renderInline(trimmed.replace(/^[-*•]\s+/, ''))}</span>
             </div>
           )

@@ -185,3 +185,35 @@ export function ModalShell({
     </motion.div>
   )
 }
+
+export function MarkerTierLegend({ compact = false }: { compact?: boolean }) {
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 ${
+        compact ? 'text-[10.5px]' : 'text-[11px]'
+      } font-normal text-ink-soft`}
+    >
+      <span className="inline-flex items-center gap-1.5">
+        <span className="size-3 shrink-0 rounded-full border-[1.6px] border-dashed border-progress bg-amber-50" />
+        Belum Verifikasi
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="size-3 shrink-0 rounded-full border-[1.5px] border-white bg-critical shadow-xs" />
+        Terverifikasi
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <svg viewBox="0 0 16 18" className="h-4 w-3.5 shrink-0" aria-hidden="true">
+          <path
+            d="M7.5 1C4.2 1 1.5 3.7 1.5 7C1.5 11.1 6.1 15.6 7.1 16.5C7.3 16.7 7.7 16.7 7.9 16.5C8.9 15.6 13.5 11.1 13.5 7C13.5 3.7 10.8 1 7.5 1Z"
+            fill="#15803D"
+            stroke="#FFFFFF"
+            strokeWidth="1.3"
+          />
+          <circle cx="7.5" cy="6.8" r="3.4" fill="#FFFFFF" />
+          <circle cx="12.5" cy="3.5" r="2.7" fill="#22C55E" stroke="#FFFFFF" strokeWidth="0.9" />
+        </svg>
+        Sudah Ada Aksi
+      </span>
+    </div>
+  )
+}
