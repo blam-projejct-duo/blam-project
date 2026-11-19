@@ -84,36 +84,6 @@ export default function App() {
         <BlamRoot isDemo={isDemo} onNavigate={navigateTo} />
       </AuthProvider>
 
-      {!isDemo && !legalPage && (
-        <footer className="fixed bottom-1.5 left-1/2 z-[300] -translate-x-1/2 whitespace-nowrap rounded-full bg-white/85 px-3 py-1 text-[11px] text-ink-soft backdrop-blur">
-          <span className="font-semibold text-ink">Blam</span>
-          {' · '}
-          <a
-            href="/privacy"
-            onClick={(e) => {
-              if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
-              e.preventDefault()
-              navigateTo('/privacy')
-            }}
-            className="underline"
-          >
-            Kebijakan Privasi
-          </a>
-          {' · '}
-          <a
-            href="/terms"
-            onClick={(e) => {
-              if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
-              e.preventDefault()
-              navigateTo('/terms')
-            }}
-            className="underline"
-          >
-            Ketentuan Layanan
-          </a>
-        </footer>
-      )}
-
       <AnimatePresence>
         {legalPage && (
           <LegalModal
