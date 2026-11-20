@@ -58,7 +58,6 @@ const DRAWER_W = 392
 const JELAJAH_TABS: readonly ListTab[] = ['Satelit', 'Utama']
 const AKSI_TABS: readonly ListTab[] = ['Berjalan', 'Verifikasi', 'Selesai']
 const QuickReportFlow = lazy(() => import('../../modules/reports/QuickReportFlow'))
-const COMPANION_KEY = 'blam:companion:out'
 const COMPANION_SEEN_KEY = 'blam:companion:seen'
 const COMPANION_BOTTOM = 112
 
@@ -203,7 +202,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const switchTimerRef = useRef<number | null>(null)
   const logoRef = useRef<HTMLButtonElement>(null)
   const companionBoundsRef = useRef<HTMLDivElement>(null)
-  const [companionOut, setCompanionOut] = useState(() => readFlag(COMPANION_KEY))
+  const [companionOut, setCompanionOut] = useState(false)
   const [companionSeen, setCompanionSeen] = useState(() => readFlag(COMPANION_SEEN_KEY))
   const [chatOpen, setChatOpen] = useState(false)
   const [chatBusy, setChatBusy] = useState(false)
@@ -224,7 +223,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const toggleCompanion = () => {
     const next = !companionOut
     setCompanionOut(next)
-    writeFlag(COMPANION_KEY, next)
     if (!next) setChatOpen(false)
     if (!companionSeen) {
       setCompanionSeen(true)

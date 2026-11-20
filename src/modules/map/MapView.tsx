@@ -443,13 +443,21 @@ export default function MapView({
       canvasContextAttributes: { alpha: true },
     })
 
+    const userToggledAttribRef = { current: false }
     const collapseDefaultAttrib = () => {
+      if (userToggledAttribRef.current) return
       const attrib = host.querySelector('.maplibregl-ctrl-attrib')
       if (attrib) {
         attrib.classList.remove('maplibregl-compact-show')
         attrib.removeAttribute('open')
       }
     }
+    const onAttribClick = (e: Event) => {
+      if ((e.target as HTMLElement | null)?.closest('.maplibregl-ctrl-attrib-button')) {
+        userToggledAttribRef.current = true
+      }
+    }
+    host.addEventListener('click', onAttribClick, true)
     collapseDefaultAttrib()
     requestAnimationFrame(collapseDefaultAttrib)
 
@@ -944,11 +952,13 @@ export default function MapView({
     const ro = new ResizeObserver(() => {
       map.setMinZoom(computeGlobeMinZoom(host.clientWidth, host.clientHeight))
       map.resize()
+      collapseDefaultAttrib()
     })
     ro.observe(host)
 
     return () => {
       googleSessionAbort.abort()
+      host.removeEventListener('click', onAttribClick, true)
       cancelAnimationFrame(wipeRafRef.current)
       clearTimeout(wipeTimerRef.current)
       if (moveEndHandlerRef.current) map.off('moveend', moveEndHandlerRef.current)
