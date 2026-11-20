@@ -145,23 +145,28 @@ function RailItem({
       type="button"
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className="group flex w-full flex-col items-center gap-1 py-1.5"
+      className="group relative flex w-full flex-col items-center gap-0.5 rounded-2xl py-1.5"
     >
+      {active && (
+        <motion.span
+          layoutId="desktop-nav-pill"
+          transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+          className="absolute inset-x-1 inset-y-0.5 rounded-2xl bg-[#f4f5f7]"
+        />
+      )}
       <span
-        className={`relative grid h-10 w-12 place-items-center rounded-xl transition-colors ${
-          active
-            ? 'bg-[#f4f5f7] text-ink'
-            : 'text-ink-soft group-hover:bg-[#f4f5f7] group-hover:text-ink'
+        className={`relative z-10 grid h-9 w-11 place-items-center rounded-xl transition-colors ${
+          active ? 'text-ink' : 'text-ink-soft group-hover:text-ink'
         }`}
       >
         {children}
         {badge !== undefined && badge > 0 && (
-          <span className="num absolute -top-1 -right-0.5 grid min-w-5 place-items-center rounded-full border-2 border-white bg-[#2563eb] px-1 text-[10px] leading-4 text-white">
+          <span className="num absolute -top-0.5 -right-0.5 grid min-w-4.5 place-items-center rounded-full border-2 border-white bg-[#2563eb] px-1 text-[9.5px] leading-4 text-white">
             {badge}
           </span>
         )}
       </span>
-      <span className={`text-[11px] ${active ? 'font-medium text-ink' : 'font-light text-ink-soft'}`}>
+      <span className={`relative z-10 text-[10.5px] ${active ? 'font-medium text-ink' : 'font-light text-ink-soft group-hover:text-ink'}`}>
         {label}
       </span>
     </button>
@@ -202,6 +207,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const rightMenuRef = useRef<HTMLDivElement>(null)
   const switchTimerRef = useRef<number | null>(null)
   const logoRef = useRef<HTMLButtonElement>(null)
+  const navRef = useRef<HTMLElement>(null)
   const companionBoundsRef = useRef<HTMLDivElement>(null)
   const [companionOut, setCompanionOut] = useState(false)
   const [companionSeen, setCompanionSeen] = useState(() => readFlag(COMPANION_SEEN_KEY))
@@ -214,12 +220,29 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const pointSuggestionSeqRef = useRef(0)
   const [greetHour] = useState(() => new Date().getHours())
   const [viewportW, setViewportW] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440))
+  const [viewportH, setViewportH] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 900))
+  const [compactNavH, setCompactNavH] = useState(428)
 
   useEffect(() => {
-    const onResize = () => setViewportW(window.innerWidth)
+    const onResize = () => {
+      setViewportW(window.innerWidth)
+      setViewportH(window.innerHeight)
+    }
     window.addEventListener('resize', onResize, { passive: true })
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  useEffect(() => {
+    const el = navRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver((entries) => {
+      if (drawerOpen) return
+      const h = entries[0]?.contentRect.height
+      if (h && h > 100) setCompactNavH(Math.round(h))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [drawerOpen])
 
   const toggleCompanion = () => {
     const next = !companionOut
@@ -259,6 +282,11 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     : RAIL_GAP + RAIL_W + FLOAT_GAP
   const rawCompanionLeft = (chatOpen ? chatLeft + DRAWER_W : edge) - 4
   const companionLeft = Math.min(rawCompanionLeft, Math.max(RAIL_GAP + RAIL_W - 4, viewportW - 152))
+  const isCompactRail = !drawerOpen && !chatOpen
+  const pillInsetY = Math.max(16, Math.round((viewportH - compactNavH) / 2))
+  const companionBoundsTop = isCompactRail ? pillInsetY + 12 : 96
+  const companionBoundsBottom = isCompactRail ? pillInsetY + 20 : 24
+  const companionBottom = isCompactRail ? Math.max(COMPANION_BOTTOM, pillInsetY + 40) : COMPANION_BOTTOM
   const canOrganize = Boolean(
     profile && (profile.role === 'volunteer' || profile.role === 'agency' || profile.role === 'admin'),
   )
@@ -748,81 +776,100 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         />
       </div>
 
-      <nav
-        aria-label="Utama"
-        style={{ left: RAIL_GAP, width: RAIL_W }}
-        className="absolute top-4 bottom-4 z-[700] flex flex-col items-center rounded-[20px] border border-white/80 bg-white/95 py-4 shadow-[0_14px_38px_-6px_rgba(19,36,26,0.22),0_4px_12px_rgba(19,36,26,0.08)] backdrop-blur-md"
-      >
-        <button
-          ref={logoRef}
-          type="button"
-          onClick={toggleCompanion}
-          aria-label={companionOut ? 'Pulangkan Gajah Blam ke logo' : 'Panggil Gajah Blam (asisten AI)'}
-          aria-pressed={companionOut}
-          title={companionOut ? 'Pulangkan Gajah Blam' : 'Panggil Gajah Blam — asisten AI'}
-          className="group relative mb-3 grid size-13 shrink-0 place-items-center rounded-full transition-transform duration-120 hover:scale-105 active:scale-95"
-        >
-          <span aria-hidden="true" className="orb-sheen z-20 scale-110" />
-          <BlamNatureIcon
-            elephantAway={companionOut}
-            interactive={!companionOut}
-            className="relative z-10 size-full scale-115 drop-shadow-[0_2px_6px_rgba(11,27,77,0.22)] transition-transform duration-300 group-hover:-rotate-6"
-          />
-          {!companionSeen && !companionOut && (
-            <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 z-30 flex size-3.5">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-leaf/60" />
-              <span className="relative inline-flex size-3.5 rounded-full border-2 border-white bg-leaf" />
-            </span>
-          )}
-        </button>
-
-        <div className="flex w-full flex-1 flex-col overflow-y-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {navTabs.map((label) => {
-            const active = tab === label && drawerOpen
-            return (
-              <RailItem
-                key={label}
-                label={label}
-                active={active}
-                badge={label === 'Gerakan' ? openCount : undefined}
-                onClick={() => openTab(label)}
-              >
-                {renderRailIcon(label)}
-              </RailItem>
-            )
-          })}
-        </div>
-
-        <div className="w-full px-1 pt-2">
-          <RailItem
-            label={profile ? 'Profil' : 'Masuk'}
-            active={tab === 'Profil' && drawerOpen}
-            onClick={() => openTab('Profil')}
-          >
-            {profile?.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={profile.full_name}
-                referrerPolicy="no-referrer"
-                className="size-6 rounded-full object-cover"
-              />
-            ) : initials ? (
-              <span className="font-display text-sm font-bold text-forest">{initials}</span>
-            ) : (
-              <GuestAvatarIcon />
-            )}
-          </RailItem>
-        </div>
-      </nav>
-
       <MotionConfig reducedMotion="user">
+        <div
+          style={{ left: RAIL_GAP, width: RAIL_W }}
+          className="pointer-events-none absolute top-4 bottom-4 z-[700] flex flex-col justify-center"
+        >
+          <motion.nav
+            ref={navRef}
+            layout
+            initial={false}
+            animate={{ borderRadius: drawerOpen ? 20 : 9999 }}
+            transition={{
+              layout: { type: 'spring', stiffness: 320, damping: 30 },
+              borderRadius: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+            }}
+            aria-label="Utama"
+            className={`pointer-events-auto flex w-full flex-col items-center border border-white/80 bg-white/95 px-1 shadow-[0_14px_38px_-6px_rgba(19,36,26,0.22),0_4px_12px_rgba(19,36,26,0.08)] backdrop-blur-md ${
+              drawerOpen ? 'flex-1 py-4' : 'max-h-full py-3'
+            }`}
+          >
+            <motion.button
+              layout="position"
+              ref={logoRef}
+              type="button"
+              onClick={toggleCompanion}
+              aria-label={companionOut ? 'Pulangkan Gajah Blam ke logo' : 'Panggil Gajah Blam (asisten AI)'}
+              aria-pressed={companionOut}
+              title={companionOut ? 'Pulangkan Gajah Blam' : 'Panggil Gajah Blam — asisten AI'}
+              className={`group relative grid size-12 shrink-0 place-items-center rounded-full transition-transform duration-120 hover:scale-105 active:scale-95 ${
+                drawerOpen ? 'mb-3' : 'mb-2'
+              }`}
+            >
+              <span aria-hidden="true" className="orb-sheen z-20 scale-105" />
+              <BlamNatureIcon
+                elephantAway={companionOut}
+                interactive={!companionOut}
+                className="relative z-10 size-10.5 drop-shadow-[0_2px_6px_rgba(11,27,77,0.22)] transition-transform duration-300 group-hover:-rotate-6"
+              />
+              {!companionSeen && !companionOut && (
+                <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 z-30 flex size-3.5">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-leaf/60" />
+                  <span className="relative inline-flex size-3.5 rounded-full border-2 border-white bg-leaf" />
+                </span>
+              )}
+            </motion.button>
+
+            <motion.div
+              layout="position"
+              className={`flex w-full flex-col gap-0.5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+                drawerOpen ? 'flex-1' : ''
+              }`}
+            >
+              {navTabs.map((label) => (
+                <RailItem
+                  key={label}
+                  label={label}
+                  active={tab === label && drawerOpen}
+                  badge={label === 'Gerakan' ? openCount : undefined}
+                  onClick={() => openTab(label)}
+                >
+                  {renderRailIcon(label)}
+                </RailItem>
+              ))}
+            </motion.div>
+
+            <motion.div layout="position" className="mt-1 w-full border-t border-line pt-1.5">
+              <RailItem
+                label={profile ? 'Profil' : 'Masuk'}
+                active={tab === 'Profil' && drawerOpen}
+                onClick={() => openTab('Profil')}
+              >
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.full_name}
+                    referrerPolicy="no-referrer"
+                    className="size-6 rounded-full object-cover"
+                  />
+                ) : initials ? (
+                  <span className="font-display text-sm font-bold text-forest">{initials}</span>
+                ) : (
+                  <GuestAvatarIcon />
+                )}
+              </RailItem>
+            </motion.div>
+          </motion.nav>
+        </div>
+
         <motion.div
           aria-hidden="true"
           initial={false}
           animate={
             drawerOpen
-              ? { opacity: 1, clipPath: 'inset(0% 0% 0% 0% round 34px)' }
-              : { opacity: 0, clipPath: 'inset(0% 84% 0% 0% round 34px)' }
+              ? { opacity: 1, clipPath: 'inset(0% 0% 0% 0% round 26px)' }
+              : { opacity: 0, clipPath: 'inset(0% 84% 0% 0% round 26px)' }
           }
           transition={
             drawerOpen
@@ -833,7 +880,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             left: RAIL_GAP - 6,
             width: RAIL_W + FLOAT_GAP + DRAWER_W + 12,
           }}
-          className={`pointer-events-none absolute top-[10px] bottom-[10px] z-[590] rounded-[34px] backdrop-blur-xl ${
+          className={`pointer-events-none absolute top-[10px] bottom-[10px] z-[590] rounded-[26px] backdrop-blur-xl ${
             isDarkMap
               ? 'border border-white/40 bg-gradient-to-br from-[#dff6e6]/34 via-[#c9ead3]/24 to-[#b4dec1]/20 shadow-[0_22px_50px_-10px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.48)]'
               : 'border border-leaf/25 bg-gradient-to-br from-[#e2f5e7]/84 via-[#d4eedb]/76 to-[#c4e6ce]/70 shadow-[0_22px_50px_-10px_rgba(19,36,26,0.18),inset_0_1px_1px_rgba(255,255,255,0.9)]'
@@ -1135,11 +1182,16 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         </Orb>
       </div>
 
-      {/* area batas seret Gajah Blam (sepanjang tepi kanan panel/chat/navbar) */}
+      {/* area batas seret Gajah Blam (menyesuaikan navbar dinamis / panel / chat) */}
       <div
         ref={companionBoundsRef}
         aria-hidden="true"
-        style={{ left: companionLeft, width: 140, top: 96, bottom: 24 }}
+        style={{
+          left: companionLeft,
+          width: 140,
+          top: companionBoundsTop,
+          bottom: companionBoundsBottom,
+        }}
         className="pointer-events-none absolute"
       />
 
@@ -1151,7 +1203,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               logoRef={logoRef}
               boundsRef={companionBoundsRef}
               left={companionLeft}
-              bottom={COMPANION_BOTTOM}
+              bottom={companionBottom}
               chatOpen={chatOpen}
               chatBusy={chatOpen && chatBusy}
               replyPulse={replyPulse}

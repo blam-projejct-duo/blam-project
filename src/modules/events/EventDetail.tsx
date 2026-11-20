@@ -144,9 +144,12 @@ export default function EventDetail({
   const pulseTiles = formatPulseTiles(pulse)
   const score = latestAction?.ai_recovery_score ?? event.report?.ai_confidence ?? null
   const recommendations = event.report?.ai_recommendations ?? []
-  const photoClass = 'relative aspect-[16/10] @md:aspect-[2/1] overflow-hidden rounded-card bg-muted'
-  const labelClass = 'absolute top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-ink'
+  const photoClass = 'relative -mx-5 aspect-[4/3] overflow-hidden bg-muted'
+  const labelClass = 'absolute top-3 rounded-md bg-white/92 px-2.5 py-1 text-[11px] font-semibold text-ink'
   const quotaText = event.max_participants ? `${participantsCount}/${event.max_participants}` : `${participantsCount}`
+  const quotaPct = event.max_participants
+    ? Math.min(100, Math.round((participantsCount / Math.max(1, event.max_participants)) * 100))
+    : null
   const routeForEvent = activeRoute?.eventId === event.id ? activeRoute : null
   const googleMapsUrl = routeForEvent
     ? `https://www.google.com/maps/dir/?api=1&origin=${routeForEvent.origin.lat},${routeForEvent.origin.lng}&destination=${event.lat},${event.lng}&travelmode=driving`
@@ -157,97 +160,10 @@ export default function EventDetail({
 
   return (
     <div className="@container flex flex-col gap-4">
-      <header className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2 text-[11.5px] font-light text-ink-soft">
-          <StatusPill status={event.status} />
-          {score !== null && <span>AI {score}%</span>}
-          {event.visibility === 'members_only' && <Lock className="size-3" aria-label="Khusus anggota" />}
-        </div>
-        <h2 className="mt-1 text-[20px] leading-snug font-semibold tracking-tight text-ink">
-          {event.title}
-        </h2>
-        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12.5px] font-light text-ink-soft">
-          {event.organization && <span>{event.organization.name}</span>}
-          {event.organization && <span aria-hidden="true">·</span>}
-          <span>{event.category}</span>
-          {event.ref_source && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span>{event.ref_source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'}</span>
-            </>
-          )}
-        </p>
-      </header>
-
-      <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
-        {event.status !== 'resolved' && event.status !== 'cancelled' && (
-          <button
-            type="button"
-            disabled={busyJoin || joined}
-            onClick={() => void handleJoin()}
-            aria-pressed={joined}
-            className={`h-9.5 shrink-0 px-4 text-[13px] ${joined ? 'btn-joined' : 'btn-primary'} disabled:opacity-80`}
-          >
-            {joined && <Check className="size-4" strokeWidth={2.5} />}
-            {joined ? 'Tergabung' : membersOnlyLocked ? 'Khusus anggota' : 'Gabung'} · {quotaText}
-          </button>
-        )}
-        {onStartRoute && (
-          <button
-            type="button"
-            disabled={routeLoading}
-            onClick={() => (routeForEvent ? onClearRoute?.() : void onStartRoute())}
-            aria-pressed={Boolean(routeForEvent)}
-            className={`inline-flex h-9.5 shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-normal transition-colors disabled:opacity-60 ${
-              routeForEvent
-                ? 'bg-ink text-white'
-                : 'bg-[#f4f5f7] text-ink hover:bg-[#eaecf0]'
-            }`}
-          >
-            <Navigation className="size-3.5" />
-            {routeLoading ? 'Rute…' : 'Rute'}
-          </button>
-        )}
-        {canResolve && (
-          <button
-            type="button"
-            onClick={() => setResolveOpen(true)}
-            className="inline-flex h-9.5 shrink-0 items-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3.5 text-[13px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
-          >
-            <Camera className="size-3.5" />
-            Lapor Selesai
-          </button>
-        )}
-        {canResolve && (
-          <button
-            type="button"
-            onClick={() => setQrOpen(true)}
-            aria-label="QR Gerakan"
-            className="inline-flex h-9.5 shrink-0 items-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[13px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
-          >
-            <QrCode className="size-3.5" />
-            QR
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => void copyLink()}
-          aria-label="Salin tautan gerakan"
-          className="inline-flex h-9.5 shrink-0 items-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[13px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
-        >
-          {copied ? <Check className="size-3.5 text-[#2563eb]" strokeWidth={2.5} /> : <Link2 className="size-3.5" />}
-          {copied ? 'Tersalin' : 'Bagikan'}
-        </button>
-      </div>
-
-      {actionError && (
-        <p role="alert" className="rounded-xl bg-critical/8 px-3.5 py-2.5 text-[12px] font-normal text-critical">
-          {actionError}
-        </p>
-      )}
-
       {resolved && latestAction && beforeImage ? (
-        <BeforeAfterSlider before={beforeImage} after={latestAction.after_image_url} />
+        <div className="-mx-5 overflow-hidden">
+          <BeforeAfterSlider before={beforeImage} after={latestAction.after_image_url} />
+        </div>
       ) : resolved && latestAction ? (
         <div className={photoClass}>
           <img src={latestAction.after_image_url} alt="Kondisi sesudah" className="size-full object-cover" />
@@ -259,10 +175,117 @@ export default function EventDetail({
           <span className={`${labelClass} left-3`}>Sebelum</span>
         </div>
       ) : (
-        <div className={`${photoClass} flex flex-col items-center justify-center gap-1 bg-canvas px-4 text-center`}>
-          <p className="text-[13.5px] font-semibold text-ink">{event.category}</p>
-          <p className="text-[11.5px] font-normal text-ink-soft">{placeText(place)}</p>
+        <div className={`${photoClass} flex flex-col items-center justify-center gap-1 bg-[#f4f5f7] px-6 text-center`}>
+          <p className="text-[15px] font-semibold text-ink">{event.category}</p>
+          <p className="text-[12.5px] font-light text-ink-soft">{placeText(place)}</p>
         </div>
+      )}
+
+      <header className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center gap-2 text-[11.5px] font-light text-ink-soft">
+          <StatusPill status={event.status} />
+          {score !== null && <span>AI {score}%</span>}
+          {event.visibility === 'members_only' && <Lock className="size-3" aria-label="Khusus anggota" />}
+        </div>
+        <h2 className="text-[20px] leading-snug font-semibold tracking-tight text-ink">
+          {event.title}
+        </h2>
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12.5px] font-light text-ink-soft">
+          {event.organization && <span className="font-normal text-ink">{event.organization.name}</span>}
+          {event.organization && <span aria-hidden="true">·</span>}
+          <span>{event.category}</span>
+          {event.ref_source && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>{event.ref_source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'}</span>
+            </>
+          )}
+        </p>
+      </header>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between gap-2 text-[12.5px]">
+          <p className="num font-semibold text-[#2563eb]">
+            {participantsCount} relawan
+            {event.max_participants && (
+              <span className="font-light text-ink-soft"> dari {event.max_participants} kuota</span>
+            )}
+          </p>
+          {scheduleLabel && <span className="text-[12px] font-light text-ink-soft">{scheduleLabel}</span>}
+        </div>
+        {quotaPct !== null && (
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#f4f5f7]">
+            <div className="h-full rounded-full bg-[#2563eb] transition-all duration-300" style={{ width: `${quotaPct}%` }} />
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {event.status !== 'resolved' && event.status !== 'cancelled' && (
+          <button
+            type="button"
+            disabled={busyJoin || joined}
+            onClick={() => void handleJoin()}
+            aria-pressed={joined}
+            className={`h-11 w-full text-[14px] ${joined ? 'btn-joined' : 'btn-primary'} disabled:opacity-80`}
+          >
+            {joined && <Check className="size-4" strokeWidth={2.5} />}
+            {joined ? 'Tergabung' : membersOnlyLocked ? 'Khusus anggota' : 'Gabung Gerakan'} · {quotaText}
+          </button>
+        )}
+
+        <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none]">
+          {onStartRoute && (
+            <button
+              type="button"
+              disabled={routeLoading}
+              onClick={() => (routeForEvent ? onClearRoute?.() : void onStartRoute())}
+              aria-pressed={Boolean(routeForEvent)}
+              className={`inline-flex h-9 shrink-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-[12.5px] font-normal transition-colors disabled:opacity-60 ${
+                routeForEvent ? 'bg-ink text-white' : 'bg-[#f4f5f7] text-ink hover:bg-[#eaecf0]'
+              }`}
+            >
+              <Navigation className="size-3.5" />
+              {routeLoading ? 'Rute…' : 'Rute'}
+            </button>
+          )}
+          {canResolve && (
+            <button
+              type="button"
+              onClick={() => setResolveOpen(true)}
+              className="inline-flex h-9 shrink-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[12.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
+            >
+              <Camera className="size-3.5" />
+              Lapor Selesai
+            </button>
+          )}
+          {canResolve && (
+            <button
+              type="button"
+              onClick={() => setQrOpen(true)}
+              aria-label="QR Gerakan"
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[12.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
+            >
+              <QrCode className="size-3.5" />
+              QR
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => void copyLink()}
+            aria-label="Salin tautan gerakan"
+            className="inline-flex h-9 shrink-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[12.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
+          >
+            {copied ? <Check className="size-3.5 text-[#2563eb]" strokeWidth={2.5} /> : <Link2 className="size-3.5" />}
+            {copied ? 'Tersalin' : 'Bagikan'}
+          </button>
+        </div>
+      </div>
+
+      {actionError && (
+        <p role="alert" className="rounded-xl bg-critical/8 px-3.5 py-2.5 text-[12px] font-normal text-critical">
+          {actionError}
+        </p>
       )}
 
       {(routeLoading || routeError || routeForEvent) && (

@@ -830,10 +830,13 @@ export default function BlamCompanion({
           draggedRef.current = false
         }, 80)
       }}
-      initial={{ left }}
-      animate={{ left }}
-      transition={{ left: { duration: 0.36, ease: [0.22, 1, 0.36, 1] } }}
-      style={{ bottom, width: BOX_W, height: BOX_H, zIndex: chatOpen ? 1010 : 710 }}
+      initial={{ left, bottom }}
+      animate={{ left, bottom }}
+      transition={{
+        left: { duration: 0.36, ease: [0.22, 1, 0.36, 1] },
+        bottom: { duration: 0.36, ease: [0.22, 1, 0.36, 1] },
+      }}
+      style={{ width: BOX_W, height: BOX_H, zIndex: chatOpen ? 1010 : 710 }}
       className="pointer-events-none absolute select-none"
     >
       {/* dahan */}

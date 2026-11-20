@@ -1,7 +1,10 @@
-import { HeartHandshake, Loader2, MapPin, X } from 'lucide-react'
+import { HeartHandshake, ImagePlus, Loader2, MapPin, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
+import type { ChangeEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { createFundraising } from '../../lib/api'
+import { compressImage } from '../../lib/imageCompress'
+import type { CompressedImage } from '../../lib/imageCompress'
 import type { HazardKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import { formatRupiah } from './useFundraisings'
@@ -41,8 +44,27 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
   const [targetAmount, setTargetAmount] = useState<number>(10_000_000)
   const [customTarget, setCustomTarget] = useState<string>('10000000')
   const [organizationId, setOrganizationId] = useState<string>(activeOrgs[0]?.organization_id ?? '')
+  const [photo, setPhoto] = useState<CompressedImage | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const handlePhotoChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setError(null)
+    try {
+      if (photo) URL.revokeObjectURL(photo.previewUrl)
+      setPhoto(await compressImage(file))
+    } catch {
+      setError('Foto gagal dibaca')
+    }
+  }
+
+  const removePhoto = () => {
+    if (photo) URL.revokeObjectURL(photo.previewUrl)
+    setPhoto(null)
+  }
 
   const handleSelectPreset = (amount: number) => {
     setTargetAmount(amount)
@@ -79,6 +101,8 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
         lat: signal.lat,
         lng: signal.lng,
         targetAmount,
+        coverImageBase64: photo?.base64,
+        coverMimeType: photo?.mimeType,
         organizationId: organizationId || undefined,
       })
       await onCreated()
@@ -170,6 +194,36 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
               className="w-full resize-none rounded-xl bg-[#f4f5f7] p-3.5 text-sm leading-relaxed font-light text-ink transition focus:bg-[#eaecf0] focus:outline-none"
             />
           </label>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">
+              Foto Sampul (Opsional)
+            </span>
+            {photo ? (
+              <div className="relative h-36 w-full overflow-hidden rounded-xl border border-line bg-[#f4f5f7]">
+                <img src={photo.previewUrl} alt="Pratinjau sampul" className="size-full object-cover" />
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  aria-label="Hapus foto"
+                  className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-ink/70 text-white transition hover:bg-ink"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line bg-[#f4f5f7] text-xs font-light text-ink-soft transition hover:bg-[#eaecf0]">
+                <ImagePlus className="size-5 text-leaf" />
+                <span>Pilih foto lokasi atau kondisi lapangan</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => void handlePhotoChange(e)}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
 
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center justify-between gap-2">
