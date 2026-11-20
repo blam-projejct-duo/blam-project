@@ -7,14 +7,13 @@ import { sendBlamChat } from '../../lib/api'
 import type { BlamChatAction, BlamChatContext, BlamChatTurn } from '../../lib/api'
 
 const STARTERS = [
-  'Aksi apa yang lagi jalan sekarang?',
-  'Cara lapor temuan pakai Blam Snap',
+  'Gerakan apa yang lagi jalan?',
+  'Cara lapor lewat Blam Snap',
 ] as const
 
 const LOADING_PHASES = [
-  'Gajah Blam lagi mikir…',
-  'Mengintip catatan alam…',
-  'Merangkai jawabanmu…',
+  'Sebentar ya…',
+  'Mengecek data…',
 ] as const
 
 function BlamThinkingBubble() {
@@ -51,8 +50,8 @@ function BlamThinkingBubble() {
         </motion.span>
       </div>
 
-      <div className="relative flex items-center gap-2.5 overflow-hidden rounded-[20px] rounded-tl-md bg-[#f5f7ff] px-3.5 py-2.5">
-        <DashedOutline rx={19} />
+      <div className="relative flex items-center gap-2.5 overflow-hidden rounded-[14px] rounded-tl-md bg-[#f4f5f7] px-3.5 py-2.5">
+        <DashedOutline rx={13} />
 
         <div className="flex items-center gap-1" aria-hidden="true">
           {[0, 1, 2].map((idx) => (
@@ -65,7 +64,7 @@ function BlamThinkingBubble() {
                 delay: idx * 0.15,
                 ease: 'easeInOut',
               }}
-              className="size-1.5 rounded-full bg-leaf/75"
+              className="size-1.5 rounded-full bg-ink-soft/60"
             />
           ))}
         </div>
@@ -91,7 +90,7 @@ function BlamThinkingBubble() {
 
 const GREETING: BlamChatTurn = {
   role: 'assistant',
-  text: 'Mau cek aksi sekitar, lapor temuan, atau tanya kondisi lapangan?',
+  text: 'Mau cek gerakan sekitar atau tanya kondisi lapangan?',
 }
 
 const CHAT_STORAGE_KEY = 'blam:chat:history:v1'
@@ -322,8 +321,8 @@ export default function BlamChatModal({
         style={isCompanion ? { transformOrigin: 'left center' } : undefined}
         className={
           isCompanion
-            ? 'pointer-events-auto absolute top-[70px] bottom-4 flex w-[392px] flex-col overflow-hidden rounded-[28px] border border-white/80 bg-white/97 shadow-[0_18px_46px_-8px_rgba(19,36,26,0.28)] backdrop-blur-md'
-            : 'flex h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-line bg-white md:h-[640px] md:max-w-[460px] md:rounded-[28px]'
+            ? 'pointer-events-auto absolute top-[70px] bottom-4 flex w-[392px] flex-col overflow-hidden rounded-[20px] border border-white/80 bg-white/97 shadow-[0_18px_46px_-8px_rgba(19,36,26,0.28)] backdrop-blur-md'
+            : 'flex h-[90dvh] w-full flex-col overflow-hidden rounded-t-[20px] border border-line bg-white md:h-[640px] md:max-w-[460px] md:rounded-[20px]'
         }
       >
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
@@ -340,7 +339,7 @@ export default function BlamChatModal({
                 onClick={resetChat}
                 aria-label="Chat baru"
                 title="Chat baru"
-                className="grid size-9 place-items-center rounded-full bg-[#f5f7ff] text-forest transition-colors hover:bg-mint/55"
+                className="grid size-9 place-items-center rounded-xl bg-[#f4f5f7] text-ink transition-colors hover:bg-[#eaecf0]"
               >
                 <RotateCcw className="size-3.5" />
               </button>
@@ -349,7 +348,7 @@ export default function BlamChatModal({
               type="button"
               onClick={onClose}
               aria-label="Tutup"
-              className="grid size-9 place-items-center rounded-full bg-[#f5f7ff] text-forest transition-colors hover:bg-mint/55"
+              className="grid size-9 place-items-center rounded-xl bg-[#f4f5f7] text-ink transition-colors hover:bg-[#eaecf0]"
             >
               <X className="size-4" />
             </button>
@@ -367,7 +366,7 @@ export default function BlamChatModal({
                   transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                   className="flex justify-end"
                 >
-                  <div className="max-w-[82%] rounded-[18px] rounded-br-md bg-leaf px-3.5 py-2 text-[12px] leading-[1.45] font-normal text-white shadow-[0_2px_8px_rgba(37,61,212,0.18)]">
+                  <div className="max-w-[82%] rounded-[14px] rounded-br-md bg-[#2563eb] px-3.5 py-2 text-[12px] leading-[1.45] font-normal text-white shadow-[0_2px_8px_rgba(37,99,235,0.16)]">
                     {m.text}
                   </div>
                 </motion.div>
@@ -383,8 +382,8 @@ export default function BlamChatModal({
                     <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full border border-line bg-white">
                       <BlamAiAvatarIcon withBadge={false} className="size-5.5" />
                     </span>
-                    <div className="relative max-w-[85%] rounded-[20px] rounded-tl-md bg-[#f5f7ff] px-4 py-3 text-ink">
-                      <DashedOutline rx={19} />
+                    <div className="relative max-w-[85%] rounded-[14px] rounded-tl-md bg-[#f4f5f7] px-4 py-3 text-ink">
+                      <DashedOutline rx={13} />
                       <FormattedText text={m.text} />
                     </div>
                   </div>
@@ -395,10 +394,10 @@ export default function BlamChatModal({
                           key={`${act.type}-${idx}`}
                           type="button"
                           onClick={() => onAction(act)}
-                          className="group flex items-center justify-between gap-3 rounded-[18px] bg-mint/45 px-3.5 py-2.5 text-left transition-colors hover:bg-mint/70"
+                          className="group flex items-center justify-between gap-3 rounded-[14px] bg-[#f4f5f7] px-3.5 py-2.5 text-left transition-colors hover:bg-[#eaecf0]"
                         >
                           <span className="flex min-w-0 items-center gap-2.5">
-                            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#5673ff] to-[#2a43e0] text-white">
+                            <span className="blam-gradient grid size-9 shrink-0 place-items-center rounded-[10px] text-white">
                               {act.type === 'focus_map_point' ? (
                                 <MapPin className="size-4.5" />
                               ) : (
@@ -406,7 +405,7 @@ export default function BlamChatModal({
                               )}
                             </span>
                             <span className="min-w-0">
-                              <span className="block truncate text-[12px] font-normal text-forest">
+                              <span className="block truncate text-[12px] font-normal text-ink">
                                 {act.label}
                               </span>
                               <span className="block truncate text-[11px] font-light text-ink-soft">
@@ -414,7 +413,7 @@ export default function BlamChatModal({
                               </span>
                             </span>
                           </span>
-                          <ArrowUpRight className="size-4 shrink-0 text-forest transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                          <ArrowUpRight className="size-4 shrink-0 text-ink-soft transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                         </button>
                       ))}
                     </div>
@@ -441,7 +440,7 @@ export default function BlamChatModal({
                     key={q}
                     type="button"
                     onClick={() => void submit(q)}
-                    className="rounded-full bg-[#f5f7ff] px-3 py-1.5 text-left text-[11.5px] leading-[1.4] font-light text-forest transition-colors hover:bg-mint/50"
+                    className="rounded-xl bg-[#f4f5f7] px-3 py-1.5 text-left text-[11.5px] leading-[1.4] font-light text-ink transition-colors hover:bg-[#eaecf0]"
                   >
                     {q}
                   </button>
@@ -469,9 +468,9 @@ export default function BlamChatModal({
                     setDismissedSuggestionKey(activeSuggestion.key)
                     void submit(prompt, { contextOverride: activeSuggestion.context })
                   }}
-                  className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-leaf/15 bg-[#f5f7ff] px-3 py-1.5 text-left text-[11.5px] font-medium text-forest transition-colors hover:bg-mint/60"
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 py-1.5 text-left text-[11.5px] font-medium text-ink transition-colors hover:bg-[#eaecf0]"
                 >
-                  <CornerDownRight className="size-3.5 shrink-0 text-leaf" />
+                  <CornerDownRight className="size-3.5 shrink-0 text-[#2563eb]" />
                   <span className="truncate">{prompt}</span>
                 </button>
               ))}
@@ -490,15 +489,15 @@ export default function BlamChatModal({
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Tanya kondisi alam, aksi, atau Blam…"
+            placeholder="Tanya kondisi sekitar atau Blam…"
             maxLength={1000}
-            className="h-10 min-w-0 flex-1 rounded-full bg-[#f5f7ff] px-3.5 text-[12px] font-normal text-ink outline-none placeholder:font-light placeholder:text-ink-soft focus:bg-mint/35"
+            className="h-10 min-w-0 flex-1 rounded-xl bg-[#f4f5f7] px-3.5 text-[12px] font-normal text-ink outline-none placeholder:font-light placeholder:text-ink-soft focus:bg-[#eaecf0]"
           />
           <button
             type="submit"
             disabled={busy || !input.trim()}
             aria-label="Kirim pesan"
-            className="btn-primary grid size-10 shrink-0 place-items-center rounded-full disabled:opacity-45"
+            className="btn-primary grid size-10 shrink-0 place-items-center rounded-xl disabled:opacity-45"
           >
             <Send className="size-4" />
           </button>

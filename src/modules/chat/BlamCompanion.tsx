@@ -954,7 +954,7 @@ export default function BlamCompanion({
                     <button
                       type="button"
                       onClick={onDismiss}
-                      className="flex items-center justify-center gap-1.5 rounded-full bg-[#f5f7ff] px-2.5 py-1.5 text-[11px] text-ink-soft transition-colors hover:bg-mint/50 hover:text-forest"
+                      className="flex items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-2.5 py-1.5 text-[11px] text-ink-soft transition-colors hover:bg-[#eaecf0] hover:text-ink"
                     >
                       <MoonStar className="size-3.5" /> Pulang
                     </button>

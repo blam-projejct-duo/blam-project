@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Ban, CalendarPlus, Check, MapPin, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { DashedOutline, Pill, ReportStatusPill } from '../../components/ui/atoms'
+import { DashedOutline, ReportStatusPill } from '../../components/ui/atoms'
 import { fetchReportsQueue, verifyCitizenReport } from '../../lib/api'
 import { ECOSYSTEM_LABEL } from '../../lib/constants'
 import type { CitizenReport, ReportStatus } from '../../types'
@@ -95,10 +95,10 @@ export default function VerificationRadarPanel({
             key={t.id}
             type="button"
             onClick={() => setFilter(t.id)}
-            className={`h-8 rounded-full px-3 text-[11.5px] transition-colors ${
+            className={`h-8 rounded-lg px-3 text-[11.5px] transition-colors ${
               filter === t.id
-                ? 'bg-leaf font-medium text-white'
-                : 'bg-[#f5f7ff] font-light text-ink-soft hover:text-forest'
+                ? 'bg-ink font-medium text-white'
+                : 'bg-[#f4f5f7] font-light text-ink-soft hover:text-ink'
             }`}
           >
             {t.label}
@@ -107,7 +107,7 @@ export default function VerificationRadarPanel({
       </div>
 
       {error && (
-        <p role="alert" className="rounded-card bg-[#f5f7ff] px-4 py-3 text-xs font-light text-ink">
+        <p role="alert" className="rounded-card bg-[#f4f5f7] px-4 py-3 text-xs font-light text-ink">
           {error}
         </p>
       )}
@@ -115,22 +115,22 @@ export default function VerificationRadarPanel({
       {queueQuery.isPending && !queueQuery.data ? (
         <p className="py-8 text-center text-sm font-light text-ink-soft">Memuat antrean…</p>
       ) : queueQuery.isError && !queueQuery.data ? (
-        <div className="relative rounded-[20px] bg-[#f5f7ff] p-5 text-center">
-          <DashedOutline rx={19} />
+        <div className="relative rounded-[14px] bg-[#f4f5f7] p-5 text-center">
+          <DashedOutline rx={13} />
           <p className="text-xs font-light text-ink-soft">
             {queueQuery.error instanceof Error ? queueQuery.error.message : 'Gagal memuat antrean'}
           </p>
           <button
             type="button"
             onClick={() => void queueQuery.refetch()}
-            className="mt-3 h-9 rounded-full bg-white px-4 text-xs font-normal text-ink shadow-[0_1px_2px_rgba(18,29,79,0.04)]"
+            className="mt-3 h-9 rounded-xl bg-white px-4 text-xs font-normal text-ink shadow-[0_1px_2px_rgba(18,29,79,0.04)]"
           >
             Muat Ulang
           </button>
         </div>
       ) : reports.length === 0 ? (
-        <p className="relative rounded-[20px] bg-[#f5f7ff] p-6 text-center text-sm font-semibold text-ink-soft">
-          <DashedOutline rx={19} />
+        <p className="relative rounded-[14px] bg-[#f4f5f7] p-6 text-center text-sm font-semibold text-ink-soft">
+          <DashedOutline rx={13} />
           Kosong
         </p>
       ) : (
@@ -140,12 +140,12 @@ export default function VerificationRadarPanel({
             const canCreateEvent = r.status === 'verified' || r.status === 'escalated'
             const isPending = r.status === 'pending_verification' || r.status === 'escalated'
             return (
-              <article key={r.id} className="relative overflow-hidden rounded-[20px] bg-[#f5f7ff]">
-                <DashedOutline rx={19} />
+              <article key={r.id} className="relative overflow-hidden rounded-[14px] bg-[#f4f5f7]">
+                <DashedOutline rx={13} />
                 {r.before_image_url && (
                   <div className="relative aspect-[16/9] w-full bg-muted">
                     <img src={r.before_image_url} alt={r.title} className="size-full object-cover" />
-                    <span className="num absolute top-2.5 right-2.5 rounded-full bg-white/92 px-2.5 py-1 text-[11px] font-extrabold text-ink">
+                    <span className="num absolute top-2.5 right-2.5 rounded-md bg-white/92 px-2 py-0.5 text-[11px] font-semibold text-ink">
                       AI {r.ai_confidence}%
                     </span>
                   </div>
@@ -154,7 +154,7 @@ export default function VerificationRadarPanel({
                 <div className="flex flex-col gap-2.5 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <ReportStatusPill status={r.status} />
-                    <Pill>{ECOSYSTEM_LABEL[r.ecosystem]}</Pill>
+                    <span className="text-[11.5px] font-light text-ink-soft">{ECOSYSTEM_LABEL[r.ecosystem]}</span>
                   </div>
 
                   <div>

@@ -9,7 +9,7 @@ import { hazardToSignal, severityRank } from './hotspotCluster'
 import type { HazardPoint } from './hotspotCluster'
 import { getIndonesiaWipeSources, INDONESIA_GEOJSON, WIPE_SOFTNESS } from './indonesiaWipe'
 import { ensureEventPinImages, eventPinImageId, registerHazardIcons, syncUserMarkerElement } from './mapMarkers'
-import { applyMapStyle, createInitialMapStyle } from './mapStyles'
+import { applyMapStyle, createInitialMapStyle, ensureGoogleSatelliteLayer } from './mapStyles'
 import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from './radarFilters'
 import SpaceBackdrop from './SpaceBackdrop'
 import type { SpaceCameraState } from './SpaceBackdrop'
@@ -221,7 +221,7 @@ function createHazardPopupNode(h: HazardPoint): HTMLDivElement {
   const dateLabel = formatSignalDate(h)
   const tierLabel =
     h.verificationState === 'has_action'
-      ? 'Sudah Ada Aksi'
+      ? 'Ada Gerakan'
       : h.verificationState === 'verified'
         ? 'Terverifikasi'
         : 'Prediksi Satelit'
@@ -555,8 +555,11 @@ export default function MapView({
       .setLngLat(DEFAULT_CENTER)
       .addTo(map)
 
+    const googleSessionAbort = new AbortController()
+
     map.once('load', () => {
       readyRef.current = true
+      void ensureGoogleSatelliteLayer(map, styleRef.current, googleSessionAbort.signal)
       collapseDefaultAttrib()
 
       const fillBefore = map.getLayer('building') ? 'building' : undefined
@@ -945,6 +948,7 @@ export default function MapView({
     ro.observe(host)
 
     return () => {
+      googleSessionAbort.abort()
       cancelAnimationFrame(wipeRafRef.current)
       clearTimeout(wipeTimerRef.current)
       if (moveEndHandlerRef.current) map.off('moveend', moveEndHandlerRef.current)

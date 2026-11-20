@@ -8,7 +8,7 @@ export const LAYER_CHIPS: ReadonlyArray<{ layer: RadarLayer; label: string; dot:
   { layer: 'suspected', label: 'Titik Panas', dot: 'bg-progress' },
   { layer: 'flood', label: 'Banjir', dot: 'bg-cobalt' },
   { layer: 'volcano', label: 'Gunung Berapi', dot: 'bg-purple-600' },
-  { layer: 'event', label: 'Event Aksi', dot: 'bg-resolved' },
+  { layer: 'event', label: 'Gerakan', dot: 'bg-resolved' },
 ]
 
 function matchesHazardLayer(layers: Set<RadarLayer>, kind?: HazardKind): boolean {

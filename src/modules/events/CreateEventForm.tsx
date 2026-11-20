@@ -20,10 +20,10 @@ const ECOS: { id: Ecosystem; label: string }[] = [
   { id: 'watershed', label: 'Muara' },
 ]
 
-const CATEGORIES = ['Aksi Pemulihan', 'Bersih Sampah', 'Tanam Bibit', 'Pantau Satelit']
+const CATEGORIES = ['Pemulihan', 'Bersih Sampah', 'Tanam Bibit', 'Pantau Satelit']
 
 const field =
-  'h-11 w-full rounded-full bg-[#f5f7ff] px-4 text-sm font-normal text-ink placeholder:font-light placeholder:text-ink-soft focus:bg-mint/35 focus:outline-none'
+  'h-11 w-full rounded-xl bg-[#f4f5f7] px-3.5 text-sm font-normal text-ink placeholder:font-light placeholder:text-ink-soft focus:bg-[#eaecf0] focus:outline-none'
 
 export default function CreateEventForm({ initialReport, initialSignal, onClose, onCreated }: Props) {
   const queryClient = useQueryClient()
@@ -58,7 +58,7 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
     initialReport?.ecosystem ?? initialSignal?.ecosystem ?? 'coastal_mangrove',
   )
   const [category, setCategory] = useState(
-    initialReport?.threat_category ?? (initialSignal ? 'Pantau Satelit' : 'Aksi Pemulihan'),
+    initialReport?.threat_category ?? (initialSignal ? 'Pantau Satelit' : 'Pemulihan'),
   )
   const [locationName, setLocationName] = useState(
     initialReport?.location_name ?? initialSignal?.title ?? '',
@@ -147,7 +147,7 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
         title: title.trim(),
         description: description.trim() || undefined,
         ecosystem,
-        category: category.trim() || 'Aksi Konservasi',
+        category: category.trim() || 'Gerakan Konservasi',
         lat: latN,
         lng: lngN,
         locationName: locationName.trim(),
@@ -178,7 +178,7 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
           type="button"
           onClick={onClose}
           aria-label="Tutup"
-          className="grid size-10 place-items-center rounded-full bg-[#f5f7ff] text-forest hover:bg-mint/55"
+          className="grid size-10 place-items-center rounded-xl bg-[#f4f5f7] text-ink hover:bg-[#eaecf0]"
         >
           <X className="size-4" />
         </button>
@@ -187,13 +187,13 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
         <div className="flex flex-col gap-3">
           {initialReport && (
-            <div className="rounded-[16px] bg-[#f5f7ff] px-4 py-2.5 text-xs font-normal text-ink">
+            <div className="rounded-[14px] bg-[#f4f5f7] px-4 py-2.5 text-xs font-normal text-ink">
               Tautan laporan: {initialReport.threat_category}
             </div>
           )}
 
           {initialSignal && (
-            <div className="rounded-[16px] bg-[#f5f7ff] px-4 py-2.5 text-xs font-normal text-ink">
+            <div className="rounded-[14px] bg-[#f4f5f7] px-4 py-2.5 text-xs font-normal text-ink">
               Rujukan satelit: {initialSignal.source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'}
             </div>
           )}
@@ -220,10 +220,10 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
                 type="button"
                 aria-pressed={ecosystem === e.id}
                 onClick={() => setEcosystem(e.id)}
-                className={`h-10 flex-1 rounded-full text-xs transition-colors ${
+                className={`h-10 flex-1 rounded-xl text-xs transition-colors ${
                   ecosystem === e.id
-                    ? 'bg-leaf font-medium text-white'
-                    : 'bg-[#f5f7ff] font-normal text-ink hover:bg-mint/45'
+                    ? 'bg-ink font-medium text-white'
+                    : 'bg-[#f4f5f7] font-normal text-ink hover:bg-[#eaecf0]'
                 }`}
               >
                 {e.label}
@@ -245,10 +245,10 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
                 key={c}
                 type="button"
                 onClick={() => setCategory(c)}
-                className={`h-8 rounded-full px-3 text-xs transition-colors ${
+                className={`h-8 rounded-lg px-3 text-xs transition-colors ${
                   category === c
-                    ? 'bg-leaf font-medium text-white'
-                    : 'bg-[#f5f7ff] font-light text-ink-soft hover:text-forest'
+                    ? 'bg-ink font-medium text-white'
+                    : 'bg-[#f4f5f7] font-light text-ink-soft hover:text-ink'
                 }`}
               >
                 {c}
@@ -284,7 +284,7 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
               onClick={useGps}
               disabled={gpsBusy}
               aria-label="GPS saya"
-              className="grid size-11 shrink-0 place-items-center rounded-full bg-[#f5f7ff] text-forest hover:bg-mint/45 disabled:opacity-50"
+              className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#f4f5f7] text-ink hover:bg-[#eaecf0] disabled:opacity-50"
             >
               <LocateFixed className="size-4" />
             </button>
@@ -292,7 +292,7 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
 
           <input
             className={field}
-            placeholder="Deskripsi aksi"
+            placeholder="Deskripsi gerakan"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={600}
@@ -331,19 +331,19 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="relative grid aspect-[16/9] w-full place-items-center overflow-hidden rounded-card border-[1.5px] border-dashed border-leaf/25 bg-[#f5f7ff]/70 text-ink-soft"
+            className="relative grid aspect-[16/9] w-full place-items-center overflow-hidden rounded-[14px] border-[1.5px] border-dashed border-ink-soft/30 bg-[#f4f5f7] text-ink-soft"
           >
             {previewUrl ? (
               <img src={previewUrl} alt="Sampul event" className="size-full object-cover" />
             ) : (
               <span className="flex items-center gap-2 text-xs font-light">
-                <ImagePlus className="size-5 text-leaf" /> Foto sampul
+                <ImagePlus className="size-5 text-ink-soft" /> Foto sampul
               </span>
             )}
           </button>
 
           {error && (
-            <p role="alert" className="rounded-card bg-[#f5f7ff] px-4 py-3 text-xs font-light text-ink">
+            <p role="alert" className="rounded-[14px] bg-[#f4f5f7] px-4 py-3 text-xs font-light text-ink">
               {error}
             </p>
           )}

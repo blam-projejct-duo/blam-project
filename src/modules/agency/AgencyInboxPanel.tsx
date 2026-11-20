@@ -55,15 +55,15 @@ export default function AgencyInboxPanel({
       <h2 className="text-xl font-semibold tracking-tight text-ink">Eskalasi</h2>
 
       {error && (
-        <p role="alert" className="relative rounded-[20px] bg-[#f5f7ff] px-4 py-3 text-xs font-light text-ink">
-          <DashedOutline rx={19} />
+        <p role="alert" className="relative rounded-[14px] bg-[#f4f5f7] px-4 py-3 text-xs font-light text-ink">
+          <DashedOutline rx={13} />
           {error}
         </p>
       )}
 
       {agencyNotifs.length > 0 && (
-        <section className="relative rounded-[20px] bg-[#f5f7ff] p-4">
-          <DashedOutline rx={19} />
+        <section className="relative rounded-[14px] bg-[#f4f5f7] p-4">
+          <DashedOutline rx={13} />
           <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Notifikasi ({agencyNotifs.length})</p>
           <ul className="mt-2 space-y-2">
             {agencyNotifs.slice(0, 5).map((n) => (
@@ -79,14 +79,14 @@ export default function AgencyInboxPanel({
       <section className="flex flex-col gap-2.5">
         <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Kritis ({escalated.length})</p>
         {escalated.length === 0 ? (
-          <p className="relative rounded-[20px] bg-[#f5f7ff] p-4 text-sm font-light text-ink-soft">
-            <DashedOutline rx={19} />
+          <p className="relative rounded-[14px] bg-[#f4f5f7] p-4 text-sm font-light text-ink-soft">
+            <DashedOutline rx={13} />
             Kosong
           </p>
         ) : (
           escalated.map((r) => (
-            <div key={r.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f5f7ff] p-4">
-              <DashedOutline rx={19} />
+            <div key={r.id} className="relative flex items-center justify-between gap-3 rounded-[14px] bg-[#f4f5f7] p-4">
+              <DashedOutline rx={13} />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <ReportStatusPill status={r.status} />
@@ -114,8 +114,8 @@ export default function AgencyInboxPanel({
             const action = ev.event_actions?.find((a) => !a.verified_by_agency)
             if (!action) return null
             return (
-              <div key={action.id} className="relative flex items-center justify-between gap-3 rounded-[20px] bg-[#f5f7ff] p-4">
-                <DashedOutline rx={19} />
+              <div key={action.id} className="relative flex items-center justify-between gap-3 rounded-[14px] bg-[#f4f5f7] p-4">
+                <DashedOutline rx={13} />
                 <button
                   type="button"
                   onClick={() => onSelectEvent(ev.id)}

@@ -1,14 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Building2, Check, Plus, UserCheck, UserMinus, Users } from 'lucide-react'
 import { useState } from 'react'
-import { DashedOutline, DashedRow, Pill } from '../../components/ui/atoms'
+import { DashedOutline, DashedRow } from '../../components/ui/atoms'
 import { createOrg, fetchOrgs, joinOrg, manageOrgMember } from '../../lib/api'
 import { CACHE_TTL_MS } from '../../lib/queryClient'
 import type { OrgType } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 
 const field =
-  'h-11 w-full rounded-full border border-leaf/15 bg-canvas px-4 text-sm font-medium text-ink placeholder:font-normal placeholder:text-ink-soft focus:border-leaf focus:bg-white focus:outline-none'
+  'h-11 w-full rounded-xl border border-line bg-white px-3.5 text-sm font-normal text-ink placeholder:font-light placeholder:text-ink-soft focus:border-[#2563eb] focus:outline-none'
 
 export default function OrgsPanel() {
   const queryClient = useQueryClient()
@@ -105,8 +105,8 @@ export default function OrgsPanel() {
       </div>
 
       {showCreate && (
-        <div className="relative flex flex-col gap-3 rounded-[20px] bg-[#f5f7ff] p-4">
-          <DashedOutline rx={19} />
+        <div className="relative flex flex-col gap-3 rounded-[14px] bg-[#f4f5f7] p-4">
+          <DashedOutline rx={13} />
           <input className={field} placeholder="Nama organisasi" value={name} onChange={(e) => setName(e.target.value)} />
           <div className="flex gap-2">
             {(['community', 'agency'] as const).map((t) => (
@@ -114,10 +114,10 @@ export default function OrgsPanel() {
                 key={t}
                 type="button"
                 onClick={() => setType(t)}
-                className={`h-10 flex-1 rounded-full text-[12px] font-semibold transition-colors ${
+                className={`h-10 flex-1 rounded-xl text-[12px] font-medium transition-colors ${
                   type === t
-                    ? 'bg-leaf text-white'
-                    : 'border border-leaf/15 bg-white text-ink hover:bg-mint/30'
+                    ? 'bg-ink text-white'
+                    : 'border border-line bg-white text-ink hover:bg-[#eaecf0]'
                 }`}
               >
                 {t === 'community' ? 'Komunitas' : 'Instansi'}
@@ -137,14 +137,14 @@ export default function OrgsPanel() {
       )}
 
       {notice && (
-        <p className="relative rounded-[20px] bg-[#f5f7ff] px-4 py-3 text-xs font-light text-ink">
-          <DashedOutline rx={19} />
+        <p className="relative rounded-[14px] bg-[#f4f5f7] px-4 py-3 text-xs font-light text-ink">
+          <DashedOutline rx={13} />
           {notice}
         </p>
       )}
       {error && (
-        <p role="alert" className="relative rounded-[20px] bg-[#f5f7ff] px-4 py-3 text-xs font-light text-ink">
-          <DashedOutline rx={19} />
+        <p role="alert" className="relative rounded-[14px] bg-[#f4f5f7] px-4 py-3 text-xs font-light text-ink">
+          <DashedOutline rx={13} />
           {error}
         </p>
       )}
@@ -160,27 +160,26 @@ export default function OrgsPanel() {
             const lead = isLeadOf(org.id)
             const members = org.members ?? []
             return (
-              <section key={org.id} className="relative rounded-[20px] bg-[#f5f7ff] p-4">
-                <DashedOutline rx={19} />
+              <section key={org.id} className="relative rounded-[14px] bg-[#f4f5f7] p-4">
+                <DashedOutline rx={13} />
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Pill>{org.type === 'agency' ? 'Instansi' : 'Komunitas'}</Pill>
-                      <span className="text-xs font-light text-ink-soft">{org.region}</span>
-                    </div>
-                    <h3 className="font-sans mt-2 truncate text-[14.5px] font-normal text-ink">{org.name}</h3>
+                    <p className="text-[11.5px] font-light text-ink-soft">
+                      {org.type === 'agency' ? 'Instansi' : 'Komunitas'} · {org.region}
+                    </p>
+                    <h3 className="font-sans mt-1 truncate text-[14.5px] font-normal text-ink">{org.name}</h3>
                     <p className="mt-1 flex items-center gap-3 text-[12px] font-light text-ink-soft">
                       <span className="flex items-center gap-1">
                         <Users className="size-3.5" /> {org.active_members_count ?? 0} anggota
                       </span>
                       <span className="flex items-center gap-1">
-                        <Building2 className="size-3.5" /> {org.actions_count ?? 0} aksi
+                        <Building2 className="size-3.5" /> {org.actions_count ?? 0} gerakan
                       </span>
                     </p>
                   </div>
 
                   {myMem ? (
-                    <span className="inline-flex h-8.5 items-center gap-1 rounded-full bg-white px-3 text-[11.5px] font-normal text-ink">
+                    <span className="inline-flex h-8.5 items-center gap-1 rounded-xl bg-white px-3 text-[11.5px] font-normal text-ink">
                       <Check className="size-3.5" />
                       {myMem.status === 'pending' ? 'Menunggu' : myMem.member_role === 'lead' ? 'Ketua' : 'Anggota'}
                     </span>
@@ -189,7 +188,7 @@ export default function OrgsPanel() {
                       type="button"
                       disabled={busyId === org.id}
                       onClick={() => void requestJoin(org.id)}
-                      className="h-8.5 rounded-full bg-white px-3.5 text-[11.5px] font-normal text-ink shadow-[0_1px_2px_rgba(18,29,79,0.04)] hover:bg-mint/45 disabled:opacity-50"
+                      className="h-8.5 rounded-xl bg-white px-3.5 text-[11.5px] font-normal text-ink shadow-[0_1px_2px_rgba(18,29,79,0.04)] hover:bg-[#eaecf0] disabled:opacity-50"
                     >
                       Gabung
                     </button>

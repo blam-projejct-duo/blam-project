@@ -21,10 +21,10 @@ export default function QrActionModal({
   }
 
   return (
-    <ModalShell title="Bagikan Aksi" onClose={onClose}>
+    <ModalShell title="Bagikan Gerakan" onClose={onClose}>
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="rounded-[24px] border border-line bg-canvas p-4">
-          <img src={qrImgUrl} alt="QR Aksi" className="size-48 rounded-[16px] bg-white p-2" />
+        <div className="rounded-[20px] border border-line bg-[#f4f5f7] p-4">
+          <img src={qrImgUrl} alt="QR Gerakan" className="size-48 rounded-[14px] bg-white p-2" />
         </div>
         <div>
           <p className="text-base font-extrabold text-ink">{event.title}</p>

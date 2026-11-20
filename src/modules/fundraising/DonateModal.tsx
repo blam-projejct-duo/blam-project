@@ -171,10 +171,10 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[28px] border border-line bg-surface shadow-2xl sm:rounded-[28px]">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-canvas/55 px-5 py-4">
+      <div className="flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[20px] border border-line bg-surface shadow-2xl sm:rounded-[20px]">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-white px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-mint text-forest">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#f4f5f7] text-forest">
               <HeartHandshake className="size-5" />
             </span>
             <div className="min-w-0">
@@ -188,7 +188,7 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
             type="button"
             onClick={onClose}
             aria-label="Tutup"
-            className="grid size-9 shrink-0 place-items-center rounded-full bg-[#f5f7ff] text-ink-soft transition hover:bg-mint/45 hover:text-ink"
+            className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#f4f5f7] text-ink-soft transition hover:bg-[#eaecf0] hover:text-ink"
           >
             <X className="size-4" />
           </button>
@@ -196,9 +196,9 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
 
         {step !== 'done' && (
           <div className="flex items-center gap-2 border-b border-line/70 bg-surface px-5 py-2.5 text-[11px] font-light">
-            <span className={step === 'form' ? 'font-medium text-forest' : 'text-ink-soft'}>1. Nominal &amp; Identitas</span>
-            <span className="text-line">•</span>
-            <span className={step === 'payment' ? 'font-medium text-forest' : 'text-ink-soft'}>2. Pembayaran</span>
+            <span className={step === 'form' ? 'font-medium text-ink' : 'text-ink-soft'}>1. Nominal &amp; Identitas</span>
+            <span className="text-line">·</span>
+            <span className={step === 'payment' ? 'font-medium text-ink' : 'text-ink-soft'}>2. Pembayaran</span>
           </div>
         )}
 
@@ -210,7 +210,7 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                   Pilih Nominal
                 </span>
                 {amount > 0 && (
-                  <span className="num rounded-full bg-mint px-2.5 py-0.5 text-xs text-forest">
+                  <span className="num rounded-md bg-[#f4f5f7] px-2 py-0.5 text-xs text-ink">
                     {formatRupiah(amount)}
                   </span>
                 )}
@@ -223,10 +223,10 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                       key={preset.value}
                       type="button"
                       onClick={() => handleSelectPreset(preset.value)}
-                      className={`h-10 min-w-[88px] flex-1 rounded-2xl px-3 text-xs whitespace-nowrap transition ${
+                      className={`h-10 min-w-[88px] flex-1 rounded-xl px-3 text-xs whitespace-nowrap transition ${
                         active
-                          ? 'bg-mint font-medium text-forest'
-                          : 'bg-[#f5f7ff] font-normal text-ink hover:bg-mint/45'
+                          ? 'bg-ink font-medium text-white'
+                          : 'bg-[#f4f5f7] font-normal text-ink hover:bg-[#eaecf0]'
                       }`}
                     >
                       {preset.label}
@@ -244,7 +244,7 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                   value={customAmount}
                   onChange={(e) => handleCustomAmount(e.target.value)}
                   placeholder="Atau ketik nominal..."
-                  className="num h-11 w-full rounded-2xl bg-[#f5f7ff] pr-3.5 pl-10 text-sm text-ink transition focus:bg-mint/35 focus:outline-none placeholder:font-sans placeholder:font-light"
+                  className="num h-11 w-full rounded-xl bg-[#f4f5f7] pr-3.5 pl-10 text-sm text-ink transition focus:bg-[#eaecf0] focus:outline-none placeholder:font-sans placeholder:font-light"
                 />
               </div>
             </div>
@@ -257,10 +257,10 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                 <button
                   type="button"
                   onClick={() => setIsAnonymous((v) => !v)}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs whitespace-nowrap transition ${
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs whitespace-nowrap transition ${
                     isAnonymous
-                      ? 'bg-mint font-medium text-forest'
-                      : 'bg-[#f5f7ff] font-light text-ink-soft hover:text-ink'
+                      ? 'bg-ink font-medium text-white'
+                      : 'bg-[#f4f5f7] font-light text-ink-soft hover:text-ink'
                   }`}
                 >
                   <EyeOff className="size-3.5" />
@@ -268,8 +268,8 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                 </button>
               </div>
               {isAnonymous ? (
-                <p className="relative rounded-2xl bg-[#f5f7ff] px-3.5 py-2.5 text-xs font-light text-forest">
-                  <DashedOutline rx={15} />
+                <p className="relative rounded-xl bg-[#f4f5f7] px-3.5 py-2.5 text-xs font-light text-ink">
+                  <DashedOutline rx={11} />
                   Nama kamu akan tampil sebagai <span className="font-medium">Anonim</span>.
                 </p>
               ) : (
@@ -279,7 +279,7 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                   onChange={(e) => setDonorName(e.target.value)}
                   placeholder="Nama (opsional)"
                   maxLength={80}
-                  className="h-11 w-full rounded-2xl bg-[#f5f7ff] px-3.5 text-sm font-normal text-ink placeholder:font-light transition focus:bg-mint/35 focus:outline-none"
+                  className="h-11 w-full rounded-xl bg-[#f4f5f7] px-3.5 text-sm font-normal text-ink placeholder:font-light transition focus:bg-[#eaecf0] focus:outline-none"
                 />
               )}
             </div>
@@ -294,14 +294,14 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                 rows={2}
                 maxLength={280}
                 placeholder="Semoga lekas pulih…"
-                className="w-full resize-none rounded-2xl bg-[#f5f7ff] p-3.5 text-sm font-normal text-ink placeholder:font-light transition focus:bg-mint/35 focus:outline-none"
+                className="w-full resize-none rounded-xl bg-[#f4f5f7] p-3.5 text-sm font-normal text-ink placeholder:font-light transition focus:bg-[#eaecf0] focus:outline-none"
               />
             </label>
 
             {error && (
               <p
                 role="alert"
-                className="rounded-2xl bg-critical/8 px-3.5 py-2.5 text-xs font-normal text-critical"
+                className="rounded-xl bg-critical/8 px-3.5 py-2.5 text-xs font-normal text-critical"
               >
                 {error}
               </p>
@@ -315,21 +315,21 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
 
         {step === 'payment' && (
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-5">
-            <div className="flex items-center justify-between rounded-2xl bg-[#f5f7ff] px-4 py-3">
+            <div className="flex items-center justify-between rounded-xl bg-[#f4f5f7] px-4 py-3">
               <span className="text-xs font-light text-ink-soft">Total Donasi</span>
-              <span className="num text-base text-forest">{formatRupiah(amount)}</span>
+              <span className="num text-base text-ink">{formatRupiah(amount)}</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-[#f5f7ff] p-1">
+            <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-[#f4f5f7] p-1">
               <button
                 type="button"
                 onClick={() => {
                   setPaymentMethod('qris')
                   setBankConfirmedStep(false)
                 }}
-                className={`flex h-10 items-center justify-center gap-2 rounded-xl text-xs whitespace-nowrap transition ${
+                className={`flex h-10 items-center justify-center gap-2 rounded-lg text-xs whitespace-nowrap transition ${
                   paymentMethod === 'qris'
-                    ? 'bg-surface font-medium text-forest shadow-xs'
+                    ? 'bg-surface font-medium text-ink shadow-xs'
                     : 'font-light text-ink-soft hover:text-ink'
                 }`}
               >
@@ -342,9 +342,9 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                   setPaymentMethod('mbanking')
                   setBankConfirmedStep(false)
                 }}
-                className={`flex h-10 items-center justify-center gap-2 rounded-xl text-xs whitespace-nowrap transition ${
+                className={`flex h-10 items-center justify-center gap-2 rounded-lg text-xs whitespace-nowrap transition ${
                   paymentMethod === 'mbanking'
-                    ? 'bg-surface font-medium text-forest shadow-xs'
+                    ? 'bg-surface font-medium text-ink shadow-xs'
                     : 'font-light text-ink-soft hover:text-ink'
                 }`}
               >
@@ -354,10 +354,10 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
             </div>
 
             {paymentMethod === 'qris' ? (
-              <div className="relative flex flex-col items-center gap-3 rounded-3xl bg-[#f5f7ff] p-5 text-center">
-                <DashedOutline rx={23} />
-                <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[11px] font-normal text-ink shadow-xs">
-                  <ShieldCheck className="size-3.5 shrink-0 text-leaf" />
+              <div className="relative flex flex-col items-center gap-3 rounded-[14px] bg-[#f4f5f7] p-5 text-center">
+                <DashedOutline rx={13} />
+                <span className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-surface px-2.5 py-1 text-[11px] font-normal text-ink shadow-xs">
+                  <ShieldCheck className="size-3.5 shrink-0 text-[#2563eb]" />
                   <span className="truncate">QRIS · {campaign.organizer_name}</span>
                 </span>
                 <SimulatedQrSvg seed={`${campaign.id}:${amount}`} />
@@ -378,10 +378,10 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                         key={bank.id}
                         type="button"
                         onClick={() => setSelectedBank(bank.id)}
-                        className={`flex h-12 items-center justify-between gap-2 rounded-2xl px-3.5 text-xs transition ${
+                        className={`flex h-12 items-center justify-between gap-2 rounded-xl px-3.5 text-xs transition ${
                           active
-                            ? 'bg-mint font-medium text-forest'
-                            : 'bg-[#f5f7ff] font-normal text-ink hover:bg-mint/45'
+                            ? 'bg-ink font-medium text-white'
+                            : 'bg-[#f4f5f7] font-normal text-ink hover:bg-[#eaecf0]'
                         }`}
                       >
                         <span className="truncate">{bank.label}</span>
@@ -392,20 +392,20 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                 </div>
               </div>
             ) : (
-              <div className="relative flex flex-col gap-3 rounded-3xl bg-[#f5f7ff] p-4">
-                <DashedOutline rx={23} />
+              <div className="relative flex flex-col gap-3 rounded-[14px] bg-[#f4f5f7] p-4">
+                <DashedOutline rx={13} />
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-light text-ink-soft">Bank Tujuan</span>
                   <span className="text-xs font-normal text-ink">{selectedBank} Virtual Account</span>
                 </div>
-                <div className="flex items-center justify-between gap-2 rounded-2xl bg-surface px-3.5 py-3">
+                <div className="flex items-center justify-between gap-2 rounded-xl bg-surface px-3.5 py-3">
                   <span className="font-mono text-sm font-medium tracking-wider text-ink">{vaNumber}</span>
                   <button
                     type="button"
                     onClick={() => void handleCopyVa()}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-full bg-canvas px-2.5 py-1 text-xs font-normal text-ink-soft transition hover:text-ink"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#f4f5f7] px-2.5 py-1 text-xs font-normal text-ink-soft transition hover:text-ink"
                   >
-                    {copiedVa ? <Check className="size-3.5 text-leaf" /> : <Copy className="size-3.5" />}
+                    {copiedVa ? <Check className="size-3.5 text-[#2563eb]" /> : <Copy className="size-3.5" />}
                     {copiedVa ? 'Tersalin' : 'Salin'}
                   </button>
                 </div>
@@ -418,7 +418,7 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
             {error && (
               <p
                 role="alert"
-                className="rounded-2xl bg-critical/8 px-3.5 py-2.5 text-xs font-normal text-critical"
+                className="rounded-xl bg-critical/8 px-3.5 py-2.5 text-xs font-normal text-critical"
               >
                 {error}
               </p>
@@ -434,7 +434,7 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                     setStep('form')
                   }
                 }}
-                className="h-12 min-w-24 flex-1 rounded-full bg-[#f5f7ff] px-4 text-sm font-normal text-ink-soft transition hover:bg-mint/45 hover:text-ink"
+                className="h-12 min-w-24 flex-1 rounded-[14px] bg-[#f4f5f7] px-4 text-sm font-normal text-ink-soft transition hover:bg-[#eaecf0] hover:text-ink"
               >
                 Kembali
               </button>
@@ -470,7 +470,7 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
 
         {step === 'done' && (
           <div className="flex flex-col items-center gap-4 p-6 text-center">
-            <span className="grid size-16 place-items-center rounded-full bg-mint text-forest">
+            <span className="blam-gradient grid size-16 place-items-center rounded-2xl text-white">
               <CheckCircle2 className="size-9" />
             </span>
             <div>
@@ -480,7 +480,7 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
                 <span className="font-normal text-ink">{campaign.location_name}</span>.
               </p>
             </div>
-            <div className="w-full rounded-2xl bg-[#f5f7ff] p-4 text-left text-xs">
+            <div className="w-full rounded-[14px] bg-[#f4f5f7] p-4 text-left text-xs">
               <div className="flex items-center justify-between gap-2 py-1">
                 <span className="font-light text-ink-soft">Nama</span>
                 <span className="font-normal text-ink">

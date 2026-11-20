@@ -58,7 +58,7 @@ export function DashedOutline(_props: { rx?: number }) {
 
 export function EcoBadge({ ecosystem }: { ecosystem: Ecosystem }) {
   return (
-    <span className="grid size-11 shrink-0 place-items-center rounded-[14px] bg-white text-forest shadow-[0_1px_2px_rgba(18,29,79,0.04)]">
+    <span className="grid size-10.5 shrink-0 place-items-center rounded-[10px] bg-white text-forest shadow-[0_1px_2px_rgba(18,29,79,0.04)]">
       <EcoIcon ecosystem={ecosystem} />
     </span>
   )
@@ -125,7 +125,7 @@ export function Pill({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full bg-mint/55 px-3 py-1 text-[11.5px] font-normal text-forest ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-md bg-[#f4f5f7] px-2 py-0.5 text-[11px] font-normal text-ink-soft ${className}`}
     >
       {children}
     </span>
@@ -167,7 +167,7 @@ export function ModalShell({
         animate={{ y: 0, opacity: 1, scale: 1 }}
         exit={{ y: 28, opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className="flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-line bg-white md:max-w-[520px] md:rounded-[28px]"
+        className="flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[20px] border border-line bg-white md:max-w-[520px] md:rounded-[20px]"
       >
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
           <h2 className="text-lg font-semibold tracking-tight text-ink">{title}</h2>
@@ -212,7 +212,7 @@ export function MarkerTierLegend({ compact = false }: { compact?: boolean }) {
           <circle cx="7.5" cy="6.8" r="3.4" fill="#FFFFFF" />
           <circle cx="12.5" cy="3.5" r="2.7" fill="#22C55E" stroke="#FFFFFF" strokeWidth="0.9" />
         </svg>
-        Sudah Ada Aksi
+        Ada Gerakan
       </span>
     </div>
   )

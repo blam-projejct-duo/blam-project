@@ -124,13 +124,13 @@ export function AuthPanel({
     return (
       <div className="flex flex-col gap-4">
         {demoAccounts.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-[20px] bg-[#f5f7ff] p-5 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-[14px] bg-[#f4f5f7] p-5 text-center">
             <p className="text-xs font-light text-ink-soft">{demoError ?? 'Kosong'}</p>
             <button
               type="button"
               disabled={busy}
               onClick={() => void refreshDemoAccounts()}
-              className="h-10 rounded-full bg-white px-5 text-xs font-normal text-ink"
+              className="h-10 rounded-xl bg-white px-5 text-xs font-normal text-ink"
             >
               Muat Ulang
             </button>
@@ -145,12 +145,17 @@ export function AuthPanel({
                   type="button"
                   disabled={busy}
                   onClick={() => void pickDemo(acc.id)}
-                  className={`flex flex-col items-start rounded-[20px] p-3.5 text-left transition-colors disabled:opacity-60 ${active ? 'bg-mint/65' : 'bg-[#f5f7ff] hover:bg-mint/35'
-                    }`}
+                  className={`flex flex-col items-start rounded-[14px] p-3.5 text-left transition-colors disabled:opacity-60 ${
+                    active ? 'bg-ink text-white' : 'bg-[#f4f5f7] text-ink hover:bg-[#eaecf0]'
+                  }`}
                 >
-                  <span className="text-xs font-light text-ink-soft">{ROLE_LABEL[acc.role]}</span>
-                  <span className="mt-1 truncate text-sm font-normal text-ink">{acc.full_name}</span>
-                  <span className="num mt-0.5 text-[11px] font-normal text-ink-soft">{acc.points} poin</span>
+                  <span className={`text-xs font-light ${active ? 'text-white/75' : 'text-ink-soft'}`}>
+                    {ROLE_LABEL[acc.role]}
+                  </span>
+                  <span className="mt-1 truncate text-sm font-normal">{acc.full_name}</span>
+                  <span className={`num mt-0.5 text-[11px] font-normal ${active ? 'text-white/80' : 'text-ink-soft'}`}>
+                    {acc.points} poin
+                  </span>
                 </button>
               )
             })}
@@ -164,7 +169,7 @@ export function AuthPanel({
                 type="button"
                 disabled={busy}
                 onClick={() => void leaveDemo()}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#f5f7ff] px-4 text-xs font-normal text-ink hover:bg-mint/40"
+                className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-4 text-xs font-normal text-ink hover:bg-[#eaecf0]"
               >
                 <LogOut className="size-3.5" /> Keluar Demo
               </button>
@@ -177,7 +182,7 @@ export function AuthPanel({
                   onDone?.()
                   onGoLive()
                 }}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#f5f7ff] px-4 text-xs font-normal text-ink hover:bg-mint/40"
+                className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-4 text-xs font-normal text-ink hover:bg-[#eaecf0]"
               >
                 <ArrowLeft className="size-3.5" /> Website Asli
               </button>
@@ -197,7 +202,7 @@ export function AuthPanel({
   return (
     <div className="flex flex-col gap-4">
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
-        <div className="flex gap-1 rounded-full bg-[#f5f7ff] p-1">
+        <div className="flex gap-1 rounded-xl bg-[#f4f5f7] p-1">
           {(['login', 'register'] as const).map((m) => (
             <button
               key={m}
@@ -206,7 +211,7 @@ export function AuthPanel({
                 setMode(m)
                 setError(null)
               }}
-              className={`h-10 flex-1 rounded-full text-sm transition-colors ${mode === m ? 'bg-white font-medium text-ink shadow-xs' : 'font-light text-ink-soft'
+              className={`h-10 flex-1 rounded-lg text-sm transition-colors ${mode === m ? 'bg-white font-medium text-ink shadow-xs' : 'font-light text-ink-soft'
                 }`}
             >
               {m === 'login' ? 'Masuk' : 'Daftar'}
@@ -273,7 +278,7 @@ export function AuthPanel({
               type="button"
               disabled={busy}
               onClick={() => void loginWithGoogle().catch((e) => setError(e instanceof Error ? e.message : 'Gagal OAuth'))}
-              className="flex h-12 items-center justify-center gap-2.5 rounded-full bg-[#f5f7ff] px-4 text-sm font-normal text-ink transition-colors hover:bg-mint/45 disabled:opacity-50"
+              className="flex h-12 items-center justify-center gap-2.5 rounded-xl bg-[#f4f5f7] px-4 text-sm font-normal text-ink transition-colors hover:bg-[#eaecf0] disabled:opacity-50"
             >
               <GoogleIcon className="size-[18px] shrink-0" />
               <span>Masuk dengan Google</span>
@@ -307,7 +312,7 @@ export function AuthPanel({
       </form>
 
       {error && (
-        <p role="alert" className="rounded-card bg-[#f5f7ff] px-4 py-3 text-sm font-light text-ink">
+        <p role="alert" className="rounded-card bg-[#f4f5f7] px-4 py-3 text-sm font-light text-ink">
           {error}
         </p>
       )}
