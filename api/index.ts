@@ -3740,12 +3740,45 @@ interface ChatTurnInput {
   text: string
 }
 
+interface ChatSelectedPointContext {
+  kind: 'event' | 'signal'
+  id?: string
+  title?: string
+  locationName?: string
+  ecosystem?: string
+  category?: string
+  status?: string
+  severity?: string
+  description?: string
+  source?: string
+  signalKind?: string
+  reason?: string
+  date?: string
+  pointCount?: number
+  totalFrp?: number
+  radiusKm?: number
+  confidence?: string
+  dischargeM3s?: number
+  dischargeRatio?: number
+  rainMm?: number
+  verificationState?: string
+  verifiedBy?: string
+  verifiedOrg?: string
+  linkedEventId?: string
+  organizationName?: string
+  participantsCount?: number
+  maxParticipants?: number
+  actionsCount?: number
+  reportSummary?: string
+}
+
 interface ChatAppContext {
   userName?: string
   userRole?: string
   mapStyle?: string
   selectedTitle?: string
   selectedLocation?: string
+  selectedPoint?: ChatSelectedPointContext
   activeEventsCount?: number
   signalsCount?: number
 }
@@ -4561,6 +4594,7 @@ function buildBlamChatSystemPrompt(ctx: ChatAppContext): string {
     map_style: ctx.mapStyle || 'satelit',
     focused_point: ctx.selectedTitle || null,
     focused_location: ctx.selectedLocation || null,
+    focused_point_detail: ctx.selectedPoint ?? null,
     visible_events_count: ctx.activeEventsCount ?? 0,
     visible_signals_count: ctx.signalsCount ?? 0,
   })
@@ -4579,8 +4613,11 @@ function buildBlamChatSystemPrompt(ctx: ChatAppContext): string {
     '- Jika pengguna menanyakan wilayah spesifik (mis. Kalimantan, Riau, Sumatera), isi parameter `region` pada `get_satellite_signals` agar agregasi dan sampelnya terfilter tepat di wilayah tersebut. Sajikan nama wilayah administratif (`location_name`) dan `subregion_breakdown` yang ramah dibaca, hindari menampilkan koordinat mentah kecuali diminta.',
     '- KONSISTENSI ANGKA KAWASAN VS TITIK API: bedakan tegas antara jumlah "kawasan" (`wildfire_clusters` / `clusters`) dan jumlah "titik api" (`total_fire_points_in_matched_clusters` / `fire_points_in_cluster` / `fire_points`). Contoh benar: "Tercatat 42 kawasan karhutla (total 750 titik api), dengan klaster terbesar di Kutai Kartanegara (338 titik api)". JANGAN pernah menyebut angka kawasan sebagai "titik" lalu merincinya dengan angka ratusan titik api.',
     '- ATURAN SHORTCUT (JANGAN SPAM): lampirkan maksimal 1 shortcut dan HANYA jika kondisinya tepat:',
-    '  * Panggil `focus_map_point` HANYA bila pengguna secara spesifik meminta melihat/mengarahkan ke titik di peta, atau membahas 1 titik/event tunggal secara mendalam. JANGAN panggil `focus_map_point` untuk pertanyaan ringkasan/jumlah umum (mis. "berapa banyak kebakaran di Kalimantan?").',
+    '  * Panggil `focus_map_point` HANYA bila pengguna secara spesifik meminta melihat/mengarahkan ke titik di peta, atau membahas 1 titik/event tunggal secara mendalam yang BELUM sedang dibuka. JANGAN panggil `focus_map_point` untuk pertanyaan ringkasan/jumlah umum atau jika pengguna sedang menanyakan titik yang sudah terbuka di `focused_point_detail`.',
     '  * Panggil `prepare_blam_snap` HANYA bila pengguna menceritakan temuan nyata di lapangan atau menyatakan ingin membuat laporan sekarang. JANGAN panggil jika pengguna hanya bertanya "bagaimana cara lapor pakai Blam Snap?".',
+    '- PENJELASAN TITIK PETA AKTIF (`focused_point_detail`): jika `focused_point_detail` tersedia dan pengguna menanyakan/meminta penjelasan titik tersebut, jelaskan secara detail namun tetap rapi dan terstruktur berdasarkan data di `focused_point_detail`:',
+    '  * Jika `kind` = `event`: jelaskan kondisi/deskripsi kejadian, ekosistem dan lokasi, status aksi, penyelenggara, jumlah peserta & aksi lapangan yang tercatat, serta langkah yang bisa diambil pengguna di Blam (mis. gabung aksi atau pantau perkembangan).',
+    '  * Jika `kind` = `signal`: jelaskan jenis ancaman & sumber satelit/sensornya, lokasi & ekosistem, indikator teknis yang tersedia (jumlah titik api, total FRP, confidence, debit sungai/curah hujan, alasan sinyal), status verifikasi & event tertaut jika ada, serta saran tindak lanjut di Blam (verifikasi di tab Aksi/Jelajah atau buat event penanganan).',
     '- JANGAN memanggil tool untuk sapaan sederhana atau pertanyaan konseptual/tips umum.',
     '- Sebutkan nama, status, lokasi, dan angka PERSIS sesuai hasil tool. DILARANG mengarang data atau memperkirakan angka. Jika hasil tool kosong, sampaikan jujur dan arahkan ke tab Jelajah atau Aksi.',
     '',
@@ -4635,12 +4672,52 @@ app.post('/chat', async (c) => {
   const rawCtx = (body as Record<string, unknown>).context
   const ctxObj = rawCtx && typeof rawCtx === 'object' ? (rawCtx as Record<string, unknown>) : {}
 
+  const numOrUndef = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
+  let selectedPoint: ChatSelectedPointContext | undefined
+  if (ctxObj.selectedPoint && typeof ctxObj.selectedPoint === 'object') {
+    const sp = ctxObj.selectedPoint as Record<string, unknown>
+    if (sp.kind === 'event' || sp.kind === 'signal') {
+      selectedPoint = {
+        kind: sp.kind,
+        id: sanitizeContextValue(sp.id, 64),
+        title: sanitizeContextValue(sp.title, 140),
+        locationName: sanitizeContextValue(sp.locationName, 140),
+        ecosystem: sanitizeContextValue(sp.ecosystem, 40),
+        category: sanitizeContextValue(sp.category, 60),
+        status: sanitizeContextValue(sp.status, 40),
+        severity: sanitizeContextValue(sp.severity, 30),
+        description: sanitizeContextValue(sp.description, 400),
+        source: sanitizeContextValue(sp.source, 40),
+        signalKind: sanitizeContextValue(sp.signalKind, 40),
+        reason: sanitizeContextValue(sp.reason, 220),
+        date: sanitizeContextValue(sp.date, 40),
+        pointCount: numOrUndef(sp.pointCount),
+        totalFrp: numOrUndef(sp.totalFrp),
+        radiusKm: numOrUndef(sp.radiusKm),
+        confidence: sanitizeContextValue(sp.confidence, 30),
+        dischargeM3s: numOrUndef(sp.dischargeM3s),
+        dischargeRatio: numOrUndef(sp.dischargeRatio),
+        rainMm: numOrUndef(sp.rainMm),
+        verificationState: sanitizeContextValue(sp.verificationState, 30),
+        verifiedBy: sanitizeContextValue(sp.verifiedBy, 80),
+        verifiedOrg: sanitizeContextValue(sp.verifiedOrg, 80),
+        linkedEventId: sanitizeContextValue(sp.linkedEventId, 64),
+        organizationName: sanitizeContextValue(sp.organizationName, 100),
+        participantsCount: numOrUndef(sp.participantsCount),
+        maxParticipants: numOrUndef(sp.maxParticipants),
+        actionsCount: numOrUndef(sp.actionsCount),
+        reportSummary: sanitizeContextValue(sp.reportSummary, 280),
+      }
+    }
+  }
+
   const appCtx: ChatAppContext = {
     userName: sanitizeContextValue(ctxObj.userName, 60),
     userRole: sanitizeContextValue(ctxObj.userRole, 30),
     mapStyle: sanitizeContextValue(ctxObj.mapStyle, 20),
     selectedTitle: sanitizeContextValue(ctxObj.selectedTitle, 100),
     selectedLocation: sanitizeContextValue(ctxObj.selectedLocation, 100),
+    selectedPoint,
     activeEventsCount: Array.isArray(ctxObj.activeEvents) ? ctxObj.activeEvents.length : 0,
     signalsCount: Array.isArray(ctxObj.signals) ? ctxObj.signals.length : 0,
   }

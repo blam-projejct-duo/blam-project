@@ -308,26 +308,15 @@ function detectEventShapeKind(ev: ConservationEvent): 'flood' | 'wildfire' | 'wa
   return 'leaf'
 }
 
-export function renderEventMarkerElement(
-  el: HTMLDivElement,
-  ev: ConservationEvent,
-  tone: string,
-  selected: boolean,
-): void {
+export function eventPinImageId(ev: ConservationEvent, selected: boolean): string {
+  const kind = detectEventShapeKind(ev)
+  const status = EVENT_STATUS_STYLE[ev.status] ? ev.status : 'open'
+  return `event-pin-${kind}-${status}-${selected ? 'sel' : 'def'}`
+}
+
+function buildEventPinSvg(ev: ConservationEvent, selected: boolean): string {
   const kind = detectEventShapeKind(ev)
   const palette = EVENT_STATUS_STYLE[ev.status] ?? EVENT_STATUS_STYLE.open
-  const scale = selected ? 1.16 : 1
-
-  el.className = 'blam-event-pin'
-  el.dataset.status = tone
-  el.dataset.selected = String(selected)
-  el.title = `Aksi: ${ev.title}`
-  el.style.cssText = `cursor:pointer;transform-origin:50% 100%;transform:scale(${scale});transition:transform 150ms ease;filter:${
-    selected
-      ? 'drop-shadow(0 0 9px rgba(21,128,61,0.52)) drop-shadow(0 5px 12px rgba(15,23,42,0.34))'
-      : 'drop-shadow(0 4px 8px rgba(15,23,42,0.3))'
-  };`
-
   const glyphColor = palette.fill
   const glyph =
     kind === 'flood'
@@ -342,5 +331,78 @@ export function renderEventMarkerElement(
     ? `<circle cx="36" cy="9.5" r="6.4" fill="${palette.badgeFill}" stroke="#FFFFFF" stroke-width="2.2"/><path d="M33.2 9.6l1.9 1.9 3.6-3.7" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`
     : `<circle cx="36" cy="9.5" r="6.4" fill="${palette.badgeFill}" stroke="#FFFFFF" stroke-width="2.2"/><path d="M36.5 5.8L33.6 9.8H36.1L35.4 13.2L38.4 9.2H35.9L36.5 5.8Z" fill="#FFFFFF"/>`
 
-  el.innerHTML = `<svg width="46" height="56" viewBox="0 0 46 56" xmlns="http://www.w3.org/2000/svg"><ellipse cx="23" cy="50.5" rx="8.5" ry="3" fill="${palette.halo}"/><path d="M23 3.2C13.9 3.2 6.5 10.6 6.5 19.7C6.5 31.2 19.4 44.6 22 47.1C22.6 47.7 23.4 47.7 24 47.1C26.6 44.6 39.5 31.2 39.5 19.7C39.5 10.6 32.1 3.2 23 3.2Z" fill="${palette.fill}" stroke="#FFFFFF" stroke-width="2.8" stroke-linejoin="round"/><circle cx="23" cy="19.2" r="11.2" fill="#FFFFFF"/>${glyph}${cornerBadge}</svg>`
+  const ring = selected
+    ? `<circle cx="23" cy="19.7" r="20" fill="none" stroke="${palette.badgeFill}" stroke-opacity="0.45" stroke-width="3"/>`
+    : ''
+
+  return `<svg width="46" height="56" viewBox="0 0 46 56" style="display:block" xmlns="http://www.w3.org/2000/svg">${ring}<ellipse cx="23" cy="50.5" rx="8.5" ry="3" fill="${palette.halo}"/><path d="M23 3.2C13.9 3.2 6.5 10.6 6.5 19.7C6.5 31.2 19.4 44.6 22 47.1C22.6 47.7 23.4 47.7 24 47.1C26.6 44.6 39.5 31.2 39.5 19.7C39.5 10.6 32.1 3.2 23 3.2Z" fill="${palette.fill}" stroke="#FFFFFF" stroke-width="2.8" stroke-linejoin="round"/><circle cx="23" cy="19.2" r="11.2" fill="#FFFFFF"/>${glyph}${cornerBadge}</svg>`
+}
+
+const pendingEventIcons = new Map<string, Promise<void>>()
+
+export function ensureEventPinImages(
+  map: MapLibreMap,
+  events: ConservationEvent[],
+  selectedId: string | null,
+): Promise<void> {
+  const jobs: Promise<void>[] = []
+  for (const ev of events) {
+    const selected = ev.id === selectedId
+    const id = eventPinImageId(ev, selected)
+    if (map.hasImage(id)) continue
+    let job = pendingEventIcons.get(id)
+    if (!job) {
+      const svg = buildEventPinSvg(ev, selected)
+      job = new Promise<void>((resolve) => {
+        const img = new Image()
+        img.onload = () => {
+          try {
+            if (!map.hasImage(id)) {
+              const canvas = document.createElement('canvas')
+              canvas.width = 112
+              canvas.height = 132
+              const ctx = canvas.getContext('2d')!
+              ctx.shadowColor = selected ? 'rgba(21,128,61,0.45)' : 'rgba(15,23,42,0.3)'
+              ctx.shadowBlur = selected ? 14 : 10
+              ctx.shadowOffsetY = 5
+              ctx.drawImage(img, 10, 10, 92, 112)
+              map.addImage(id, ctx.getImageData(0, 0, 112, 132), { pixelRatio: 2 })
+            }
+          } finally {
+            pendingEventIcons.delete(id)
+            resolve()
+          }
+        }
+        img.onerror = () => {
+          pendingEventIcons.delete(id)
+          resolve()
+        }
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+      })
+      pendingEventIcons.set(id, job)
+    }
+    jobs.push(job)
+  }
+  return Promise.all(jobs).then(() => undefined)
+}
+
+export function renderEventMarkerElement(
+  el: HTMLDivElement,
+  ev: ConservationEvent,
+  tone: string,
+  selected: boolean,
+): void {
+  const scale = selected ? 1.16 : 1
+
+  el.className = 'blam-event-pin'
+  el.dataset.status = tone
+  el.dataset.selected = String(selected)
+  el.title = `Aksi: ${ev.title}`
+  el.style.cssText = `cursor:pointer;transform-origin:50% 89%;transform:scale(${scale});transition:transform 150ms ease;filter:${
+    selected
+      ? 'drop-shadow(0 0 9px rgba(21,128,61,0.52)) drop-shadow(0 5px 12px rgba(15,23,42,0.34))'
+      : 'drop-shadow(0 4px 8px rgba(15,23,42,0.3))'
+  };`
+
+  el.innerHTML = buildEventPinSvg(ev, selected)
 }

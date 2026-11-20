@@ -49,9 +49,15 @@ export function RadarCompassIcon({
 
 export function BlamNatureIcon({
   className = 'relative z-10 size-[52px] drop-shadow-[0_2px_4px_rgba(18,30,90,0.28)]',
+  elephantAway = false,
+  interactive = false,
 }: {
   light?: boolean
   className?: string
+  /** Sembunyikan gajah dari logo (dipakai saat Gajah Blam keluar jadi companion). */
+  elephantAway?: boolean
+  /** Aktifkan animasi gajah mengintip/melambai di dalam logo untuk menarik perhatian klik. */
+  interactive?: boolean
 }) {
   const uid = useId()
   const gGlobe = `${uid}-g`
@@ -151,6 +157,20 @@ export function BlamNatureIcon({
           fill={`url(#${gCradleA})`}
         />
 
+        <g
+          style={{
+            opacity: elephantAway ? 0 : 1,
+            transform: elephantAway ? 'translateY(-26px) scale(0.6)' : 'none',
+            transformOrigin: '270px 230px',
+            transition: elephantAway
+              ? 'opacity 160ms ease, transform 220ms ease'
+              : 'opacity 260ms ease 480ms, transform 420ms cubic-bezier(0.34,1.56,0.64,1) 480ms',
+          }}
+        >
+        <g
+          className={interactive && !elephantAway ? 'blam-logo-peek' : undefined}
+          style={{ transformOrigin: '260px 240px' }}
+        >
         <path
           d="M148 256 C158 314, 194 358, 236 364 C210 342, 190 302, 186 254 Z"
           fill="#0B1B4D"
@@ -167,6 +187,10 @@ export function BlamNatureIcon({
         <circle cx="226" cy="342" r="5" fill="#E0F2FE" fillOpacity="0.90" />
         <circle cx="211" cy="346" r="5" fill="#E0F2FE" fillOpacity="0.90" />
 
+        <g
+          className={interactive && !elephantAway ? 'blam-logo-trunk' : undefined}
+          style={{ transformOrigin: '270px 190px' }}
+        >
         <path
           d="M174 164 C178 112, 224 86, 278 98 C316 106, 338 134, 338 164 C338 186, 348 198, 368 196 C386 194, 396 176, 390 158 C386 144, 400 132, 414 140 C430 150, 430 180, 412 206 C394 234, 352 242, 314 228 C286 218, 262 224, 236 238 C206 254, 170 228, 174 164 Z"
           fill={`url(#${gEl})`}
@@ -190,9 +214,14 @@ export function BlamNatureIcon({
           strokeWidth="5.5"
           strokeLinecap="round"
         />
-        <ellipse cx="268" cy="152" rx="15" ry="17" fill="#0F172A" />
-        <circle cx="263" cy="145" r="5.6" fill="#FFFFFF" />
-        <circle cx="272" cy="158" r="2.6" fill="#FFFFFF" fillOpacity="0.72" />
+        <g
+          className={interactive && !elephantAway ? 'blam-logo-blink' : undefined}
+          style={{ transformOrigin: '268px 152px' }}
+        >
+          <ellipse cx="268" cy="152" rx="15" ry="17" fill="#0F172A" />
+          <circle cx="263" cy="145" r="5.6" fill="#FFFFFF" />
+          <circle cx="272" cy="158" r="2.6" fill="#FFFFFF" fillOpacity="0.72" />
+        </g>
         <ellipse cx="242" cy="178" rx="13" ry="7" fill="#FFFFFF" fillOpacity="0.32" />
         <path
           d="M276 196 C286 204, 298 202, 304 194"
@@ -201,7 +230,12 @@ export function BlamNatureIcon({
           strokeWidth="5"
           strokeLinecap="round"
         />
+        </g>
 
+        <g
+          className={interactive && !elephantAway ? 'blam-logo-ear' : undefined}
+          style={{ transformOrigin: '192px 170px' }}
+        >
         <path
           d="M196 136 C168 110, 116 118, 94 156 C74 190, 84 244, 118 264 C144 278, 174 266, 186 242 C200 214, 206 164, 196 136 Z"
           fill={`url(#${gEar})`}
@@ -219,6 +253,18 @@ export function BlamNatureIcon({
           strokeWidth="4.5"
           strokeLinecap="round"
         />
+        </g>
+
+        {interactive && !elephantAway && (
+          <path
+            d="M446 66 C448 80, 456 88, 470 90 C456 92, 448 100, 446 114 C444 100, 436 92, 422 90 C436 88, 444 80, 446 66 Z"
+            fill="#FEF08A"
+            className="blam-logo-sparkle"
+            style={{ transformOrigin: '446px 90px' }}
+          />
+        )}
+        </g>
+        </g>
       </g>
     </svg>
   )

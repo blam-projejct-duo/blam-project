@@ -34,6 +34,7 @@ import type { BlamChatAction, BlamChatContext, BlamSnapPrefill } from '../../lib
 import { ROLE_LABEL } from '../../lib/constants'
 import { useAuth } from '../../modules/auth/AuthContext'
 import BlamChatModal from '../../modules/chat/BlamChatModal'
+import { MobilePeekElephant } from '../../modules/chat/BlamCompanion'
 import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
 import MapView from '../../modules/map/MapView'
 import { filterRadarItems, LAYER_CHIPS } from '../../modules/map/radarFilters'
@@ -109,6 +110,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const [focusSearch, setFocusSearch] = useState(false)
   const [blamMenuOpen, setBlamMenuOpen] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
+  const [peekVisible, setPeekVisible] = useState(false)
   const [donasiOpen, setDonasiOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportPrefill, setReportPrefill] = useState<BlamSnapPrefill | undefined>(undefined)
@@ -897,21 +899,30 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           </motion.div>
         )}
 
+        {peekVisible && !chatOpen && !reportOpen && !eventOpen && !donasiOpen && !blamMenuOpen && (
+          <MobilePeekElephant key="mobile-peek-elephant" onClick={() => setChatOpen(true)} />
+        )}
+
         {chatOpen && (
           <BlamChatModal
             key="blam-chat-modal"
             context={blamChatContext}
-            onClose={() => setChatOpen(false)}
+            onClose={() => {
+              setChatOpen(false)
+              setPeekVisible(true)
+            }}
             onAction={(action: BlamChatAction) => {
               if (action.type === 'open_blam_snap') {
                 setReportPrefill(action.prefill)
                 setChatOpen(false)
+                setPeekVisible(true)
                 setReportOpen(true)
                 return
               }
               if (action.type === 'focus_map_point') {
                 const { lat, lng, eventId } = action.target
                 setChatOpen(false)
+                setPeekVisible(true)
                 if (eventId && radar.events.some((ev) => ev.id === eventId)) {
                   openDetail(eventId)
                   return

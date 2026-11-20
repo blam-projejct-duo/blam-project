@@ -35,7 +35,7 @@
       align-items: center;
       justify-content: center;
       padding: 24px;
-      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      padding-bottom: calc(72px + env(safe-area-inset-bottom));
       box-sizing: border-box;
       text-align: center;
       overflow: hidden;
@@ -90,7 +90,7 @@
 
     #splash svg.sp-scene {
       position: relative;
-      width: min(88vw, 400px);
+      width: min(82vw, 360px);
       height: auto;
       aspect-ratio: 1;
       overflow: visible;
@@ -173,11 +173,11 @@
 
     #splash .sp-eye {
       transform-origin: 525px 260px;
-      animation: sp-blink 3.2s ease-in-out 1.5s infinite;
+      animation: sp-blink 4s ease-in-out .8s infinite;
     }
 
     #splash .sp-brow {
-      animation: sp-brow 3.2s ease-in-out 1.5s infinite;
+      animation: sp-brow 4s ease-in-out .8s infinite;
     }
 
     #splash .sp-tip {
@@ -213,7 +213,7 @@
     /* wordmark */
     #splash h1 {
       display: flex;
-      margin: 6px 0 0;
+      margin: 2px 0 0;
       font-family: 'Bricolage Grotesque Variable', 'DM Sans Variable', system-ui, sans-serif;
       font-size: 46px;
       line-height: 1;
@@ -230,8 +230,8 @@
     }
 
     #splash .sp-tag {
-      margin: 8px 0 0;
-      font-size: 13px;
+      margin: 10px 0 0;
+      font-size: 12px;
       font-weight: 500;
       letter-spacing: .02em;
       color: var(--sp-muted);
@@ -239,10 +239,11 @@
     }
 
     #splash .sp-msg {
-      margin-top: 12px;
-      min-height: 20px;
-      font-size: 14px;
+      margin-top: 26px;
+      min-height: 16px;
+      font-size: 12px;
       font-weight: 600;
+      letter-spacing: .01em;
       color: var(--sp-muted);
       animation: sp-fade .5s ease 1.2s both;
     }
@@ -254,9 +255,9 @@
     /* bar loading */
     #splash .sp-bar {
       position: relative;
-      width: 190px;
-      height: 7px;
-      margin-top: 14px;
+      width: 150px;
+      height: 5px;
+      margin-top: 10px;
       border-radius: 99px;
       background: rgba(18, 40, 107, .1);
       overflow: hidden;
@@ -281,15 +282,6 @@
       width: 40%;
       background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent);
       animation: sp-shine 1.4s linear infinite;
-    }
-
-    #splash .sp-pct {
-      margin-top: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      color: var(--sp-deep);
-      animation: sp-fade .5s ease 1.3s both;
     }
 
     #splash nav {
@@ -438,15 +430,22 @@
       }
     }
 
+    /* ritme kedip santai: sekali, lalu dua kali berurutan; menutup/membuka ±160ms agar tetap halus */
     @keyframes sp-blink {
 
       0%,
-      90%,
+      20%,
+      28%,
+      60%,
+      68%,
+      76%,
       100% {
         transform: scaleY(1);
       }
 
-      94% {
+      24%,
+      64%,
+      72% {
         transform: scaleY(.08);
       }
     }
@@ -454,14 +453,69 @@
     @keyframes sp-brow {
 
       0%,
-      88%,
+      20%,
+      28%,
+      60%,
+      76%,
       100% {
         transform: translateY(0);
       }
 
-      94% {
-        transform: translateY(-9px);
+      24% {
+        transform: translateY(-6px);
       }
+
+      64%,
+      72% {
+        transform: translateY(-8px);
+      }
+
+      68% {
+        transform: translateY(-3px);
+      }
+    }
+
+    /* versi singkat: dua kedipan santai setelah gajah mendarat */
+    @keyframes sp-blink-q {
+
+      0%,
+      25%,
+      45%,
+      60%,
+      80%,
+      100% {
+        transform: scaleY(1);
+      }
+
+      35%,
+      70% {
+        transform: scaleY(.08);
+      }
+    }
+
+    @keyframes sp-brow-q {
+
+      0%,
+      25%,
+      45%,
+      60%,
+      80%,
+      100% {
+        transform: translateY(0);
+      }
+
+      35%,
+      70% {
+        transform: translateY(-7px);
+      }
+    }
+
+    #splash.sp-quick .sp-eye {
+      animation: sp-blink-q 1s ease-in-out .5s 1 both;
+    }
+
+    #splash.sp-quick .sp-brow {
+      animation: sp-brow-q 1s ease-in-out .5s 1 both;
     }
 
     @keyframes sp-tip {
@@ -630,7 +684,6 @@
     #splash.sp-out .sp-tag,
     #splash.sp-out .sp-msg,
     #splash.sp-out .sp-bar,
-    #splash.sp-out .sp-pct,
     #splash.sp-out nav {
       animation: sp-out-text .35s ease forwards;
     }
@@ -697,6 +750,59 @@
         opacity: 0;
         transform: translateY(14px);
       }
+    }
+
+    /* teks khusus pembaca layar */
+    #splash .sp-sr {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+
+    /* tab di latar belakang: jeda semua animasi supaya ceritanya tidak terlewat */
+    #splash.sp-paused,
+    #splash.sp-paused *,
+    #splash.sp-paused::before {
+      animation-play-state: paused !important;
+    }
+
+    /* versi singkat untuk kunjungan ulang: gajah + wordmark saja, ±1 detik */
+    #splash.sp-quick .sp-tag,
+    #splash.sp-quick .sp-msg,
+    #splash.sp-quick .sp-bar {
+      opacity: 0;
+      animation: none;
+    }
+
+    #splash.sp-quick .sp-intro {
+      animation-duration: .65s;
+    }
+
+    #splash.sp-quick h1 span {
+      animation: sp-letter .4s cubic-bezier(.3, 1.7, .5, 1) calc(.1s + var(--i) * .06s) both;
+    }
+
+    #splash.sp-quick.sp-out {
+      animation-duration: .6s;
+      animation-delay: .1s;
+    }
+
+    /* aplikasi memudar masuk bersamaan dengan lingkaran yang terbuka */
+    @keyframes app-in {
+      from {
+        opacity: .35;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    #root.app-enter {
+      animation: app-in 1.1s ease-out .35s both;
     }
 
     @keyframes sp-shine {
@@ -970,9 +1076,10 @@
     <h1 aria-label="Blam"><span style="--i:0">B</span><span style="--i:1">l</span><span style="--i:2">a</span><span
         style="--i:3">m</span></h1>
     <p class="sp-tag">Radar konservasi pesisir &amp; hutan Indonesia</p>
-    <div class="sp-msg" id="sp-msg" aria-live="polite">Gajah lagi pemanasan…</div>
+    <div class="sp-msg" id="sp-msg" aria-hidden="true">Gajah lagi pemanasan…</div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
-    <div class="sp-pct" id="sp-pct" aria-hidden="true">0%</div>
+
+    <span class="sp-sr" id="sp-sr">Memuat Blam</span>
 
     <nav><a href="/privacy">Kebijakan Privasi</a><a href="/terms">Ketentuan Layanan</a></nav>
   </div>
@@ -983,48 +1090,75 @@
       var seen = false;
       try { seen = sessionStorage.getItem('sp-seen') === '1'; } catch (e) { }
       var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-      var t0 = Date.now();
-      // kunjungan pertama: splash tampil ±7 dtk supaya seluruh cerita animasinya sempat terlihat
-      var MIN = seen ? 0 : (reduce ? 1500 : 7000);
-      var done = false;
-      window.__hideSplash = function () {
-        if (window.__splashGone) return;
-        window.__splashGone = true;
+      // halaman legal (/privacy, /terms) dan kunjungan ulang memakai versi singkat ±1,4 dtk
+      var legal = /^\/(privacy|terms)\/?$/.test(location.pathname);
+      var short = seen || legal;
+      var quick = short && !reduce;
+      if (quick) s.classList.add('sp-quick');
+      // kunjungan pertama: ±7 dtk supaya seluruh cerita animasinya sempat terlihat
+      var MIN = reduce ? (short ? 0 : 1500) : (short ? 1400 : 7000);
+
+      // jam "aktif": hanya berjalan saat tab terlihat, jadi splash tidak hilang sendiri saat tab di latar belakang
+      var active = 0, mark = document.hidden ? 0 : Date.now();
+      function now() { return active + (mark ? Date.now() - mark : 0); }
+      if (document.hidden) s.classList.add('sp-paused');
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+          if (mark) { active += Date.now() - mark; mark = 0; }
+          s.classList.add('sp-paused');
+        } else {
+          mark = Date.now();
+          s.classList.remove('sp-paused');
+        }
+      });
+
+      var requested = false, finishing = false, done = false;
+      var FILL = (quick || reduce) ? 0 : 450; // waktu bar mengisi sampai penuh sebelum splash keluar
+      var sr = document.getElementById('sp-sr');
+      window.__hideSplash = function () { window.__splashGone = true; requested = true; };
+
+      function finish() {
+        finishing = true;
+        done = true;
+        if (sr) sr.textContent = 'Blam siap';
         setTimeout(function () {
-          done = true; // bar & persen mengisi sampai 100% dulu
-          setTimeout(function () {
-            s.classList.add('sp-out'); // gajah meluncur, cincin radar meledak, lalu layar terbuka melingkar
-            try { sessionStorage.setItem('sp-seen', '1'); } catch (e) { }
-            setTimeout(function () { s.remove(); }, reduce ? 400 : 1500);
-          }, 450);
-        }, Math.max(0, MIN - (Date.now() - t0)));
-      };
-      setTimeout(window.__hideSplash, 10000); // pengaman: splash tidak boleh menutup layar selamanya
+          s.classList.add('sp-out'); // gajah meluncur, cincin radar meledak, layar terbuka melingkar
+          var root = document.getElementById('root');
+          if (root && !reduce) { // aplikasi memudar masuk saat lingkaran terbuka
+            root.classList.add('app-enter');
+            setTimeout(function () { root.classList.remove('app-enter'); }, 1900);
+          }
+          try { sessionStorage.setItem('sp-seen', '1'); } catch (e) { }
+          setTimeout(function () { s.remove(); }, reduce ? 400 : (quick ? 1000 : 1500));
+        }, FILL);
+      }
 
-      // pesan bergantian, berhenti di "Hampir siap!"
       var msgs = ['Gajah lagi pemanasan…', 'Memindai hutan & pesisir…', 'Menyiram bibit mangrove…', 'Menandai titik rawan…', 'Menyiapkan data radar…', 'Merapikan peta konservasi…', 'Hampir siap!'];
-      var i = 0, el = document.getElementById('sp-msg');
-      var iv = setInterval(function () {
-        i++;
-        if (!el) return clearInterval(iv);
-        el.classList.remove('swap');
-        void el.offsetWidth; // restart animasi
-        el.textContent = msgs[i];
-        el.classList.add('swap');
-        if (i >= msgs.length - 1) clearInterval(iv);
-      }, 1000);
-
-      // progres: naik halus sampai ±92%, merayap pelan kalau app belum siap, lalu 100% saat selesai
-      var bar = s.querySelector('.sp-bar i'), pct = document.getElementById('sp-pct'), p = 0;
+      var shown = 0, msg = document.getElementById('sp-msg');
+      var bar = s.querySelector('.sp-bar i'), p = 0;
       var span = Math.max(MIN, 1500);
+
       (function tick() {
         if (!document.body.contains(s)) return;
-        var e = Date.now() - t0;
+        var e = now();
+        // selesai bila app sudah siap dan durasi minimum terpenuhi; pengaman: maksimal 10 dtk aktif
+        if (!finishing && ((requested && e >= MIN) || e >= 10000)) finish();
+
+        // pesan bergantian tiap 1 dtk, berhenti di "Hampir siap!"
+        var idx = Math.min(Math.floor(e / 1000), msgs.length - 1);
+        if (idx !== shown && msg) {
+          shown = idx;
+          msg.classList.remove('swap');
+          void msg.offsetWidth; // restart animasi
+          msg.textContent = msgs[idx];
+          msg.classList.add('swap');
+        }
+
+        // progres bar: naik halus sampai ±92%, merayap pelan kalau app belum siap, penuh saat selesai
         var k = Math.min(e / span, 1);
         var target = done ? 1 : .92 * (1 - Math.pow(1 - k, 2.2)) + Math.min(.06, Math.max(0, e - span) / 40000);
         p += (target - p) * .12;
         if (bar) bar.style.transform = 'scaleX(' + p.toFixed(3) + ')';
-        if (pct) pct.textContent = Math.round(p * 100) + '%';
         requestAnimationFrame(tick);
       })();
     })();
