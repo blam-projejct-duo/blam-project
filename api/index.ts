@@ -3457,6 +3457,7 @@ interface StoredFundraising {
   location_name: string
   lat: number
   lng: number
+  cover_image_url?: string | null
   target_amount: number
   collected_amount: number
   status: 'active' | 'completed' | 'closed'
@@ -3531,6 +3532,8 @@ app.post('/fundraisings', async (c) => {
     lat,
     lng,
     targetAmount,
+    coverImageBase64,
+    coverMimeType,
     organizationId,
   } = body as Record<string, unknown>
 
@@ -3618,6 +3621,25 @@ app.post('/fundraisings', async (c) => {
       ? locationName.trim().slice(0, 140)
       : `${latN.toFixed(4)}, ${lngN.toFixed(4)}`
 
+  let coverImageUrl: string | null = null
+  if (typeof coverImageBase64 === 'string' && coverImageBase64.length > 0) {
+    if (!MIMES.includes(coverMimeType as (typeof MIMES)[number])) {
+      return c.json({ error: 'Format foto sampul harus JPEG/PNG/WebP' }, 400)
+    }
+    if (coverImageBase64.length * 0.75 > MAX_IMAGE_BYTES) {
+      return c.json({ error: 'Foto sampul terlalu besar (maks 1,5 MB)' }, 413)
+    }
+    const ext = coverMimeType === 'image/png' ? 'png' : coverMimeType === 'image/webp' ? 'webp' : 'jpg'
+    const uploadedPath = `fundraisings/${crypto.randomUUID()}.${ext}`
+    const up = await supa.storage.from('conservation-media').upload(uploadedPath, decodeBase64(coverImageBase64), {
+      contentType: coverMimeType as string,
+    })
+    if (up.error) {
+      return c.json({ error: 'Gagal menyimpan foto sampul galang dana' }, 500)
+    }
+    coverImageUrl = supa.storage.from('conservation-media').getPublicUrl(uploadedPath).data.publicUrl
+  }
+
   const newCampaign: StoredFundraising = {
     id: crypto.randomUUID(),
     ref_source: normalizedSource,
@@ -3628,6 +3650,7 @@ app.post('/fundraisings', async (c) => {
     location_name: normalizedLocation,
     lat: latN,
     lng: lngN,
+    cover_image_url: coverImageUrl,
     target_amount: targetNum,
     collected_amount: 0,
     status: 'active',

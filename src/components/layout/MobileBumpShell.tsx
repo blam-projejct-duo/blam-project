@@ -68,6 +68,7 @@ type Mode =
   | 'orgs'
   | 'profile'
   | 'notifications'
+  | 'care'
   | 'verify'
   | 'agency'
   | 'admin'
@@ -129,7 +130,6 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const [blamMenuOpen, setBlamMenuOpen] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   const [peekVisible, setPeekVisible] = useState(false)
-  const [donasiOpen, setDonasiOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportPrefill, setReportPrefill] = useState<BlamSnapPrefill | undefined>(undefined)
   const [eventOpen, setEventOpen] = useState(false)
@@ -604,14 +604,14 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                   },
                   {
                     id: 'donasi',
-                    label: 'Blam Donasi',
+                    label: 'Blam Care',
                     x: 78,
                     y: -74,
                     size: 52,
                     primary: false,
                     delay: 0.12,
                     icon: <DonateHeartDuotoneIcon />,
-                    onSelect: () => setDonasiOpen(true),
+                    onSelect: () => openSheet('care'),
                   },
                 ].map((item) => (
                   <motion.div
@@ -902,6 +902,18 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               {mode === 'orgs' && <OrgsPanel />}
               {mode === 'profile' && <ProfilePanel />}
               {mode === 'notifications' && <NotificationsPanel onOpenEvent={openDetail} />}
+              {mode === 'care' && (
+                <BlamDonasiModal
+                  embedded
+                  signals={radar.satelliteSignals}
+                  onClose={closeSheet}
+                  onOpenSignal={(sig) => openSignalDetail(sig)}
+                  onFocusLocation={(lat, lng) => {
+                    setMode(null)
+                    radar.focusLocation(lat, lng, 10)
+                  }}
+                />
+              )}
               {mode === 'verify' && (
                 <VerificationRadarPanel
                   onCreateEvent={(report) => startCreateEvent(report)}
@@ -983,7 +995,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           </motion.div>
         )}
 
-        {peekVisible && !chatOpen && !reportOpen && !eventOpen && !donasiOpen && !blamMenuOpen && (
+        {peekVisible && !chatOpen && !reportOpen && !eventOpen && mode !== 'care' && !blamMenuOpen && (
           <MobilePeekElephant
             key="mobile-peek-elephant"
             onClick={() => setChatOpen(true)}
@@ -1027,21 +1039,6 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               }
             }}
           />
-        )}
-
-        {donasiOpen && (
-          <Suspense fallback={null}>
-            <BlamDonasiModal
-              key="blam-donasi-modal"
-              signals={radar.satelliteSignals}
-              onClose={() => setDonasiOpen(false)}
-              onOpenSignal={(sig) => openSignalDetail(sig)}
-              onFocusLocation={(lat, lng) => {
-                setMode(null)
-                radar.focusLocation(lat, lng, 10)
-              }}
-            />
-          </Suspense>
         )}
       </AnimatePresence>
     </div>

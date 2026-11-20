@@ -146,10 +146,14 @@ export function ModalShell({
   title,
   onClose,
   children,
+  panelClassName = 'max-h-[90dvh] md:max-w-[520px]',
+  bodyClassName = 'p-5',
 }: {
   title: string
   onClose: () => void
   children: ReactNode
+  panelClassName?: string
+  bodyClassName?: string
 }) {
   return (
     <motion.div
@@ -167,9 +171,9 @@ export function ModalShell({
         animate={{ y: 0, opacity: 1, scale: 1 }}
         exit={{ y: 28, opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className="flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[20px] border border-line bg-white md:max-w-[520px] md:rounded-[20px]"
+        className={`flex w-full flex-col overflow-hidden rounded-t-[20px] border border-line bg-white md:rounded-[20px] ${panelClassName}`}
       >
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
+        <header className="flex h-15 shrink-0 items-center justify-between border-b border-line px-4 sm:px-5">
           <h2 className="text-lg font-semibold tracking-tight text-ink">{title}</h2>
           <button
             type="button"
@@ -180,7 +184,7 @@ export function ModalShell({
             <X className="size-4" />
           </button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
+        <div className={`min-h-0 flex-1 overflow-y-auto ${bodyClassName}`}>{children}</div>
       </motion.div>
     </motion.div>
   )

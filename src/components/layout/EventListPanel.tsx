@@ -1,11 +1,11 @@
-import { Droplets, Flame, HeartHandshake, Mountain, Search, X } from 'lucide-react'
+import { BadgeCheck, Droplets, Flame, HeartHandshake, Mountain, Search, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
 import { findFundraisingForSignal, useFundraisings } from '../../modules/fundraising/useFundraisings'
 import { formatFloodRiskLabel, formatSignalSource } from '../../modules/map/radarFilters'
 import { DashedOutline, EcoBadge, MarkerTierLegend } from '../ui/atoms'
-import type { ConservationEvent, HazardKind, SatelliteSignal, SignalVerificationState } from '../../types'
+import type { ConservationEvent, Ecosystem, HazardKind, SatelliteSignal, SignalVerificationState } from '../../types'
 
 export type ListTab = 'Utama' | 'Terbaru' | 'History' | 'Satelit' | 'Berjalan' | 'Verifikasi' | 'Selesai'
 
@@ -128,6 +128,100 @@ function SignalRow({
   )
 }
 
+const ECO_BANNER_BG: Record<Ecosystem, string> = {
+  coastal_mangrove: 'bg-gradient-to-br from-emerald-100 via-teal-50 to-sky-100/90',
+  tropical_forest: 'bg-gradient-to-br from-emerald-100 via-mint/70 to-lime-100/80',
+  watershed: 'bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100/90',
+}
+
+function formatScheduleShort(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+}
+
+function ActionFeedCard({ event, onOpen }: { event: ConservationEvent; onOpen: () => void }) {
+  const coverUrl = event.cover_image_url || event.report?.before_image_url || null
+  const participants = event.event_participants?.length ?? 0
+  const maxPart = event.max_participants
+  const quotaPct = maxPart ? Math.min(100, Math.round((participants / maxPart) * 100)) : null
+  const schedule = formatScheduleShort(event.start_at)
+  const tone = mapEventTone(event)
+  const loc = shortLocation(event.location_name)
+  const showLoc = Boolean(loc) && !event.title.toLowerCase().includes(loc.slice(0, 12).toLowerCase())
+
+  return (
+    <li className="relative overflow-hidden rounded-[18px] bg-[#f5f7ff] transition-colors hover:bg-mint/25">
+      <DashedOutline rx={17} />
+      <button type="button" onClick={onOpen} className="flex w-full flex-col text-left">
+        <div
+          className={`relative h-34 w-full overflow-hidden sm:h-38 ${
+            coverUrl ? 'bg-[#e8edf6]' : ECO_BANNER_BG[event.ecosystem]
+          }`}
+        >
+          {coverUrl ? (
+            <img src={coverUrl} alt={event.title} className="size-full object-cover" />
+          ) : (
+            <div className="flex size-full items-center justify-center">
+              <EcoBadge ecosystem={event.ecosystem} />
+            </div>
+          )}
+
+          <span className="pointer-events-none absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/92 px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-xs backdrop-blur-xs">
+            <span className={`size-1.5 rounded-full ${DOT[tone]}`} />
+            {EVENT_STATUS_LABEL[event.status]}
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-2 px-3.5 py-3">
+          <h3 className="line-clamp-2 text-[14.5px] leading-snug font-semibold text-ink">
+            {event.title}
+          </h3>
+
+          <div className="flex items-center justify-between gap-2 text-[11.5px] font-light text-ink-soft">
+            <p className="flex min-w-0 items-center gap-1">
+              {event.organization?.name && (
+                <span className="inline-flex min-w-0 items-center gap-1">
+                  <span className="truncate">{event.organization.name}</span>
+                  {event.organization.is_verified && <BadgeCheck className="size-3.5 shrink-0 text-[#2563EB]" />}
+                </span>
+              )}
+              {showLoc && (
+                <>
+                  {event.organization?.name && <span aria-hidden="true">·</span>}
+                  <span className="truncate">{loc}</span>
+                </>
+              )}
+            </p>
+            {schedule && <span className="shrink-0 text-ink-soft">{schedule}</span>}
+          </div>
+
+          {(quotaPct !== null || participants > 0) && (
+            <div className="flex flex-col gap-1.5 pt-0.5">
+              {quotaPct !== null && (
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white">
+                  <div
+                    className="h-full rounded-full bg-leaf transition-all duration-300"
+                    style={{ width: `${Math.max(quotaPct, participants > 0 ? 6 : 0)}%` }}
+                  />
+                </div>
+              )}
+              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-light text-ink-soft">
+                <Users className="size-3.5 text-leaf" />
+                <span className="num font-medium text-ink">
+                  {maxPart ? `${participants}/${maxPart}` : participants}
+                </span>
+                relawan
+              </span>
+            </div>
+          )}
+        </div>
+      </button>
+    </li>
+  )
+}
+
 function summarizeResolvedEvent(event: ConservationEvent) {
   let wasteKg = 0
   let trees = 0
@@ -144,6 +238,7 @@ function summarizeResolvedEvent(event: ConservationEvent) {
   const meta = event.organization?.name
     ? `${event.organization.name} · ${shortLocation(event.location_name)}`
     : shortLocation(event.location_name)
+  const photoUrl = latestAction?.after_image_url || event.cover_image_url || event.report?.before_image_url || null
   return {
     wasteKg,
     trees,
@@ -151,37 +246,56 @@ function summarizeResolvedEvent(event: ConservationEvent) {
     participantCount: event.event_participants?.length ?? 0,
     summary,
     meta,
+    photoUrl,
   }
 }
 
 function ResolvedEventRow({ event, onOpen }: { event: ConservationEvent; onOpen: () => void }) {
-  const { wasteKg, trees, recoveryScore, participantCount, summary, meta } = summarizeResolvedEvent(event)
+  const { wasteKg, trees, recoveryScore, participantCount, summary, meta, photoUrl } = summarizeResolvedEvent(event)
 
   return (
-    <li>
+    <li className="relative overflow-hidden rounded-[18px] bg-[#f5f7ff] transition-colors hover:bg-mint/25">
+      <DashedOutline rx={17} />
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-full flex-col gap-2 rounded-xl px-1.5 py-3 text-left transition-colors hover:bg-[#f4f5f7]/80"
+        className="flex w-full flex-col gap-2.5 p-3.5 text-left"
       >
-        <div className="flex items-center gap-3">
-          <EcoBadge ecosystem={event.ecosystem} />
+        <div className="flex items-start gap-3">
+          {photoUrl ? (
+            <img
+              src={photoUrl}
+              alt={event.title}
+              className="h-16 w-20 shrink-0 rounded-[12px] border border-line/60 object-cover"
+            />
+          ) : (
+            <EcoBadge ecosystem={event.ecosystem} />
+          )}
           <div className="min-w-0 flex-1">
-            <span className="block truncate text-[14px] font-normal text-ink">{event.title}</span>
-            <span className="block truncate text-[12px] font-light text-ink-soft">{meta}</span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-[11.5px] font-light text-ink-soft">{meta}</span>
+              <span className="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-[10.5px] font-medium text-forest">
+                Selesai
+              </span>
+            </div>
+            <span className="mt-0.5 block line-clamp-2 text-[14px] leading-snug font-semibold text-ink">
+              {event.title}
+            </span>
           </div>
-          <span className="shrink-0 rounded-md bg-[#f4f5f7] px-2 py-0.5 text-[11px] font-normal text-forest">
-            Selesai
-          </span>
         </div>
 
         <p className="line-clamp-2 text-[12px] leading-relaxed font-light text-ink-soft">{summary}</p>
 
-        <p className="num text-[11.5px] font-light text-ink-soft">
-          {wasteKg} kg sampah · {trees} bibit
-          {recoveryScore !== null ? ` · ${recoveryScore}% pulih` : ''}
-          {participantCount > 0 ? ` · ${participantCount} relawan` : ''}
-        </p>
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-normal text-forest">
+          <span className="num rounded-full bg-white px-2.5 py-0.5 text-forest">{wasteKg} kg sampah</span>
+          <span className="num rounded-full bg-white px-2.5 py-0.5 text-forest">{trees} bibit</span>
+          {recoveryScore !== null && (
+            <span className="num rounded-full bg-mint/60 px-2.5 py-0.5 text-forest">{recoveryScore}% pulih</span>
+          )}
+          {participantCount > 0 && (
+            <span className="num rounded-full bg-white px-2.5 py-0.5 text-ink-soft">{participantCount} relawan</span>
+          )}
+        </div>
       </button>
     </li>
   )
@@ -387,10 +501,12 @@ export default function EventListPanel({
           )}
 
           {rows.length > 0 && (
-            <ul className="mt-2 divide-y divide-line">
+            <ul className={tab === 'Berjalan' || tab === 'Selesai' ? 'mt-3 flex flex-col gap-3' : 'mt-2 divide-y divide-line'}>
               {rows.map((ev) =>
                 tab === 'Selesai' ? (
                   <ResolvedEventRow key={ev.id} event={ev} onOpen={() => onOpen(ev.id)} />
+                ) : tab === 'Berjalan' ? (
+                  <ActionFeedCard key={ev.id} event={ev} onOpen={() => onOpen(ev.id)} />
                 ) : (
                   <EventRow key={ev.id} event={ev} tab={tab} onOpen={() => onOpen(ev.id)} />
                 ),

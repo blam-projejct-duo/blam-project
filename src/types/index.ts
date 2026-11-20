@@ -307,6 +307,7 @@ export interface FundraisingCampaign {
   location_name: string
   lat: number
   lng: number
+  cover_image_url?: string | null
   target_amount: number
   collected_amount: number
   status: FundraisingStatus

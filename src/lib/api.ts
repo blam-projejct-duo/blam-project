@@ -421,6 +421,8 @@ export async function createFundraising(input: {
   lat: number
   lng: number
   targetAmount: number
+  coverImageBase64?: string
+  coverMimeType?: string
   organizationId?: string
 }): Promise<{ ok: boolean; fundraising: FundraisingCampaign }> {
   return apiFetch<{ ok: boolean; fundraising: FundraisingCampaign }>('/fundraisings', {
