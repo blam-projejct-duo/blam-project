@@ -9,6 +9,7 @@ import {
   Flame,
   History,
   Mountain,
+  Plus,
   Shield,
   Sprout,
   Sun,
@@ -40,6 +41,7 @@ import { filterRadarItems, LAYER_CHIPS } from '../../modules/map/radarFilters'
 import type { RadarLayer } from '../../modules/map/radarFilters'
 import type { Radar } from '../../modules/map/useRadar'
 import EventListPanel from './EventListPanel'
+import type { ListTab } from './EventListPanel'
 import type { CitizenReport, SatelliteSignal } from '../../types'
 
 const AdminPanel = lazy(() => import('../../modules/admin/AdminPanel'))
@@ -48,6 +50,7 @@ const CreateEventForm = lazy(() => import('../../modules/events/CreateEventForm'
 const EventDetail = lazy(() => import('../../modules/events/EventDetail'))
 const SatelliteSignalDetail = lazy(() => import('../../modules/events/SatelliteSignalDetail'))
 const HistoryPanel = lazy(() => import('../../modules/history/HistoryPanel'))
+const NotificationsPanel = lazy(() => import('../../modules/notifications/NotificationsPanel'))
 const OrgsPanel = lazy(() => import('../../modules/organizations/OrgsPanel'))
 const ProfilePanel = lazy(() => import('../../modules/profile/ProfilePanel'))
 const QuickReportFlow = lazy(() => import('../../modules/reports/QuickReportFlow'))
@@ -55,10 +58,24 @@ const VerificationRadarPanel = lazy(() => import('../../modules/reports/Verifica
 const BlamDonasiModal = lazy(() => import('../../modules/fundraising/BlamDonasiModal'))
 
 type Snap = 'peek' | 'half' | 'full'
-type Mode = 'detail' | 'signal' | 'radar' | 'list' | 'history' | 'orgs' | 'profile' | 'verify' | 'agency' | 'admin' | null
+type Mode =
+  | 'detail'
+  | 'signal'
+  | 'radar'
+  | 'list'
+  | 'history'
+  | 'orgs'
+  | 'profile'
+  | 'notifications'
+  | 'verify'
+  | 'agency'
+  | 'admin'
+  | null
 
 const SPRING = { type: 'spring', stiffness: 290, damping: 32, mass: 0.9 } as const
 const PEEK_PX = 214
+const JELAJAH_TABS: readonly ListTab[] = ['Satelit', 'Utama']
+const AKSI_TABS: readonly ListTab[] = ['Berjalan', 'Verifikasi', 'Selesai']
 
 const LAYER_CHIP_ICON: Record<RadarLayer, { icon: ReactNode; offCls: string; onCls: string }> = {
   wildfire: {
@@ -98,7 +115,7 @@ function DockItem({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export default function MobileBumpShell({ radar }: { radar: Radar }) {
-  const { profile, notifications } = useAuth()
+  const { profile, notifications, openAuthModal } = useAuth()
   const rootRef = useRef<HTMLDivElement>(null)
   const [H, setH] = useState(0)
   const [mode, setMode] = useState<Mode>(() => (radar.deepLinkedId ? 'detail' : null))
@@ -342,9 +359,9 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               exit={{ opacity: 0, y: -8, scale: 0.96 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
               style={{ transformOrigin: 'top center' }}
-              className="font-sans absolute top-[calc(env(safe-area-inset-top)+60px)] left-1/2 z-[520] flex w-[min(296px,calc(100%-32px))] -translate-x-1/2 flex-col gap-2.5 rounded-[22px] bg-white/95 p-3 shadow-[0_10px_28px_rgba(18,29,79,0.16)] backdrop-blur-md"
+              className="font-sans absolute top-[calc(env(safe-area-inset-top)+60px)] left-1/2 z-[520] flex w-[min(296px,calc(100%-32px))] -translate-x-1/2 flex-col gap-2.5 rounded-[16px] bg-white/95 p-3 shadow-[0_10px_28px_rgba(18,29,79,0.16)] backdrop-blur-md"
             >
-              <DashedOutline rx={21} />
+              <DashedOutline rx={15} />
               <MapStyleSwitcher compact value={radar.style} onChange={radar.setStyle} className="w-full [&>button]:flex-1" />
 
               <div className="flex flex-col gap-1.5">
@@ -393,18 +410,18 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-1.5 border-t border-leaf/12 pt-2.5">
+              <div className="grid grid-cols-2 gap-1.5 border-t border-line pt-2.5">
                 <button
                   type="button"
                   onClick={() => openSheet('history', true)}
-                  className="flex h-8.5 items-center justify-center gap-1.5 rounded-full bg-[#eff3ff] px-3 text-[11.5px] font-normal text-forest transition-colors hover:bg-mint/35"
+                  className="flex h-8.5 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[11.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
                 >
                   <History className="size-3.5 shrink-0" /> History
                 </button>
                 <button
                   type="button"
                   onClick={() => openSheet('orgs', true)}
-                  className="flex h-8.5 items-center justify-center gap-1.5 rounded-full bg-[#eff3ff] px-3 text-[11.5px] font-normal text-forest transition-colors hover:bg-mint/35"
+                  className="flex h-8.5 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[11.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
                 >
                   <Building2 className="size-3.5 shrink-0" /> Organisasi
                 </button>
@@ -413,14 +430,14 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                     <button
                       type="button"
                       onClick={() => openSheet('verify', true)}
-                      className="flex h-8.5 items-center justify-center gap-1.5 rounded-full bg-[#eff3ff] px-3 text-[11.5px] font-normal text-forest transition-colors hover:bg-mint/35"
+                      className="flex h-8.5 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[11.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
                     >
                       <CheckSquare className="size-3.5 shrink-0" /> Verifikasi
                     </button>
                     <button
                       type="button"
                       onClick={() => startCreateEvent(null)}
-                      className="btn-primary !font-sans h-8.5 px-3 text-[11.5px] font-medium"
+                      className="btn-primary !font-sans h-8.5 !rounded-xl px-3 text-[11.5px] font-medium"
                     >
                       <CalendarPlus className="size-3.5 shrink-0" /> Buat Event
                     </button>
@@ -430,7 +447,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                   <button
                     type="button"
                     onClick={() => openSheet('agency', true)}
-                    className="flex h-8.5 items-center justify-center gap-1.5 rounded-full bg-[#eff3ff] px-3 text-[11.5px] font-normal text-forest transition-colors hover:bg-mint/35"
+                    className="flex h-8.5 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[11.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
                   >
                     <Shield className="size-3.5 shrink-0" /> Eskalasi
                   </button>
@@ -439,7 +456,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                   <button
                     type="button"
                     onClick={() => openSheet('admin', true)}
-                    className="flex h-8.5 items-center justify-center gap-1.5 rounded-full bg-forest px-3 text-[11.5px] font-normal text-white"
+                    className="flex h-8.5 items-center justify-center gap-1.5 rounded-xl bg-ink px-3 text-[11.5px] font-normal text-white"
                   >
                     <Shield className="size-3.5 shrink-0" /> Admin
                   </button>
@@ -471,7 +488,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         <Orb
           size={38}
           label="Notifikasi"
-          onClick={() => openSheet('profile', true)}
+          onClick={() => openSheet('notifications', true)}
           className="orb-primary relative"
         >
           <BellSolidIcon light />
@@ -683,8 +700,8 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             inert={blamMenuOpen}
             className={blamMenuOpen ? 'pointer-events-none' : ''}
           >
-            <DockItem label="Aksi">
-              <Orb size={56} label="Aksi" watermark="AKSI" onClick={() => openSheet('list')} className="relative">
+            <DockItem label="Gerakan">
+              <Orb size={56} label="Gerakan" watermark="ACTION" onClick={() => openSheet('list')} className="relative">
                 <AksiActionIcon />
                 {openCount > 0 && (
                   <span className="num absolute -top-1 -right-1 grid size-5 place-items-center rounded-full border-2 border-white bg-ink text-[10px] text-white">
@@ -774,12 +791,15 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
 
               {mode === 'radar' && (
                 <EventListPanel
+                  key="mobile-jelajah"
                   events={visibleEvents}
                   impactEvents={radar.events}
                   signals={visibleSignals}
                   query={query}
                   onQueryChange={setQuery}
                   autoFocus={focusSearch}
+                  tabs={JELAJAH_TABS}
+                  initialTab="Satelit"
                   title="Jelajah"
                   onExpand={() => setSnap('full')}
                   onOpen={openDetail}
@@ -788,18 +808,67 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               )}
 
               {mode === 'list' && (
-                <EventListPanel
-                  events={visibleEvents}
-                  impactEvents={radar.events}
-                  signals={visibleSignals}
-                  query={query}
-                  onQueryChange={setQuery}
-                  autoFocus={focusSearch}
-                  title="Aksi"
-                  onExpand={() => setSnap('full')}
-                  onOpen={openDetail}
-                  onOpenSignal={openSignalDetail}
-                />
+                <div>
+                  <div className="mb-2.5 flex items-center justify-between gap-2">
+                    <h2 className="text-[21px] font-semibold tracking-tight text-ink">Gerakan</h2>
+                    {canOrganize && (
+                      <button
+                        type="button"
+                        onClick={() => startCreateEvent(null)}
+                        className="btn-primary h-8 px-3 text-xs"
+                      >
+                        <Plus className="size-3.5" /> Buat
+                      </button>
+                    )}
+                  </div>
+                  <EventListPanel
+                    key="mobile-aksi"
+                    events={visibleEvents}
+                    impactEvents={radar.events}
+                    signals={[]}
+                    query={query}
+                    onQueryChange={setQuery}
+                    autoFocus={focusSearch}
+                    showTitle={false}
+                    tabs={AKSI_TABS}
+                    initialTab="Berjalan"
+                    title="Gerakan"
+                    onExpand={() => setSnap('full')}
+                    onOpen={openDetail}
+                    renderTabContent={(subTab) => {
+                      if (subTab !== 'Verifikasi') return null
+                      if (!canOrganize) {
+                        return (
+                          <div className="rounded-[14px] bg-[#f4f5f7] p-5 text-center">
+                            <p className="font-display text-sm font-semibold text-ink">Khusus Relawan &amp; Instansi</p>
+                            <p className="mt-1 text-xs leading-relaxed font-light text-ink-soft">
+                              {!profile
+                                ? 'Masuk untuk memverifikasi laporan lapangan.'
+                                : 'Hanya relawan, instansi, atau admin terverifikasi yang dapat memverifikasi.'}
+                            </p>
+                            {!profile && (
+                              <button
+                                type="button"
+                                onClick={openAuthModal}
+                                className="btn-primary mt-3 h-9 px-4 text-xs"
+                              >
+                                Masuk
+                              </button>
+                            )}
+                          </div>
+                        )
+                      }
+                      return (
+                        <VerificationRadarPanel
+                          embedded
+                          query={query}
+                          onCreateEvent={(report) => startCreateEvent(report)}
+                          onCreateStandaloneEvent={() => startCreateEvent(null)}
+                        />
+                      )
+                    }}
+                  />
+                </div>
               )}
 
               {mode === 'history' && (
@@ -816,6 +885,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               )}
               {mode === 'orgs' && <OrgsPanel />}
               {mode === 'profile' && <ProfilePanel />}
+              {mode === 'notifications' && <NotificationsPanel onOpenEvent={openDetail} />}
               {mode === 'verify' && (
                 <VerificationRadarPanel
                   onCreateEvent={(report) => startCreateEvent(report)}

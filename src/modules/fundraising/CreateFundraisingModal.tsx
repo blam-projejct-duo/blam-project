@@ -100,16 +100,16 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border border-line bg-surface shadow-2xl sm:rounded-[28px]">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-canvas/55 px-5 py-4">
+      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[20px] border border-line bg-surface shadow-2xl sm:rounded-[20px]">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-white px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-critical/12 text-critical">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-critical/12 text-critical">
               <HeartHandshake className="size-5" />
             </span>
             <div className="min-w-0">
               <h2 className="truncate text-base font-bold text-ink">Buka Penggalangan Dana</h2>
               <p className="flex items-center gap-1 truncate text-xs font-medium text-ink-soft">
-                <MapPin className="size-3 shrink-0 text-leaf" />
+                <MapPin className="size-3 shrink-0 text-[#2563eb]" />
                 <span className="truncate">{signal.title} · Langsung tayang</span>
               </p>
             </div>
@@ -118,7 +118,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
             type="button"
             onClick={onClose}
             aria-label="Tutup"
-            className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface text-ink-soft transition hover:bg-muted hover:text-ink"
+            className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#f4f5f7] text-ink-soft transition hover:bg-[#eaecf0] hover:text-ink"
           >
             <X className="size-4" />
           </button>
@@ -133,7 +133,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
               <select
                 value={organizationId}
                 onChange={(e) => setOrganizationId(e.target.value)}
-                className="h-11 w-full rounded-2xl bg-[#f5f7ff] px-3.5 text-sm font-normal text-ink transition focus:bg-mint/35 focus:outline-none"
+                className="h-11 w-full rounded-xl bg-[#f4f5f7] px-3.5 text-sm font-normal text-ink transition focus:bg-[#eaecf0] focus:outline-none"
               >
                 {activeOrgs.map((m) => (
                   <option key={m.organization_id} value={m.organization_id}>
@@ -154,7 +154,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
               onChange={(e) => setTitle(e.target.value)}
               maxLength={140}
               required
-              className="h-11 w-full rounded-2xl bg-[#f5f7ff] px-3.5 text-sm font-normal text-ink transition focus:bg-mint/35 focus:outline-none"
+              className="h-11 w-full rounded-xl bg-[#f4f5f7] px-3.5 text-sm font-normal text-ink transition focus:bg-[#eaecf0] focus:outline-none"
             />
           </label>
 
@@ -167,7 +167,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               maxLength={1200}
-              className="w-full resize-none rounded-2xl bg-[#f5f7ff] p-3.5 text-sm leading-relaxed font-light text-ink transition focus:bg-mint/35 focus:outline-none"
+              className="w-full resize-none rounded-xl bg-[#f4f5f7] p-3.5 text-sm leading-relaxed font-light text-ink transition focus:bg-[#eaecf0] focus:outline-none"
             />
           </label>
 
@@ -175,7 +175,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">Target Dana</span>
               {targetAmount > 0 && (
-                <span className="num rounded-full bg-mint px-2.5 py-0.5 text-xs text-forest">
+                <span className="num rounded-md bg-[#f4f5f7] px-2 py-0.5 text-xs text-ink">
                   {formatRupiah(targetAmount)}
                 </span>
               )}
@@ -189,10 +189,10 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
                     key={preset.value}
                     type="button"
                     onClick={() => handleSelectPreset(preset.value)}
-                    className={`h-10 rounded-2xl px-3 text-xs whitespace-nowrap transition ${
+                    className={`h-10 rounded-xl px-3 text-xs whitespace-nowrap transition ${
                       active
-                        ? 'bg-mint font-medium text-forest'
-                        : 'bg-[#f5f7ff] font-normal text-ink hover:bg-mint/45'
+                        ? 'bg-ink font-medium text-white'
+                        : 'bg-[#f4f5f7] font-normal text-ink hover:bg-[#eaecf0]'
                     }`}
                   >
                     {preset.label}
@@ -211,7 +211,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
                 value={customTarget}
                 onChange={(e) => handleCustomChange(e.target.value)}
                 placeholder="Atau ketik nominal target..."
-                className="num h-11 w-full rounded-2xl bg-[#f5f7ff] pr-3.5 pl-10 text-sm text-ink placeholder:font-sans placeholder:font-light transition focus:bg-mint/35 focus:outline-none"
+                className="num h-11 w-full rounded-xl bg-[#f4f5f7] pr-3.5 pl-10 text-sm text-ink placeholder:font-sans placeholder:font-light transition focus:bg-[#eaecf0] focus:outline-none"
               />
             </div>
           </div>
@@ -219,7 +219,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
           {error && (
             <p
               role="alert"
-              className="rounded-2xl bg-critical/8 px-3.5 py-2.5 text-xs font-normal text-critical"
+              className="rounded-xl bg-critical/8 px-3.5 py-2.5 text-xs font-normal text-critical"
             >
               {error}
             </p>
@@ -229,7 +229,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
             <button
               type="button"
               onClick={onClose}
-              className="h-12 w-full rounded-full bg-[#f5f7ff] px-5 text-sm font-normal text-ink-soft transition hover:bg-mint/45 hover:text-ink sm:w-auto sm:min-w-28"
+              className="h-12 w-full rounded-[14px] bg-[#f4f5f7] px-5 text-sm font-normal text-ink-soft transition hover:bg-[#eaecf0] hover:text-ink sm:w-auto sm:min-w-28"
             >
               Batal
             </button>

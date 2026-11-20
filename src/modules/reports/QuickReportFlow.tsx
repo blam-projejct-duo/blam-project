@@ -1,11 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
-  ArrowLeft,
   Camera,
   Check,
   ImagePlus,
-  LocateFixed,
+  Loader2,
   MapPin,
   Mic,
   ShieldCheck,
@@ -68,11 +67,15 @@ function formatSeconds(sec: number): string {
 export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerification, initialPrefill }: Props) {
   const queryClient = useQueryClient()
   const { profile, refreshMe } = useAuth()
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+  const [phase, setPhase] = useState<'form' | 'done'>('form')
+  const [submitting, setSubmitting] = useState(false)
   const [incident, setIncident] = useState<IncidentType>(() => initialPrefill?.incident ?? 'Sampah')
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [region, setRegion] = useState<{ name: string; detail: string; fullAddress: string } | null>(null)
-  const [gpsBusy, setGpsBusy] = useState(false)
+  const [gpsBusy, setGpsBusy] = useState(
+    () => typeof navigator !== 'undefined' && Boolean(navigator.geolocation),
+  )
+  const [gpsFailed, setGpsFailed] = useState(false)
   const [note, setNote] = useState(() => initialPrefill?.description ?? '')
   const [anon, setAnon] = useState(() => Boolean(initialPrefill?.isAnonymous))
   const [photo, setPhoto] = useState<CompressedImage | null>(null)
@@ -87,7 +90,7 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
   const streamRef = useRef<MediaStream | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const step1Ok = Boolean(coords && region?.fullAddress)
+  const locationReady = Boolean(coords && region?.fullAddress)
   const canVerify = profile && (profile.role === 'volunteer' || profile.role === 'agency' || profile.role === 'admin')
 
   const stopRecordingStream = useCallback(() => {
@@ -107,18 +110,23 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
     }
   }, [stopRecordingStream])
 
-  const locateUser = useCallback((showBusy = true) => {
+  const locateUser = useCallback((fromRetry = false) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setError('GPS tidak tersedia di perangkat ini.')
+      setGpsBusy(false)
+      setGpsFailed(true)
       return
     }
-    if (showBusy) setGpsBusy(true)
-    setError(null)
+    if (fromRetry) {
+      setGpsBusy(true)
+      setGpsFailed(false)
+      setError(null)
+    }
     navigator.geolocation.getCurrentPosition(
       (p) => {
         const dLat = p.coords.latitude
         const dLng = p.coords.longitude
         setCoords({ lat: dLat, lng: dLng })
+        setGpsFailed(false)
         void reverseGeocode(dLat, dLng)
           .then((geo) => {
             setRegion({ name: geo.name, detail: geo.detail, fullAddress: geo.fullAddress })
@@ -133,7 +141,7 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
       },
       () => {
         setGpsBusy(false)
-        setError('Aktifkan izin lokasi di browser dulu ya.')
+        setGpsFailed(true)
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
     )
@@ -234,10 +242,10 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
     })
   }
 
-  const scan = async () => {
-    if (!photo || !coords || !region) return
+  const submitReport = async () => {
+    if (!photo || !coords || !region || submitting) return
     if (recording) stopVoice()
-    setStep(3)
+    setSubmitting(true)
     setResult(null)
     setError(null)
 
@@ -263,53 +271,105 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
           queryClient.invalidateQueries({ queryKey: ['reports-queue'] }),
         ])
         onSubmitted?.()
-        setStep(4)
+        setPhase('done')
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gagal memindai')
+      setError(e instanceof Error ? e.message : 'Gagal mengirim laporan')
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  const back = () => {
-    setError(null)
-    if (step === 2) setStep(1)
-    else if (step === 3) setStep(2)
-    else onClose()
-  }
-
-  const scanning = step === 3 && !result && !error
-
   return (
     <div className="relative flex h-full flex-col bg-white">
-      <header className="flex h-16 shrink-0 items-center justify-between px-4 pt-[env(safe-area-inset-top)]">
+      <header className="flex h-15 shrink-0 items-center justify-between px-4 pt-[env(safe-area-inset-top)]">
         <button
           type="button"
-          onClick={step === 1 || step === 4 ? onClose : back}
-          aria-label={step === 1 || step === 4 ? 'Tutup' : 'Kembali'}
-          className="grid size-11 place-items-center rounded-full bg-[#f5f7ff] text-forest transition-colors hover:bg-mint/60"
+          onClick={onClose}
+          aria-label="Tutup"
+          className="grid size-10 place-items-center rounded-full bg-[#f4f5f7] text-ink transition-colors hover:bg-[#e8eaee]"
         >
-          {step === 1 || step === 4 ? <X className="size-5" /> : <ArrowLeft className="size-5" />}
+          <X className="size-5" />
         </button>
-        <div className="flex gap-1.5" aria-label={`Langkah ${step} dari 4`}>
-          {[1, 2, 3, 4].map((n) => (
-            <span
-              key={n}
-              className={`h-1.5 rounded-full transition-all ${n === step ? 'w-6 bg-ink' : n < step ? 'w-1.5 bg-ink' : 'w-1.5 bg-line'}`}
-            />
-          ))}
-        </div>
-        <span className="size-12" />
+        <span className="text-[12px] font-light text-ink-soft">Blam Snap</span>
+        <span className="size-10" />
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
-        {step === 1 && (
-          <section className="flex flex-col gap-3.5">
-            <h2 className="text-[20px] font-semibold tracking-tight">Di mana ini?</h2>
+        {phase === 'form' && (
+          <section className="flex flex-col gap-4">
+            <div className="flex flex-col items-start gap-2">
+              <h2 className="text-[21px] font-semibold tracking-tight text-ink">Lapor Kejadian</h2>
+
+              {region ? (
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#f4f5f7] px-2.5 py-1 text-[12px] font-normal text-ink">
+                  <MapPin className="size-3.5 text-[#0ea5e9]" />
+                  <span>{region.name}</span>
+                  {region.detail && <span className="font-light text-ink-soft">· {region.detail}</span>}
+                </span>
+              ) : gpsFailed ? (
+                <button
+                  type="button"
+                  onClick={() => locateUser(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#f4f5f7] px-2.5 py-1 text-[12px] font-normal text-ink transition-colors hover:bg-[#e8eaee]"
+                >
+                  <MapPin className="size-3.5 text-[#0ea5e9]" />
+                  <span>Izinkan lokasi · Coba lagi</span>
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#f4f5f7] px-2.5 py-1 text-[12px] font-light text-ink-soft">
+                  <MapPin className="size-3.5 animate-pulse text-[#0ea5e9]" />
+                  Mencari lokasi…
+                </span>
+              )}
+            </div>
 
             {initialPrefill && (
-              <div className="rounded-card bg-mint/45 px-3.5 py-2 text-[12px] font-light text-forest">
-                Terisi dari Blam AI
+              <div className="rounded-xl bg-[#f4f5f7] px-3.5 py-2 text-[12px] font-light text-ink">
+                Dari Blam Chat
                 {initialPrefill.locationHint ? ` · ${initialPrefill.locationHint}` : ''}
+              </div>
+            )}
+
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              onChange={(e) => {
+                setResult(null)
+                void pickFile(e.target.files?.[0])
+              }}
+            />
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => fileRef.current?.click()}
+              className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-[14px] border border-dashed border-[#d4d8df] bg-[#f7f7f8] text-ink-soft transition-colors hover:bg-[#f1f2f4] disabled:opacity-90"
+            >
+              {photo ? (
+                <>
+                  <img src={photo.previewUrl} alt="Foto laporan" className="size-full object-cover" />
+                  {submitting && (
+                    <motion.div
+                      className="blam-gradient absolute inset-x-0 top-0 h-1 shadow-[0_0_12px_rgba(14,165,233,0.5)]"
+                      animate={{ y: [0, 240, 0] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: 'linear' }}
+                    />
+                  )}
+                </>
+              ) : (
+                <span className="flex flex-col items-center gap-2 text-[13px] font-light">
+                  <ImagePlus className="size-7 text-leaf" /> Ambil atau pilih foto
+                </span>
+              )}
+            </button>
+
+            {result && !result.isValid && (
+              <div className="rounded-[14px] bg-critical/8 px-4 py-3 text-left">
+                <p className="text-[13px] font-medium text-critical">Foto belum sesuai</p>
+                <p className="mt-0.5 text-[12.5px] font-light text-ink/80">{result.reason}</p>
               </div>
             )}
 
@@ -320,12 +380,13 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
                   <button
                     key={item}
                     type="button"
+                    disabled={submitting}
                     aria-pressed={incident === item}
                     onClick={() => setIncident(item)}
-                    className={`h-10.5 rounded-full text-[13px] transition-colors ${
+                    className={`h-10.5 rounded-xl text-[13px] transition-colors ${
                       incident === item
                         ? 'bg-ink font-medium text-white'
-                        : 'bg-[#f5f7ff] font-normal text-ink hover:bg-mint/45'
+                        : 'bg-[#f4f5f7] font-normal text-ink hover:bg-[#eaecf0]'
                     }`}
                   >
                     {item}
@@ -334,184 +395,97 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
               </div>
             </div>
 
-            <div className="rounded-card bg-[#f5f7ff] p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 text-[11px] font-light tracking-wide text-ink-soft uppercase">
-                    <MapPin className="size-3.5 text-emerald" /> Lokasi
-                  </p>
-                  {region ? (
-                    <>
-                      <p className="mt-1.5 text-[14px] font-normal text-ink">{region.name}</p>
-                      <p className="text-[12px] font-light text-ink-soft">{region.detail}</p>
-                    </>
-                  ) : (
-                    <p className="mt-1.5 text-[12px] font-light text-ink-soft">
-                      {gpsBusy ? 'Mencari lokasi…' : 'GPS belum aktif'}
-                    </p>
-                  )}
-                </div>
-                {coords && (
-                  <span className="num shrink-0 rounded-full bg-white px-2.5 py-1 text-[11px] font-normal text-ink-soft">
-                    {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
-                  </span>
-                )}
-              </div>
+            <div className="overflow-hidden rounded-[14px] bg-[#f4f5f7]">
+              <textarea
+                rows={2}
+                value={note}
+                disabled={submitting}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={300}
+                placeholder="Tambah catatan (opsional)…"
+                className="w-full resize-none bg-transparent px-4 pt-3.5 pb-2.5 text-[13.5px] font-normal text-ink placeholder:font-light placeholder:text-ink-soft focus:outline-none"
+              />
 
-              <button
-                type="button"
-                onClick={() => locateUser(true)}
-                disabled={gpsBusy}
-                className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-full bg-white text-[12px] font-normal text-ink shadow-[0_1px_2px_rgba(18,29,79,0.04)] hover:bg-mint/35 disabled:opacity-60"
-              >
-                <LocateFixed className="size-4 text-leaf" />
-                {gpsBusy ? 'Mencari lokasi…' : coords ? 'Perbarui GPS' : 'Aktifkan GPS'}
-              </button>
-            </div>
-          </section>
-        )}
-
-        {step === 2 && (
-          <section className="flex flex-col gap-3.5">
-            <h2 className="text-[20px] font-semibold tracking-tight">Foto &amp; suara</h2>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              hidden
-              onChange={(e) => void pickFile(e.target.files?.[0])}
-            />
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-card border-[1.5px] border-dashed border-leaf/25 bg-[#f5f7ff]/70 text-ink-soft"
-            >
-              {photo ? (
-                <img src={photo.previewUrl} alt="Foto laporan" className="size-full object-cover" />
-              ) : (
-                <span className="flex flex-col items-center gap-2 text-[13px] font-light">
-                  <ImagePlus className="size-7 text-leaf" /> Ambil foto
-                </span>
-              )}
-            </button>
-
-            <textarea
-              rows={2}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              maxLength={300}
-              placeholder="Catatan singkat (opsional)"
-              className="w-full resize-none rounded-card bg-[#f5f7ff] px-4 py-3 text-[13.5px] font-normal text-ink placeholder:font-light placeholder:text-ink-soft focus:bg-mint/35 focus:outline-none"
-            />
-
-            <div className="rounded-card bg-[#f5f7ff] p-3.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-light tracking-wide text-ink-soft uppercase">
-                  Suara (opsional)
-                </span>
-                {recording && (
-                  <span className="num text-[12px] font-normal text-critical">Merekam · {formatSeconds(recordSeconds)}</span>
-                )}
-              </div>
-
-              {!voice ? (
-                <button
-                  type="button"
-                  onClick={() => (recording ? stopVoice() : void startVoice())}
-                  className={`mt-2.5 flex h-10.5 w-full items-center justify-center gap-2 rounded-full text-[13px] font-normal transition-colors ${
-                    recording
-                      ? 'bg-critical text-white'
-                      : 'bg-white text-ink shadow-[0_1px_2px_rgba(18,29,79,0.04)] hover:bg-mint/35'
-                  }`}
-                >
-                  {recording ? (
-                    <>
-                      <Square className="size-4 fill-current" /> Berhenti
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="size-4 text-leaf" /> Rekam suara
-                    </>
-                  )}
-                </button>
-              ) : (
-                <div className="mt-2.5 flex items-center gap-2">
-                  <audio controls src={voice.previewUrl} className="h-9 min-w-0 flex-1" />
+              {voice && (
+                <div className="flex items-center gap-2 border-t border-black/[0.05] px-3.5 py-2">
+                  <audio controls src={voice.previewUrl} className="h-8 min-w-0 flex-1" />
                   <button
                     type="button"
+                    disabled={submitting}
                     onClick={removeVoice}
                     aria-label="Hapus rekaman suara"
-                    className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-ink-soft hover:text-critical"
+                    className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-ink-soft hover:text-critical"
                   >
-                    <Trash2 className="size-4" />
+                    <Trash2 className="size-3.5" />
                   </button>
                 </div>
               )}
-            </div>
 
-            <label className="flex h-11.5 items-center justify-between rounded-full bg-[#f5f7ff] px-4 text-[13.5px] font-normal">
-              Lapor anonim
-              <input
-                type="checkbox"
-                checked={!profile || anon}
-                disabled={!profile}
-                onChange={(e) => setAnon(e.target.checked)}
-                className="size-4.5 accent-leaf disabled:opacity-60"
-              />
-            </label>
-          </section>
-        )}
-
-        {step === 3 && (
-          <section className="flex flex-col items-center gap-4 text-center">
-            <h2 className="self-start text-[20px] font-semibold tracking-tight">Cek AI</h2>
-            {photo && (
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-card bg-muted">
-                <img src={photo.previewUrl} alt="" className="size-full object-cover" />
-                {scanning && (
-                  <motion.div
-                    className="absolute inset-x-0 top-0 h-1 bg-ink"
-                    animate={{ y: [0, 250, 0] }}
-                    transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }}
-                  />
+              <div className="flex items-center justify-between gap-2 border-t border-black/[0.05] px-3.5 py-2.5">
+                {!voice ? (
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => (recording ? stopVoice() : void startVoice())}
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] font-normal transition-colors ${
+                      recording
+                        ? 'bg-critical text-white'
+                        : 'bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:bg-[#fafafa]'
+                    }`}
+                  >
+                    {recording ? (
+                      <>
+                        <Square className="size-3 fill-current" />
+                        <span className="num font-normal">{formatSeconds(recordSeconds)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="size-3.5 text-leaf" /> Rekam suara
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <span className="text-[11.5px] font-light text-ink-soft">Suara terlampir</span>
                 )}
+
+                <label className="flex cursor-pointer items-center gap-2 text-[12.5px] font-light text-ink">
+                  <span>Anonim</span>
+                  <input
+                    type="checkbox"
+                    checked={!profile || anon}
+                    disabled={!profile || submitting}
+                    onChange={(e) => setAnon(e.target.checked)}
+                    className="size-4 accent-leaf disabled:opacity-60"
+                  />
+                </label>
               </div>
-            )}
-            {scanning && <p className="text-[13px] font-light text-ink-soft">Mengecek foto…</p>}
-            {result && !result.isValid && (
-              <div className="w-full rounded-card border border-line bg-white p-4.5 text-left">
-                <p className="text-[14px] font-medium text-ink-soft">Belum cocok</p>
-                <p className="mt-1 text-[13px] font-light text-ink/80">{result.reason}</p>
-                <p className="num mt-2 text-[11.5px] font-normal text-ink-soft">Skor {result.confidence}%</p>
-              </div>
-            )}
+            </div>
           </section>
         )}
 
-        {step === 4 && result && (
-          <section className="relative flex flex-col items-center gap-4 pt-6 text-center">
-            <span className="grid size-18 place-items-center rounded-full border border-line bg-white text-emerald">
-              <Check className="size-9" strokeWidth={2.75} />
+        {phase === 'done' && result && (
+          <section className="relative flex flex-col items-center gap-4 pt-8 text-center">
+            <span className="blam-gradient grid size-16 place-items-center rounded-2xl text-white shadow-[0_6px_18px_rgba(14,165,233,0.25)]">
+              <Check className="size-8" strokeWidth={2.5} />
             </span>
-            <h2 className="text-[22px] font-semibold tracking-tight">
-              Terkirim!{result.pointsAwarded ? ` +${result.pointsAwarded}` : ''}
+            <h2 className="text-[22px] font-semibold tracking-tight text-ink">
+              Laporan Terkirim!{result.pointsAwarded ? ` +${result.pointsAwarded}` : ''}
             </h2>
-            <div className="w-full rounded-card border border-line bg-white p-4.5 text-left">
+            <div className="w-full rounded-[14px] bg-[#f4f5f7] p-4.5 text-left">
               <div className="flex items-center justify-between gap-2">
                 <ReportStatusPill status={result.status ?? 'pending_verification'} />
                 <span className="flex items-center gap-1.5 text-[12.5px] font-light text-ink-soft">
-                  <ShieldCheck className="size-4" />
+                  <ShieldCheck className="size-4 text-[#0ea5e9]" />
                   <span className="num text-[15px] font-semibold text-ink">{result.confidence}%</span>
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="text-[13.5px] font-normal">{result.threatCategory}</span>
+                <span className="text-[13.5px] font-normal text-ink">{result.threatCategory}</span>
               </div>
               {result.recommendations.length > 0 && (
-                <div className="mt-3 border-t border-leaf/10 text-[13px] text-ink/80">
+                <div className="mt-3 border-t border-black/[0.06] pt-2 text-[13px] font-light text-ink/80">
                   {result.recommendations.slice(0, 2).map((r) => (
-                    <p key={r} className="dashed-row py-2">
+                    <p key={r} className="py-1">
                       {r}
                     </p>
                   ))}
@@ -522,43 +496,34 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
         )}
 
         {error && (
-          <p role="alert" className="mt-4 rounded-card border border-line bg-white px-4 py-3 text-[13px] font-medium text-ink">
+          <p role="alert" className="mt-4 rounded-card bg-critical/8 px-4 py-3 text-[13px] font-light text-critical">
             {error}
           </p>
         )}
       </div>
 
       <footer className="shrink-0 px-5 pt-2 pb-[calc(env(safe-area-inset-bottom)+20px)]">
-        {step === 1 && (
+        {phase === 'form' && (
           <button
             type="button"
-            disabled={!step1Ok}
-            onClick={() => setStep(2)}
-            className="btn-primary h-12 w-full text-[14px] disabled:opacity-40"
+            disabled={!photo || !locationReady || recording || submitting}
+            onClick={() => void submitReport()}
+            className="btn-primary h-12 w-full text-[14px] disabled:opacity-45"
           >
-            Lanjut
+            {submitting ? (
+              <>
+                <Loader2 className="size-4.5 animate-spin" /> Mengirim laporan…
+              </>
+            ) : !locationReady && gpsBusy ? (
+              'Menunggu lokasi…'
+            ) : (
+              <>
+                <Camera className="size-4.5" /> Kirim Laporan
+              </>
+            )}
           </button>
         )}
-        {step === 2 && (
-          <button
-            type="button"
-            disabled={!photo || recording}
-            onClick={() => void scan()}
-            className="btn-primary h-12 w-full text-[14px] disabled:opacity-40"
-          >
-            <Camera className="size-4.5" /> Cek &amp; kirim
-          </button>
-        )}
-        {step === 3 && (result || error) && (
-          <button
-            type="button"
-            onClick={() => (result && !result.isValid ? setStep(2) : void scan())}
-            className="btn-primary h-12 w-full text-[14px]"
-          >
-            {result && !result.isValid ? 'Ganti foto' : 'Coba lagi'}
-          </button>
-        )}
-        {step === 4 && result?.reportId && (
+        {phase === 'done' && result?.reportId && (
           <button
             type="button"
             onClick={() => (canVerify && onOpenVerification ? onOpenVerification() : onClose())}

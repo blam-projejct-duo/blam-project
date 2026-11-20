@@ -216,7 +216,7 @@ function eventToHistoryItem(ev: ConservationEvent): HistoryItem | null {
       latestAction?.notes?.trim() ||
       ev.description?.trim() ||
       'Kegiatan pemulihan lingkungan.',
-    metaLine: parts.join(' · ') || (isDone ? 'Aksi tuntas' : 'Penanganan berjalan'),
+    metaLine: parts.join(' · ') || (isDone ? 'Gerakan selesai' : 'Penanganan berjalan'),
     eventId: ev.id,
   }
 }
@@ -367,13 +367,13 @@ export default function HistoryPanel({
             aria-expanded={filterOpen}
             aria-haspopup="menu"
             onClick={() => setFilterOpen((v) => !v)}
-            className={`font-display relative inline-flex h-7.5 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold whitespace-nowrap transition-colors ${
+            className={`font-display relative inline-flex h-7.5 items-center gap-1 rounded-lg px-2.5 text-[11px] font-medium whitespace-nowrap transition-colors ${
               category !== 'all'
-                ? 'bg-leaf text-white'
-                : 'bg-[#f7faf6] text-ink hover:bg-mint/40'
+                ? 'bg-ink text-white'
+                : 'bg-[#f4f5f7] text-ink hover:bg-[#eaecf0]'
             }`}
           >
-            {category === 'all' && <DashedOutline rx={15} />}
+            {category === 'all' && <DashedOutline rx={7} />}
             <SlidersHorizontal className="size-3.5 shrink-0" />
             <span>{activeCategoryLabel}</span>
             <ChevronDown
@@ -385,7 +385,7 @@ export default function HistoryPanel({
             <div
               role="menu"
               aria-label="Filter kategori riwayat"
-              className="absolute top-10 right-0 z-30 min-w-[168px] rounded-[18px] border border-line bg-white p-1.5 shadow-[0_12px_28px_rgba(19,36,26,0.14)]"
+              className="absolute top-10 right-0 z-30 min-w-[168px] rounded-[14px] border border-line bg-white p-1.5 shadow-[0_12px_28px_rgba(19,36,26,0.14)]"
             >
               {CATEGORY_OPTIONS.map((opt) => {
                 const active = category === opt.id
@@ -399,12 +399,12 @@ export default function HistoryPanel({
                       setCategory(opt.id)
                       setFilterOpen(false)
                     }}
-                    className={`font-display flex w-full items-center justify-between gap-2 rounded-[12px] px-3 py-2 text-left text-xs font-semibold transition-colors ${
-                      active ? 'bg-mint/55 text-forest' : 'text-ink hover:bg-canvas'
+                    className={`font-display flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors ${
+                      active ? 'bg-[#f4f5f7] text-ink' : 'text-ink-soft hover:bg-[#f4f5f7] hover:text-ink'
                     }`}
                   >
                     <span>{opt.label}</span>
-                    {active && <Check className="size-3.5 shrink-0 text-forest" />}
+                    {active && <Check className="size-3.5 shrink-0 text-ink" />}
                   </button>
                 )
               })}
@@ -414,8 +414,8 @@ export default function HistoryPanel({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="relative rounded-[18px] bg-[#f7faf6] p-5 text-center">
-          <DashedOutline rx={17} />
+        <div className="relative rounded-[14px] bg-[#f4f5f7] p-5 text-center">
+          <DashedOutline rx={13} />
           <p className="font-display text-xs font-semibold text-ink-soft">Tidak ada riwayat cocok</p>
         </div>
       ) : (
@@ -434,9 +434,9 @@ export default function HistoryPanel({
             return (
               <li
                 key={item.id}
-                className="relative min-w-0 rounded-[18px] bg-[#f7faf6] transition-colors hover:bg-mint/25"
+                className="relative min-w-0 rounded-[14px] bg-[#f4f5f7] transition-colors hover:bg-[#eceef2]"
               >
-                <DashedOutline rx={17} />
+                <DashedOutline rx={13} />
                 <button
                   type="button"
                   onClick={() => {

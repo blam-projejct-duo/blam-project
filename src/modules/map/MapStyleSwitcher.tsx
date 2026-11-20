@@ -26,11 +26,11 @@ export default function MapStyleSwitcher({
       role="radiogroup"
       aria-label="Gaya peta"
       style={style}
-      className={`relative inline-flex rounded-full ${
-        compact ? 'bg-[#eff3ff] p-0.5' : 'bg-[#f5f7ff] p-1'
+      className={`relative inline-flex rounded-xl ${
+        compact ? 'bg-[#f4f5f7] p-0.5' : 'bg-[#f4f5f7] p-1'
       } ${className}`}
     >
-      {!compact && <DashedOutline rx={21} />}
+      {!compact && <DashedOutline rx={11} />}
       {OPTIONS.map((o) => {
         const active = o.id === value
         return (
@@ -40,13 +40,13 @@ export default function MapStyleSwitcher({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(o.id)}
-            className={`relative z-10 rounded-full transition-colors ${
+            className={`relative z-10 rounded-lg transition-colors ${
               compact
                 ? `font-sans h-7.5 px-2.5 text-[11px] ${
-                    active ? 'bg-leaf font-medium text-white shadow-xs' : 'font-light text-ink-soft hover:text-forest'
+                    active ? 'bg-white font-medium text-ink shadow-xs' : 'font-light text-ink-soft hover:text-ink'
                   }`
                 : `font-sans h-9 px-3.5 text-[11px] tracking-wider ${
-                    active ? 'bg-leaf font-medium text-white' : 'font-light text-ink-soft hover:text-forest'
+                    active ? 'bg-white font-medium text-ink shadow-xs' : 'font-light text-ink-soft hover:text-ink'
                   }`
             }`}
           >

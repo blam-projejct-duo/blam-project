@@ -16,8 +16,8 @@ function LegalSection({
   children: ReactNode
 }) {
   return (
-    <section className="relative rounded-[20px] bg-[#f7faf6] p-4 sm:p-5">
-      <DashedOutline rx={19} />
+    <section className="relative rounded-[14px] bg-[#f4f5f7] p-4 sm:p-5">
+      <DashedOutline rx={13} />
       <div className="flex items-center gap-2.5">
         <span className="num grid size-7 shrink-0 place-items-center rounded-full bg-white text-xs text-forest shadow-[0_1px_3px_rgba(19,36,26,0.12)]">
           {number}
@@ -54,11 +54,11 @@ function LegalTab({
       href={href}
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`font-display relative flex h-10 flex-1 items-center justify-center gap-2 rounded-full px-4 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
-        active ? 'bg-leaf text-white shadow-[0_2px_8px_rgba(29,92,58,0.2)]' : 'bg-[#f7faf6] text-ink hover:bg-mint/40'
+      className={`font-display relative flex h-10 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+        active ? 'bg-ink text-white shadow-xs' : 'bg-[#f4f5f7] text-ink hover:bg-[#eaecf0]'
       }`}
     >
-      {!active && <DashedOutline rx={19} />}
+      {!active && <DashedOutline rx={11} />}
       {icon}
       {label}
     </a>

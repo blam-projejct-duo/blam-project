@@ -321,7 +321,7 @@ export function renderEventMarkerElement(
   el.className = 'blam-event-pin'
   el.dataset.status = tone
   el.dataset.selected = String(selected)
-  el.title = `Aksi: ${ev.title}`
+  el.title = `Gerakan: ${ev.title}`
   el.style.cssText = `cursor:pointer;transform-origin:50% 100%;transform:scale(${scale});transition:transform 150ms ease;filter:${
     selected
       ? 'drop-shadow(0 0 9px rgba(21,128,61,0.52)) drop-shadow(0 5px 12px rgba(15,23,42,0.34))'

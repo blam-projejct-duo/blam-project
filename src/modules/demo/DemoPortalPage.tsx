@@ -47,22 +47,22 @@ export default function DemoPortalPage({
           </button>
         </div>
 
-        <section className="rounded-[24px] bg-white p-6 shadow-[0_2px_10px_rgba(18,29,79,0.05)] sm:p-7">
+        <section className="rounded-[20px] bg-white p-6 shadow-[0_2px_10px_rgba(18,29,79,0.05)] sm:p-7">
           <h1 className="text-2xl font-semibold tracking-tight text-ink">Pilih Peran</h1>
 
           {loading ? (
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {[0, 1, 2, 3].map((k) => (
-                <div key={k} className="h-[104px] animate-pulse rounded-[20px] bg-[#f5f7ff]" />
+                <div key={k} className="h-[104px] animate-pulse rounded-[14px] bg-[#f4f5f7]" />
               ))}
             </div>
           ) : demoAccounts.length === 0 ? (
-            <div className="mt-5 flex flex-col items-center gap-3 rounded-[20px] bg-[#f5f7ff] p-6 text-center">
+            <div className="mt-5 flex flex-col items-center gap-3 rounded-[14px] bg-[#f4f5f7] p-6 text-center">
               <p className="text-sm font-light text-ink-soft">{demoError ?? 'Akun demo kosong'}</p>
               <button
                 type="button"
                 onClick={() => void refreshDemoAccounts()}
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-xs font-normal text-ink"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-xs font-normal text-ink"
               >
                 <RefreshCw className="size-4" /> Muat Ulang
               </button>
@@ -77,9 +77,9 @@ export default function DemoPortalPage({
                     type="button"
                     disabled={busyId !== null}
                     onClick={() => void selectRole(acc.id)}
-                    className="flex min-h-[104px] flex-col items-start justify-between rounded-[20px] bg-[#f5f7ff] p-4 text-left transition-colors hover:bg-mint/45 disabled:opacity-60"
+                    className="flex min-h-[104px] flex-col items-start justify-between rounded-[14px] bg-[#f4f5f7] p-4 text-left transition-colors hover:bg-[#eaecf0] disabled:opacity-60"
                   >
-                    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-light text-ink-soft">
+                    <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-light text-ink-soft">
                       {ROLE_LABEL[acc.role]}
                     </span>
                     <div className="mt-2 w-full">
@@ -95,7 +95,7 @@ export default function DemoPortalPage({
           )}
 
           {error && (
-            <p role="alert" className="mt-4 rounded-[16px] bg-[#f5f7ff] px-4 py-3 text-xs font-light text-ink">
+            <p role="alert" className="mt-4 rounded-[14px] bg-[#f4f5f7] px-4 py-3 text-xs font-light text-ink">
               {error}
             </p>
           )}

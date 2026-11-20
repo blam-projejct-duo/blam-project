@@ -96,11 +96,45 @@ const VECTOR_LAYER_IDS = [
   'label-country',
 ] as const
 
-const SATELLITE_LAYER_IDS = ['satelit-backdrop', 'satelit-imagery', 'satelit-labels'] as const
-const SAT_BG = '#0f1d45'
-const SAT_WATER = '#1F3478'
-const SAT_BOUNDARY = 'rgba(255, 255, 255, 0.45)'
-const SAT_WATER_OPACITY = ['interpolate', ['linear'], ['zoom'], 2, 0.36, 9, 0.3, 13, 0.16] as never
+const SATELLITE_LAYER_IDS = ['satelit-imagery', 'satelit-detail', 'satelit-google', 'satelit-labels'] as const
+const SAT_BG = '#1a3875'
+const SAT_WATER = '#386ec4'
+const SAT_BOUNDARY = 'rgba(255, 255, 255, 0.48)'
+const SAT_WATER_OPACITY = ['interpolate', ['linear'], ['zoom'], 2, 0.14, 8, 0.08, 13, 0.02] as never
+
+const GOOGLE_MAPS_TILE_KEY =
+  (import.meta.env.VITE_GOOGLE_MAPS_TILE_KEY as string | undefined)?.trim() || ''
+const GOOGLE_SESSION_STORAGE_KEY = 'blam_gmaps_tile_session_v1'
+
+interface CachedGoogleSession {
+  session: string
+  expiry: number
+  keyPrefix: string
+}
+
+function getCachedGoogleSession(): string | null {
+  if (!GOOGLE_MAPS_TILE_KEY || typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(GOOGLE_SESSION_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<CachedGoogleSession>
+    if (
+      typeof parsed.session === 'string' &&
+      typeof parsed.expiry === 'number' &&
+      parsed.keyPrefix === GOOGLE_MAPS_TILE_KEY.slice(0, 8) &&
+      parsed.expiry > Date.now() + 5 * 60_000
+    ) {
+      return parsed.session
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+function buildGoogleTileUrl(session: string): string {
+  return `https://tile.googleapis.com/v1/2dtiles/{z}/{x}/{y}?session=${encodeURIComponent(session)}&key=${encodeURIComponent(GOOGLE_MAPS_TILE_KEY)}`
+}
 
 const TEXT_FIELD_EXPR = [
   'case',
@@ -145,6 +179,8 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
   const roadPalette = isSat ? HYBRID_ROADS : palette
   const vecVis = isSat ? 'none' : 'visible'
   const satVis = isSat ? 'visible' : 'none'
+  const cachedGoogleSession = getCachedGoogleSession()
+  const useGoogleSat = Boolean(cachedGoogleSession)
 
   return {
     version: 8,
@@ -157,14 +193,15 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         url: 'https://tiles.openfreemap.org/planet',
         attribution: '&copy; OpenFreeMap &copy; OpenStreetMap',
       },
-      'esri-satelit-base': {
+      'eox-sentinel2': {
         type: 'raster',
         tiles: [
-          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg',
         ],
         tileSize: 256,
         minzoom: 0,
-        maxzoom: 6,
+        maxzoom: 13,
+        attribution: 'Sentinel-2 cloudless &copy; EOX',
       },
       'esri-satelit': {
         type: 'raster',
@@ -172,9 +209,21 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         ],
         tileSize: 256,
+        minzoom: 11,
         maxzoom: 18,
         attribution: 'Tiles &copy; Esri',
       },
+      ...(cachedGoogleSession
+        ? {
+            'google-satelit': {
+              type: 'raster' as const,
+              tiles: [buildGoogleTileUrl(cachedGoogleSession)],
+              tileSize: 256,
+              maxzoom: 20,
+              attribution: 'Map data &copy; Google',
+            },
+          }
+        : {}),
       'esri-satelit-labels': {
         type: 'raster',
         tiles: [
@@ -192,35 +241,51 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         paint: { 'background-color': isSat ? SAT_BG : palette.background },
       },
       {
-        id: 'satelit-backdrop',
-        type: 'raster',
-        source: 'esri-satelit-base',
-        layout: { visibility: satVis },
-        paint: {
-          'raster-fade-duration': 0,
-          'raster-resampling': 'linear',
-          'raster-hue-rotate': 16,
-          'raster-saturation': -0.14,
-          'raster-contrast': 0.14,
-          'raster-brightness-min': 0,
-          'raster-brightness-max': 0.94,
-        },
-      },
-      {
         id: 'satelit-imagery',
         type: 'raster',
-        source: 'esri-satelit',
+        source: 'eox-sentinel2',
         layout: { visibility: satVis },
         paint: {
           'raster-fade-duration': 150,
           'raster-resampling': 'linear',
-          'raster-hue-rotate': 16,
-          'raster-saturation': -0.14,
-          'raster-contrast': 0.14,
-          'raster-brightness-min': 0,
-          'raster-brightness-max': 0.94,
+          'raster-opacity': 1,
+          'raster-hue-rotate': 12,
+          'raster-saturation': 0.14,
+          'raster-contrast': 0.16,
+          'raster-brightness-min': 0.12,
+          'raster-brightness-max': 1,
         },
       },
+      {
+        id: 'satelit-detail',
+        type: 'raster',
+        source: 'esri-satelit',
+        minzoom: 11,
+        layout: { visibility: satVis },
+        paint: {
+          'raster-fade-duration': 150,
+          'raster-resampling': 'linear',
+          'raster-opacity': ['interpolate', ['linear'], ['zoom'], 11.5, 0, 13, 1],
+          'raster-saturation': -0.04,
+          'raster-contrast': -0.06,
+          'raster-brightness-min': 0.06,
+          'raster-brightness-max': 1,
+        },
+      },
+      ...(cachedGoogleSession
+        ? [
+            {
+              id: 'satelit-google',
+              type: 'raster' as const,
+              source: 'google-satelit',
+              layout: { visibility: satVis as 'visible' | 'none' },
+              paint: {
+                'raster-fade-duration': 150,
+                'raster-resampling': 'linear' as const,
+              },
+            },
+          ]
+        : []),
       {
         id: 'park',
         type: 'fill',
@@ -274,7 +339,7 @@ export function createInitialMapStyle(initialStyle: MapStyle): StyleSpecificatio
         ],
         paint: {
           'fill-color': isSat ? SAT_WATER : palette.water,
-          'fill-opacity': isSat ? SAT_WATER_OPACITY : 1,
+          'fill-opacity': isSat ? (useGoogleSat ? 0 : SAT_WATER_OPACITY) : 1,
           'fill-antialias': true,
         },
       },
@@ -586,9 +651,10 @@ export function applyMapStyle(map: MapLibreMap, style: MapStyle): void {
   map.setPaintProperty('road-motorway-inner', 'line-color', roadPalette.roadMotorwayInner)
 
   if (isSat) {
+    const hasGoogle = Boolean(map.getLayer('satelit-google'))
     map.setPaintProperty('background', 'background-color', SAT_BG)
     map.setPaintProperty('water', 'fill-color', SAT_WATER)
-    map.setPaintProperty('water', 'fill-opacity', SAT_WATER_OPACITY)
+    map.setPaintProperty('water', 'fill-opacity', hasGoogle ? 0 : SAT_WATER_OPACITY)
     map.setPaintProperty('boundary-country', 'line-color', SAT_BOUNDARY)
     return
   }
@@ -611,5 +677,76 @@ export function applyMapStyle(map: MapLibreMap, style: MapStyle): void {
   for (const labelId of ['label-village-town', 'label-city', 'label-state', 'label-country']) {
     map.setPaintProperty(labelId, 'text-color', palette.labelText)
     map.setPaintProperty(labelId, 'text-halo-color', palette.labelHalo)
+  }
+}
+
+export async function ensureGoogleSatelliteLayer(
+  map: MapLibreMap,
+  style: MapStyle,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (!GOOGLE_MAPS_TILE_KEY) return
+
+  let session = getCachedGoogleSession()
+  if (!session) {
+    try {
+      const res = await fetch(
+        `https://tile.googleapis.com/v1/createSession?key=${encodeURIComponent(GOOGLE_MAPS_TILE_KEY)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mapType: 'satellite', language: 'id', region: 'ID' }),
+          signal,
+        },
+      )
+      if (!res.ok) return
+      const data = (await res.json()) as { session?: string; expiry?: string | number }
+      if (!data.session) return
+      session = data.session
+      const expirySec = Number(data.expiry)
+      const expiryMs = Number.isFinite(expirySec) ? expirySec * 1000 : Date.now() + 7 * 24 * 3600_000
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(
+          GOOGLE_SESSION_STORAGE_KEY,
+          JSON.stringify({
+            session,
+            expiry: expiryMs,
+            keyPrefix: GOOGLE_MAPS_TILE_KEY.slice(0, 8),
+          } satisfies CachedGoogleSession),
+        )
+      }
+    } catch {
+      return
+    }
+  }
+
+  if (signal?.aborted || map.getSource('google-satelit')) return
+
+  map.addSource('google-satelit', {
+    type: 'raster',
+    tiles: [buildGoogleTileUrl(session)],
+    tileSize: 256,
+    maxzoom: 20,
+    attribution: 'Map data &copy; Google',
+  })
+
+  if (!map.getLayer('satelit-google')) {
+    map.addLayer(
+      {
+        id: 'satelit-google',
+        type: 'raster',
+        source: 'google-satelit',
+        layout: { visibility: style === 'satelit' ? 'visible' : 'none' },
+        paint: {
+          'raster-fade-duration': 150,
+          'raster-resampling': 'linear',
+        },
+      },
+      map.getLayer('water') ? 'water' : undefined,
+    )
+  }
+
+  if (style === 'satelit' && map.getLayer('water')) {
+    map.setPaintProperty('water', 'fill-opacity', 0)
   }
 }

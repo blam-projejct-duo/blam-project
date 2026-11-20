@@ -80,13 +80,13 @@ export default function BlamDonasiModal({
           {isLoading ? (
             <div className="flex flex-col gap-2.5">
               {[0, 1].map((i) => (
-                <div key={i} className="h-32 animate-pulse rounded-[20px] bg-[#f7faf6]" />
+                <div key={i} className="h-32 animate-pulse rounded-[14px] bg-[#f4f5f7]" />
               ))}
             </div>
           ) : list.length === 0 ? (
-            <div className="relative flex flex-col items-center gap-2 rounded-[20px] bg-[#f7faf6] p-6 text-center">
-              <DashedOutline rx={19} />
-              <HeartHandshake className="size-7 text-leaf" />
+            <div className="relative flex flex-col items-center gap-2 rounded-[14px] bg-[#f4f5f7] p-6 text-center">
+              <DashedOutline rx={13} />
+              <HeartHandshake className="size-7 text-[#2563eb]" />
               <p className="font-display text-sm font-bold text-ink">Belum ada penggalangan dana</p>
               <p className="text-xs leading-relaxed text-ink-soft">
                 Buka titik radar kritis di peta untuk memulai penggalangan dana darurat.
@@ -104,11 +104,11 @@ export default function BlamDonasiModal({
                 const matchedSignal = findSignalForFundraising(signals, c)
 
                 return (
-                  <li key={c.id} className="relative rounded-[20px] bg-[#f7faf6] p-4">
-                    <DashedOutline rx={19} />
+                  <li key={c.id} className="relative rounded-[14px] bg-[#f4f5f7] p-4">
+                    <DashedOutline rx={13} />
                     <div className="flex items-start gap-3">
                       <span
-                        className={`grid size-10 shrink-0 place-items-center rounded-[13px] border border-leaf/20 bg-white ${tone}`}
+                        className={`grid size-10 shrink-0 place-items-center rounded-[10px] border border-line bg-white ${tone}`}
                       >
                         <Icon className="size-4.5" strokeWidth={2} />
                       </span>
@@ -118,8 +118,8 @@ export default function BlamDonasiModal({
                             {c.organizer_name}
                           </span>
                           <span
-                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold ${
-                              isDone ? 'bg-mint/80 text-forest' : 'bg-critical/10 text-critical'
+                            className={`shrink-0 rounded-md px-2 py-0.5 text-[10.5px] font-semibold ${
+                              isDone ? 'bg-white text-forest' : 'bg-critical/10 text-critical'
                             }`}
                           >
                             {c.status === 'active'

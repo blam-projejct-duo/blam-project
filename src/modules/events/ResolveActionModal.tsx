@@ -47,7 +47,7 @@ export default function ResolveActionModal({
 
   const submit = async () => {
     if (!photo) return setError('Pilih foto sesudah terlebih dahulu')
-    if (notes.trim().length < 5) return setError('Isi catatan aksi (minimal 5 karakter)')
+    if (notes.trim().length < 5) return setError('Isi catatan lapangan (minimal 5 karakter)')
     setBusy(true)
     setError(null)
     try {
@@ -92,13 +92,13 @@ export default function ResolveActionModal({
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="relative grid aspect-[16/10] w-full place-items-center overflow-hidden rounded-card border-[1.5px] border-dashed border-leaf/25 bg-[#f5f7ff]/70 text-ink-soft"
+          className="relative grid aspect-[16/10] w-full place-items-center overflow-hidden rounded-[14px] border-[1.5px] border-dashed border-ink-soft/30 bg-[#f4f5f7] text-ink-soft"
         >
           {photo ? (
             <img src={photo.previewUrl} alt="Foto After" className="size-full object-cover" />
           ) : (
             <span className="flex flex-col items-center gap-2 text-sm font-light">
-              <ImagePlus className="size-7 text-leaf" /> Foto sesudah
+              <ImagePlus className="size-7 text-ink-soft" /> Foto sesudah
             </span>
           )}
         </button>
@@ -116,14 +116,14 @@ export default function ResolveActionModal({
 
         <input
           className={field}
-          placeholder="Catatan aksi"
+          placeholder="Catatan lapangan"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           maxLength={400}
         />
 
         {error && (
-          <p role="alert" className="rounded-card bg-[#f5f7ff] px-4 py-3 text-sm font-light text-ink">
+          <p role="alert" className="rounded-[14px] bg-[#f4f5f7] px-4 py-3 text-sm font-light text-ink">
             {error}
           </p>
         )}

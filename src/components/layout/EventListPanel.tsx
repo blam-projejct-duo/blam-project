@@ -25,12 +25,15 @@ function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListT
           : shortLocation(event.location_name)
 
   return (
-    <li className="relative rounded-[20px] bg-[#f5f7ff] transition-colors hover:bg-mint/30">
-      <DashedOutline rx={19} />
-      <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full items-center gap-3 rounded-xl px-1.5 py-3 text-left transition-colors hover:bg-[#f4f5f7]/80"
+      >
         <EcoBadge ecosystem={event.ecosystem} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13.5px] font-normal text-ink">{event.title}</span>
+          <span className="block truncate text-[14px] font-normal text-ink">{event.title}</span>
           <span className="block truncate text-[12px] font-light text-ink-soft">{meta}</span>
         </span>
         <span
@@ -76,7 +79,7 @@ function SignalRow({
   const isAction = linked || signal.verificationState === 'has_action'
   const isVerified = !isAction && signal.verificationState === 'verified'
   const meta = isAction
-    ? `${sourceLabel} · Sudah Ada Aksi`
+    ? `${sourceLabel} · Ada Gerakan`
     : isVerified
       ? `${sourceLabel} · Terverifikasi`
       : `${sourceLabel} · ${riskLabel ?? signal.categoryLabel}`
@@ -84,29 +87,32 @@ function SignalRow({
   const SignalIcon = kind === 'flood' ? Droplets : kind === 'volcano' ? Mountain : Flame
 
   return (
-    <li className="relative rounded-[20px] bg-[#f5f7ff] transition-colors hover:bg-mint/30">
-      <DashedOutline rx={19} />
-      <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full items-center gap-3 rounded-xl px-1.5 py-3 text-left transition-colors hover:bg-[#f4f5f7]/80"
+      >
         <span
-          className={`grid size-11 shrink-0 place-items-center rounded-[14px] bg-white shadow-[0_1px_2px_rgba(18,29,79,0.04)] ${SIGNAL_TEXT_COLOR[kind]}`}
+          className={`grid size-10.5 shrink-0 place-items-center rounded-[10px] bg-[#f4f5f7] ${SIGNAL_TEXT_COLOR[kind]}`}
         >
           <SignalIcon className="size-5" strokeWidth={2} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13.5px] font-normal text-ink">{signal.title}</span>
+          <span className="block truncate text-[14px] font-normal text-ink">{signal.title}</span>
           <span className="block truncate text-[12px] font-light text-ink-soft">{meta}</span>
         </span>
         {isAction ? (
-          <span className="shrink-0 rounded-full bg-mint/75 px-2 py-0.5 text-[10.5px] font-medium text-forest">
-            Aksi
+          <span className="shrink-0 rounded-md bg-mint/75 px-2 py-0.5 text-[10.5px] font-medium text-forest">
+            Gerakan
           </span>
         ) : isVerified ? (
-          <span className="shrink-0 rounded-full bg-teal-50 px-2 py-0.5 text-[10.5px] font-medium text-teal-800">
+          <span className="shrink-0 rounded-md bg-teal-50 px-2 py-0.5 text-[10.5px] font-medium text-teal-800">
             ✓ Valid
           </span>
         ) : null}
         {hasFundraising && (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-critical/10 px-2 py-0.5 text-[10.5px] font-normal text-critical">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-critical/10 px-2 py-0.5 text-[10.5px] font-normal text-critical">
             <HeartHandshake className="size-3" />
             Donasi
           </span>
@@ -152,32 +158,30 @@ function ResolvedEventRow({ event, onOpen }: { event: ConservationEvent; onOpen:
   const { wasteKg, trees, recoveryScore, participantCount, summary, meta } = summarizeResolvedEvent(event)
 
   return (
-    <li className="relative rounded-[20px] bg-[#f5f7ff] transition-colors hover:bg-mint/30">
-      <DashedOutline rx={19} />
-      <button type="button" onClick={onOpen} className="flex w-full flex-col gap-2.5 px-3.5 py-3.5 text-left">
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full flex-col gap-2 rounded-xl px-1.5 py-3 text-left transition-colors hover:bg-[#f4f5f7]/80"
+      >
         <div className="flex items-center gap-3">
           <EcoBadge ecosystem={event.ecosystem} />
           <div className="min-w-0 flex-1">
-            <span className="block truncate text-[13.5px] font-normal text-ink">{event.title}</span>
+            <span className="block truncate text-[14px] font-normal text-ink">{event.title}</span>
             <span className="block truncate text-[12px] font-light text-ink-soft">{meta}</span>
           </div>
-          <span className="shrink-0 rounded-full bg-mint/75 px-2.5 py-0.5 text-[10.5px] font-normal text-forest">
+          <span className="shrink-0 rounded-md bg-[#f4f5f7] px-2 py-0.5 text-[11px] font-normal text-forest">
             Selesai
           </span>
         </div>
 
         <p className="line-clamp-2 text-[12px] leading-relaxed font-light text-ink-soft">{summary}</p>
 
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-leaf/10 pt-2 text-[11px] font-normal text-forest">
-          <span className="num rounded-full bg-white px-2.5 py-0.5 text-forest">{wasteKg} kg sampah</span>
-          <span className="num rounded-full bg-white px-2.5 py-0.5 text-forest">{trees} bibit</span>
-          {recoveryScore !== null && (
-            <span className="num rounded-full bg-mint/50 px-2.5 py-0.5 text-forest">{recoveryScore}% pulih</span>
-          )}
-          {participantCount > 0 && (
-            <span className="num rounded-full bg-white px-2.5 py-0.5 text-ink-soft">{participantCount} relawan</span>
-          )}
-        </div>
+        <p className="num text-[11.5px] font-light text-ink-soft">
+          {wasteKg} kg sampah · {trees} bibit
+          {recoveryScore !== null ? ` · ${recoveryScore}% pulih` : ''}
+          {participantCount > 0 ? ` · ${participantCount} relawan` : ''}
+        </p>
       </button>
     </li>
   )
@@ -194,7 +198,7 @@ export default function EventListPanel({
   tabs = TABS,
   initialTab,
   autoFocus = false,
-  title = 'Aksi',
+  title = 'Gerakan',
   onExpand,
   onOpen,
   onOpenSignal,
@@ -306,8 +310,8 @@ export default function EventListPanel({
       )}
 
       {showSearch && (
-        <label className="flex h-10 items-center gap-2 rounded-full bg-[#f5f7ff] px-3.5 transition-colors focus-within:bg-mint/45">
-          <Search className="size-4 shrink-0 text-leaf" />
+        <label className="flex h-10 items-center gap-2 rounded-full bg-[#f4f5f7] px-3.5 transition-colors focus-within:bg-[#eceef2]">
+          <Search className="size-4 shrink-0 text-[#0ea5e9]" />
           <input
             ref={searchRef}
             value={query}
@@ -344,10 +348,10 @@ export default function EventListPanel({
                 onExpand?.()
                 setTab(t)
               }}
-              className={`h-7.5 shrink-0 rounded-full px-3 text-[12px] whitespace-nowrap transition-colors ${
+              className={`h-7.5 shrink-0 rounded-lg px-3 text-[12px] whitespace-nowrap transition-colors ${
                 active
-                  ? 'bg-mint/80 font-medium text-forest'
-                  : 'font-light text-ink-soft hover:text-forest'
+                  ? 'bg-[#f4f5f7] font-medium text-ink'
+                  : 'font-light text-ink-soft hover:text-ink'
               }`}
             >
               {t}
@@ -361,8 +365,8 @@ export default function EventListPanel({
       ) : (
         <>
           {resolvedTotals && rows.length > 0 && (
-            <div className="relative mt-3 grid grid-cols-3 gap-2 rounded-[20px] bg-[#f5f7ff] p-3 text-center">
-              <DashedOutline rx={19} />
+            <div className="relative mt-3 grid grid-cols-3 gap-2 rounded-[14px] bg-[#f4f5f7] p-3 text-center">
+              <DashedOutline rx={13} />
               <div>
                 <p className="num text-base font-semibold text-forest">{resolvedTotals.count}</p>
                 <p className="text-[11px] font-light text-ink-soft">Selesai</p>
@@ -379,7 +383,7 @@ export default function EventListPanel({
           )}
 
           {rows.length > 0 && (
-            <ul className="mt-3 flex flex-col gap-2">
+            <ul className="mt-2 divide-y divide-line">
               {rows.map((ev) =>
                 tab === 'Selesai' ? (
                   <ResolvedEventRow key={ev.id} event={ev} onOpen={() => onOpen(ev.id)} />
@@ -391,13 +395,13 @@ export default function EventListPanel({
           )}
 
           {shownSignals.length > 0 && onOpenSignal && (
-            <div className={rows.length > 0 ? 'mt-4 pt-1' : 'mt-3'}>
+            <div className={rows.length > 0 ? 'mt-4 border-t border-line pt-3.5' : 'mt-2'}>
               {tab === 'Satelit' && (
-                <div className="mb-2.5 rounded-[14px] bg-[#f5f7ff] px-3 py-2">
+                <div className="mb-2.5 rounded-[14px] bg-[#f4f5f7] px-3 py-2">
                   <MarkerTierLegend compact />
                 </div>
               )}
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-1 flex items-center justify-between">
                 <p className="text-[10.5px] font-normal tracking-wider text-ink-soft uppercase">
                   {tab === 'Satelit' ? `Satelit (${filteredSignals.length})` : 'Satelit'}
                 </p>
@@ -408,13 +412,13 @@ export default function EventListPanel({
                       onExpand?.()
                       setTab('Satelit')
                     }}
-                    className="text-[11.5px] font-normal text-leaf hover:underline"
+                    className="text-[11.5px] font-normal text-[#2563eb] hover:underline"
                   >
                     Lihat semua ({filteredSignals.length})
                   </button>
                 )}
               </div>
-              <ul className="flex flex-col gap-2">
+              <ul className="divide-y divide-line">
                 {shownSignals.map((sig) => (
                   <SignalRow
                     key={sig.id}
@@ -433,10 +437,10 @@ export default function EventListPanel({
               {tab === 'Satelit'
                 ? 'Belum ada sinyal'
                 : tab === 'Berjalan'
-                  ? 'Belum ada aksi berjalan'
+                  ? 'Belum ada gerakan berjalan'
                   : tab === 'Selesai'
-                    ? 'Belum ada aksi selesai'
-                    : 'Belum ada aksi'}
+                    ? 'Belum ada gerakan selesai'
+                    : 'Belum ada gerakan'}
             </p>
           )}
         </>

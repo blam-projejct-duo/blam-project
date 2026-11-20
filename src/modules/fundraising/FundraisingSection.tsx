@@ -53,10 +53,10 @@ export default function FundraisingSection({ signal }: Props) {
   if (!campaign) {
     return (
       <>
-        <section className="relative flex flex-col gap-3 rounded-[20px] bg-[#f5f7ff] p-4">
-          <DashedOutline rx={19} />
+        <section className="relative flex flex-col gap-3 rounded-[14px] bg-[#f4f5f7] p-4">
+          <DashedOutline rx={13} />
           <div className="flex items-start gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-critical/12 text-critical">
+            <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-critical/12 text-critical">
               <HeartHandshake className="size-4.5" />
             </span>
             <div className="min-w-0">
@@ -71,7 +71,7 @@ export default function FundraisingSection({ signal }: Props) {
           <button
             type="button"
             onClick={() => setShowCreate(true)}
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-white px-4 text-[12.5px] font-normal text-critical shadow-[0_1px_2px_rgba(18,29,79,0.04)] transition hover:bg-critical/8"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-[12.5px] font-normal text-critical shadow-[0_1px_2px_rgba(18,29,79,0.04)] transition hover:bg-critical/8"
           >
             <HeartHandshake className="size-4" />
             Buka Galang Dana
@@ -95,15 +95,15 @@ export default function FundraisingSection({ signal }: Props) {
 
   return (
     <>
-      <section className="relative flex flex-col gap-3.5 rounded-[20px] bg-[#f5f7ff] p-4">
-        <DashedOutline rx={19} />
+      <section className="relative flex flex-col gap-3.5 rounded-[14px] bg-[#f4f5f7] p-4">
+        <DashedOutline rx={13} />
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-critical/10 px-2.5 py-1 text-[11px] font-normal text-critical">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-critical/10 px-2 py-0.5 text-[11px] font-normal text-critical">
             <HeartHandshake className="size-3.5" />
             Galang Dana
           </span>
-          <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-light text-ink">
-            <BadgeIcon className="size-3 shrink-0 text-leaf" />
+          <span className="inline-flex max-w-full items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[11px] font-light text-ink">
+            <BadgeIcon className="size-3 shrink-0 text-[#2563eb]" />
             <span className="truncate">
               {badge.label} · {campaign.organizer_name}
             </span>
@@ -117,27 +117,27 @@ export default function FundraisingSection({ signal }: Props) {
           )}
         </div>
 
-        <div className="relative flex flex-col gap-2 rounded-tile bg-white p-3.5">
-          <DashedOutline rx={13} />
+        <div className="relative flex flex-col gap-2 rounded-[12px] bg-white p-3.5">
+          <DashedOutline rx={11} />
           <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-            <p className="num text-lg text-forest">{formatRupiah(campaign.collected_amount)}</p>
+            <p className="num text-lg text-ink">{formatRupiah(campaign.collected_amount)}</p>
             <p className="text-xs font-light text-ink-soft">
               dari {formatRupiah(campaign.target_amount)} ({pct}%)
             </p>
           </div>
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-canvas">
+          <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#f4f5f7]">
             <div
-              className="h-full rounded-full bg-leaf transition-all duration-500"
+              className="h-full rounded-full bg-[#2563eb] transition-all duration-500"
               style={{ width: `${pct}%` }}
             />
           </div>
           <div className="flex items-center justify-between text-[11px] font-light text-ink-soft">
             <span className="inline-flex items-center gap-1">
-              <Users className="size-3.5 text-leaf" />
+              <Users className="size-3.5 text-[#2563eb]" />
               {campaign.donations.length} Donatur
             </span>
             {campaign.collected_amount >= campaign.target_amount && (
-              <span className="rounded-full bg-mint px-2 py-0.5 text-[10px] font-medium text-forest">
+              <span className="rounded-md bg-[#f4f5f7] px-2 py-0.5 text-[10px] font-medium text-forest">
                 Target Tercapai!
               </span>
             )}

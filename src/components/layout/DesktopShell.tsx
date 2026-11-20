@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { DashedOutline, DashedRow, MarkerTierLegend, Orb } from '../ui/atoms'
+import { DashedOutline, MarkerTierLegend, Orb } from '../ui/atoms'
 import {
   AdminDuotoneIcon,
   AksiActionIcon,
@@ -36,13 +36,14 @@ import { filterRadarItems, LAYER_CHIPS } from '../../modules/map/radarFilters'
 import type { RadarLayer } from '../../modules/map/radarFilters'
 import type { Radar } from '../../modules/map/useRadar'
 import OrgsPanel from '../../modules/organizations/OrgsPanel'
+import NotificationsPanel from '../../modules/notifications/NotificationsPanel'
 import ProfilePanel from '../../modules/profile/ProfilePanel'
 import VerificationRadarPanel from '../../modules/reports/VerificationRadarPanel'
 import type { CitizenReport, SatelliteSignal } from '../../types'
 import EventListPanel from './EventListPanel'
 import type { ListTab } from './EventListPanel'
 
-type NavTab = 'Jelajah' | 'Aksi' | 'History' | 'Org' | 'Eskalasi' | 'Admin'
+type NavTab = 'Jelajah' | 'Gerakan' | 'History' | 'Org' | 'Eskalasi' | 'Admin'
 type Tab = NavTab | 'Profil'
 
 const RAIL_GAP = 16
@@ -73,20 +74,20 @@ function RailItem({
       className="group flex w-full flex-col items-center gap-1 py-1.5"
     >
       <span
-        className={`relative grid h-10 w-12 place-items-center rounded-full transition-colors ${
+        className={`relative grid h-10 w-12 place-items-center rounded-xl transition-colors ${
           active
-            ? 'border border-leaf/15 bg-mint/75 text-forest'
-            : 'text-ink-soft group-hover:bg-canvas group-hover:text-forest'
+            ? 'bg-[#f4f5f7] text-ink'
+            : 'text-ink-soft group-hover:bg-[#f4f5f7] group-hover:text-ink'
         }`}
       >
         {children}
         {badge !== undefined && badge > 0 && (
-          <span className="num absolute -top-1 -right-0.5 grid min-w-5 place-items-center rounded-full border-2 border-white bg-leaf px-1 text-[10px] leading-4 text-white">
+          <span className="num absolute -top-1 -right-0.5 grid min-w-5 place-items-center rounded-full border-2 border-white bg-[#2563eb] px-1 text-[10px] leading-4 text-white">
             {badge}
           </span>
         )}
       </span>
-      <span className={`text-[11px] ${active ? 'font-medium text-forest' : 'font-light text-ink-soft'}`}>
+      <span className={`text-[11px] ${active ? 'font-medium text-ink' : 'font-light text-ink-soft'}`}>
         {label}
       </span>
     </button>
@@ -99,21 +100,21 @@ function LayerChip({ active, onClick, children }: { active: boolean; onClick: ()
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`font-display relative flex h-9 items-center gap-2 rounded-full px-3.5 text-[12px] font-semibold whitespace-nowrap transition-colors ${
+      className={`font-display relative flex h-9 items-center gap-2 rounded-xl px-3.5 text-[12px] font-semibold whitespace-nowrap transition-colors ${
         active
-          ? 'bg-leaf text-white shadow-[0_2px_8px_rgba(29,92,58,0.2)]'
-          : 'bg-[#f5f7ff] text-ink hover:bg-mint/40'
+          ? 'bg-ink text-white shadow-xs'
+          : 'bg-[#f4f5f7] text-ink hover:bg-[#eaecf0]'
       }`}
     >
-      {!active && <DashedOutline rx={17} />}
+      {!active && <DashedOutline rx={11} />}
       {children}
     </button>
   )
 }
 
 export default function DesktopShell({ radar }: { radar: Radar }) {
-  const { profile, notifications, openAuthModal, readNotification } = useAuth()
-  const [tab, setTab] = useState<Tab>('Aksi')
+  const { profile, notifications, openAuthModal } = useAuth()
+  const [tab, setTab] = useState<Tab>('Gerakan')
   const [view, setView] = useState<'list' | 'detail'>(() => (radar.deepLinkedId ? 'detail' : 'list'))
   const [drawerOpen, setDrawerOpen] = useState(() => Boolean(radar.deepLinkedId))
   const [filterOpen, setFilterOpen] = useState(false)
@@ -179,7 +180,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   }, [filterOpen, notifOpen])
 
   const navTabs = useMemo<NavTab[]>(() => {
-    const base: NavTab[] = ['Jelajah', 'Aksi', 'History', 'Org']
+    const base: NavTab[] = ['Jelajah', 'Gerakan', 'History', 'Org']
     if (profile?.role === 'agency') base.push('Eskalasi')
     if (profile?.role === 'admin') base.push('Admin')
     return base
@@ -219,7 +220,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
       radar.fitIndonesia()
       return
     }
-    if (next === 'Aksi') {
+    if (next === 'Gerakan') {
       radar.setSelectedSignal(null)
       setView('list')
     }
@@ -254,7 +255,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     clearSwitchTimer()
     setCreateOpen(false)
     radar.setSelectedId(id)
-    setTab((prev) => (prev === 'Jelajah' ? 'Jelajah' : 'Aksi'))
+    setTab((prev) => (prev === 'Jelajah' ? 'Jelajah' : 'Gerakan'))
     setView('detail')
     setDrawerOpen(true)
   }
@@ -288,7 +289,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     clearSwitchTimer()
     setCreateOpen(false)
     setQuery(value)
-    setTab((prev) => (prev === 'Jelajah' || prev === 'Aksi' ? prev : 'Aksi'))
+    setTab((prev) => (prev === 'Jelajah' || prev === 'Gerakan' ? prev : 'Gerakan'))
     setView('list')
     setDrawerOpen(true)
   }
@@ -297,7 +298,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     switch (label) {
       case 'Jelajah':
         return <RadarCompassIcon className="relative z-10 size-6" />
-      case 'Aksi':
+      case 'Gerakan':
         return <AksiActionIcon className="relative z-10 size-6" />
       case 'History':
         return <HistoryDuotoneIcon className="relative z-10 size-6" />
@@ -310,7 +311,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     }
   }
 
-  const radarOrAksiBody = (mode: 'Jelajah' | 'Aksi') => {
+  const radarOrAksiBody = (mode: 'Jelajah' | 'Gerakan') => {
     if (radar.state === 'error') {
       return (
         <div className="grid h-full place-items-center px-5 text-center">
@@ -461,8 +462,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                     if (subTab !== 'Verifikasi') return null
                     if (!canOrganize) {
                       return (
-                        <div className="relative rounded-[20px] bg-[#f5f7ff] p-5 text-center">
-                          <DashedOutline rx={19} />
+                        <div className="relative rounded-[14px] bg-[#f4f5f7] p-5 text-center">
+                          <DashedOutline rx={13} />
                           <p className="font-display text-sm font-bold text-ink">Khusus Verifikator Terdaftar</p>
                           <p className="mt-1 text-xs leading-relaxed text-ink-soft">
                             {!profile
@@ -526,7 +527,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
       <nav
         aria-label="Utama"
         style={{ left: RAIL_GAP, width: RAIL_W }}
-        className="absolute top-4 bottom-4 z-[700] flex flex-col items-center rounded-[28px] border border-white/80 bg-white/95 py-4 shadow-[0_14px_38px_-6px_rgba(19,36,26,0.22),0_4px_12px_rgba(19,36,26,0.08)] backdrop-blur-md"
+        className="absolute top-4 bottom-4 z-[700] flex flex-col items-center rounded-[20px] border border-white/80 bg-white/95 py-4 shadow-[0_14px_38px_-6px_rgba(19,36,26,0.22),0_4px_12px_rgba(19,36,26,0.08)] backdrop-blur-md"
       >
         <button
           type="button"
@@ -547,7 +548,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                 key={label}
                 label={label}
                 active={active}
-                badge={label === 'Aksi' ? openCount : undefined}
+                badge={label === 'Gerakan' ? openCount : undefined}
                 onClick={() => openTab(label)}
               >
                 {renderRailIcon(label)}
@@ -619,8 +620,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               : { duration: 0.22, ease: [0.4, 0, 0.2, 1] }
           }
           style={{ left: RAIL_GAP + RAIL_W + FLOAT_GAP, width: DRAWER_W, transformOrigin: 'left center' }}
-          className={`absolute top-[70px] bottom-4 z-[600] flex flex-col overflow-hidden rounded-[28px] border border-white/80 shadow-[0_14px_38px_-6px_rgba(19,36,26,0.22),0_4px_12px_rgba(19,36,26,0.08)] backdrop-blur-md transition-colors duration-200 ${
-            !createOpen && (tab === 'Jelajah' || tab === 'Aksi') ? 'bg-white/96' : 'bg-canvas/96'
+          className={`absolute top-[70px] bottom-4 z-[600] flex flex-col overflow-hidden rounded-[20px] border border-white/80 shadow-[0_14px_38px_-6px_rgba(19,36,26,0.22),0_4px_12px_rgba(19,36,26,0.08)] backdrop-blur-md transition-colors duration-200 ${
+            !createOpen && (tab === 'Jelajah' || tab === 'Gerakan') ? 'bg-white/96' : 'bg-canvas/96'
           } ${drawerOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
         >
           <div className="flex min-h-0 flex-1 flex-col">
@@ -654,7 +655,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                   />
                 ) : (
                   <>
-                    {(tab === 'Jelajah' || tab === 'Aksi') && radarOrAksiBody(tab)}
+                    {(tab === 'Jelajah' || tab === 'Gerakan') && radarOrAksiBody(tab)}
 
                     {tab === 'History' && (
                   <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-5">
@@ -805,61 +806,14 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               exit={{ opacity: 0, x: 8, y: -4, scale: 0.97 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               style={{ transformOrigin: 'top right' }}
-              className="absolute top-0 right-14 flex w-[340px] flex-col rounded-[28px] bg-white p-5 shadow-[0_18px_42px_-6px_rgba(19,36,26,0.26)]"
+              className="absolute top-0 right-14 flex w-[340px] flex-col rounded-[20px] bg-white p-5 shadow-[0_18px_42px_-6px_rgba(19,36,26,0.26)]"
             >
-              <DashedOutline rx={27} />
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="font-display text-base font-semibold text-ink">Notifikasi</h3>
-                {unreadCount > 0 && (
-                  <span className="rounded-full bg-mint/70 px-2.5 py-0.5 text-[11px] font-normal text-forest">
-                    {unreadCount} baru
-                  </span>
-                )}
-              </div>
-
-              {!profile ? (
-                <div className="py-3 text-center">
-                  <p className="text-xs font-light text-ink-soft">Masuk untuk melihat notifikasi aksi &amp; verifikasi.</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNotifOpen(false)
-                      openAuthModal()
-                    }}
-                    className="btn-primary mt-3 h-9 px-4 text-xs"
-                  >
-                    Masuk
-                  </button>
-                </div>
-              ) : notifications.length === 0 ? (
-                <p className="py-6 text-center text-xs font-light text-ink-soft">Belum ada notifikasi</p>
-              ) : (
-                <div className="max-h-[320px] overflow-y-auto pr-1">
-                  {notifications.map((n) => (
-                    <DashedRow key={n.id} className="py-2.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!n.is_read) void readNotification(n.id)
-                          if (n.event_id) {
-                            setNotifOpen(false)
-                            openDetail(n.event_id)
-                          }
-                        }}
-                        className="flex w-full items-start gap-2.5 rounded-xl p-1 text-left transition-colors hover:bg-mint/25"
-                      >
-                        <span
-                          className={`mt-1.5 size-2 shrink-0 rounded-full ${n.is_read ? 'bg-line' : 'bg-critical'}`}
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[13px] font-normal text-ink">{n.title}</span>
-                          {n.detail && <span className="mt-0.5 block text-xs font-light text-ink-soft">{n.detail}</span>}
-                        </span>
-                      </button>
-                    </DashedRow>
-                  ))}
-                </div>
-              )}
+              <DashedOutline rx={19} />
+              <NotificationsPanel
+                compact
+                onOpenEvent={openDetail}
+                onAfterAction={() => setNotifOpen(false)}
+              />
             </motion.div>
           )}
 
@@ -873,9 +827,9 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               exit={{ opacity: 0, x: 8, y: -4, scale: 0.97 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               style={{ transformOrigin: 'top right' }}
-              className="absolute top-0 right-14 flex w-[356px] flex-col gap-3 rounded-[28px] bg-white p-5 shadow-[0_18px_42px_-6px_rgba(19,36,26,0.26)]"
+              className="absolute top-0 right-14 flex w-[356px] flex-col gap-3 rounded-[20px] bg-white p-5 shadow-[0_18px_42px_-6px_rgba(19,36,26,0.26)]"
             >
-              <DashedOutline rx={27} />
+              <DashedOutline rx={19} />
               <div>
                 <p className="mb-2 text-[11px] font-light tracking-wider text-ink-soft uppercase">
                   Gaya Peta
