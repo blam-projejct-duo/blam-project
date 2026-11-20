@@ -2,16 +2,17 @@ import { LngLatBounds, Map as MapLibreMap, Marker, Popup, setWorkerUrl } from 'm
 import type { GeoJSONSource } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { useEffect, useRef } from 'react'
-import { mapEventTone } from '../../lib/constants'
 import type { ConservationEvent, MapStyle, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import type { ActiveRoute } from './directions'
 import { hazardToSignal, severityRank } from './hotspotCluster'
 import type { HazardPoint } from './hotspotCluster'
 import { getIndonesiaWipeSources, INDONESIA_GEOJSON, WIPE_SOFTNESS } from './indonesiaWipe'
-import { registerHazardIcons, renderEventMarkerElement, syncUserMarkerElement } from './mapMarkers'
+import { ensureEventPinImages, eventPinImageId, registerHazardIcons, syncUserMarkerElement } from './mapMarkers'
 import { applyMapStyle, createInitialMapStyle, ensureGoogleSatelliteLayer } from './mapStyles'
 import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from './radarFilters'
+import SpaceBackdrop from './SpaceBackdrop'
+import type { SpaceCameraState } from './SpaceBackdrop'
 
 setWorkerUrl(maplibreWorkerUrl)
 
@@ -115,10 +116,22 @@ interface Props {
   globeInsetLeft?: number
 }
 
-interface MarkerEntry {
-  marker: Marker
-  wrapper: HTMLDivElement
-  el: HTMLDivElement
+function buildEventGeoJson(events: ConservationEvent[], selectedId: string | null) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: events.map((ev) => {
+      const selected = ev.id === selectedId
+      return {
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: [ev.lng, ev.lat] as [number, number] },
+        properties: {
+          id: ev.id,
+          icon: eventPinImageId(ev, selected),
+          selected,
+        },
+      }
+    }),
+  }
 }
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -307,7 +320,6 @@ export default function MapView({
   const mapRef = useRef<MapLibreMap | null>(null)
   const readyRef = useRef(false)
   const { profile } = useAuth()
-  const markersRef = useRef<Map<string, MarkerEntry>>(new Map())
   const meRef = useRef<Marker | null>(null)
   const meElRef = useRef<HTMLDivElement | null>(null)
   const focusMarkerRef = useRef<Marker | null>(null)
@@ -337,6 +349,11 @@ export default function MapView({
   const prevZoomRef = useRef(4.3)
   const zoomStartRef = useRef(4.3)
   const globeInsetRef = useRef(globeInsetLeft)
+  const spaceCamRef = useRef<SpaceCameraState>({
+    lng: INDONESIA_CENTER[0],
+    lat: INDONESIA_CENTER[1],
+    zoom: 4.3,
+  })
 
   /** Padding kamera untuk zoom tertentu: penuh di mode globe, memudar ke nol saat transisi ke peta datar. */
   const globePaddingFor = (zoom: number) => {
@@ -423,11 +440,32 @@ export default function MapView({
       cancelPendingTileRequestsWhileZooming: false,
       fadeDuration: 150,
       attributionControl: { compact: true },
+      canvasContextAttributes: { alpha: true },
     })
+
+    const collapseDefaultAttrib = () => {
+      const attrib = host.querySelector('.maplibregl-ctrl-attrib')
+      if (attrib) {
+        attrib.classList.remove('maplibregl-compact-show')
+        attrib.removeAttribute('open')
+      }
+    }
+    collapseDefaultAttrib()
+    requestAnimationFrame(collapseDefaultAttrib)
 
     syncFlatRotationLock(map)
     prevZoomRef.current = map.getZoom()
     zoomStartRef.current = map.getZoom()
+    spaceCamRef.current = {
+      lng: map.getCenter().lng,
+      lat: map.getCenter().lat,
+      zoom: map.getZoom(),
+    }
+
+    map.on('move', () => {
+      const c = map.getCenter()
+      spaceCamRef.current = { lng: c.lng, lat: c.lat, zoom: map.getZoom() }
+    })
 
     map.on('rotatestart', (e) => {
       if (!e.originalEvent || internalBearingRef.current) return
@@ -522,6 +560,7 @@ export default function MapView({
     map.once('load', () => {
       readyRef.current = true
       void ensureGoogleSatelliteLayer(map, styleRef.current, googleSessionAbort.signal)
+      collapseDefaultAttrib()
 
       const fillBefore = map.getLayer('building') ? 'building' : undefined
       const lineBefore = map.getLayer('satelit-labels') ? 'satelit-labels' : undefined
@@ -821,13 +860,42 @@ export default function MapView({
         },
       })
 
+      map.addSource('blam-events', {
+        type: 'geojson',
+        data: buildEventGeoJson(eventsRef.current, selectedIdRef.current),
+      })
+      map.addLayer({
+        id: 'blam-events-layer',
+        type: 'symbol',
+        source: 'blam-events',
+        layout: {
+          'icon-image': ['get', 'icon'],
+          'icon-size': ['case', ['==', ['get', 'selected'], true], 1.16, 1],
+          'icon-anchor': 'bottom',
+          'icon-offset': [0, 12],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'symbol-sort-key': ['case', ['==', ['get', 'selected'], true], 10, 1],
+        },
+      })
+      void ensureEventPinImages(map, eventsRef.current, selectedIdRef.current).then(() => {
+        if (!mapRef.current || !readyRef.current) return
+        const src = map.getSource('blam-events') as GeoJSONSource | undefined
+        src?.setData(buildEventGeoJson(eventsRef.current, selectedIdRef.current))
+      })
+
       const setPointer = (on: boolean) => {
         map.getCanvas().style.cursor = on ? 'pointer' : ''
       }
-      for (const layerId of ['blam-hazards-cluster', 'blam-hazards-core'] as const) {
+      for (const layerId of ['blam-hazards-cluster', 'blam-hazards-core', 'blam-events-layer'] as const) {
         map.on('mouseenter', layerId, () => setPointer(true))
         map.on('mouseleave', layerId, () => setPointer(false))
       }
+
+      map.on('click', 'blam-events-layer', (e) => {
+        const id = e.features?.[0]?.properties?.id
+        if (typeof id === 'string') onSelectRef.current(id)
+      })
 
       const openHazard = (id: unknown) => {
         const hz = hazardsRef.current.find((x) => x.id === id)
@@ -843,7 +911,10 @@ export default function MapView({
           .addTo(map)
       }
 
-      map.on('click', 'blam-hazards-core', (e) => openHazard(e.features?.[0]?.properties?.id))
+      map.on('click', 'blam-hazards-core', (e) => {
+        if (map.queryRenderedFeatures(e.point, { layers: ['blam-events-layer'] }).length > 0) return
+        openHazard(e.features?.[0]?.properties?.id)
+      })
 
       map.on('click', 'blam-hazards-cluster', (e) => {
         const feat = e.features?.[0]
@@ -876,7 +947,6 @@ export default function MapView({
     })
     ro.observe(host)
 
-    const markers = markersRef.current
     return () => {
       googleSessionAbort.abort()
       cancelAnimationFrame(wipeRafRef.current)
@@ -886,8 +956,6 @@ export default function MapView({
       ro.disconnect()
       popupRef.current?.remove()
       popupRef.current = null
-      for (const entry of markers.values()) entry.marker.remove()
-      markers.clear()
       meRef.current?.remove()
       meRef.current = null
       map.remove()
@@ -909,43 +977,15 @@ export default function MapView({
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
-    const markers = markersRef.current
-    const ids = new Set(events.map((ev) => ev.id))
-
-    for (const [id, entry] of markers) {
-      if (!ids.has(id)) {
-        entry.marker.remove()
-        markers.delete(id)
-      }
-    }
-
-    for (const ev of events) {
-      const selected = ev.id === selectedId
-      const tone = mapEventTone(ev)
-      const existing = markers.get(ev.id)
-
-      if (existing) {
-        renderEventMarkerElement(existing.el, ev, tone, selected)
-        existing.wrapper.style.zIndex = selected ? '10' : '1'
-        existing.marker.setLngLat([ev.lng, ev.lat])
-      } else {
-        // MapLibre owns the transform of the marker element; visuals live in a child.
-        const wrapper = document.createElement('div')
-        const el = document.createElement('div')
-        renderEventMarkerElement(el, ev, tone, selected)
-        wrapper.style.zIndex = selected ? '10' : '1'
-        wrapper.appendChild(el)
-        el.addEventListener('click', (e) => {
-          e.stopPropagation()
-          onSelectRef.current(ev.id)
-        })
-
-        const marker = new Marker({ element: wrapper, anchor: 'bottom' })
-          .setLngLat([ev.lng, ev.lat])
-          .addTo(map)
-        markers.set(ev.id, { marker, wrapper, el })
-      }
+    if (!map || !readyRef.current) return
+    let cancelled = false
+    void ensureEventPinImages(map, events, selectedId).then(() => {
+      if (cancelled || !mapRef.current || !readyRef.current) return
+      const src = map.getSource('blam-events') as GeoJSONSource | undefined
+      src?.setData(buildEventGeoJson(events, selectedId))
+    })
+    return () => {
+      cancelled = true
     }
   }, [events, selectedId])
 
@@ -1246,5 +1286,10 @@ export default function MapView({
     }
   }, [zoomCommand])
 
-  return <div ref={hostRef} data-style={style} className="h-full w-full" />
+  return (
+    <div className="relative h-full w-full overflow-hidden">
+      <div ref={hostRef} data-style={style} className="h-full w-full" />
+      <SpaceBackdrop style={style} mapRef={mapRef} cameraRef={spaceCamRef} />
+    </div>
+  )
 }

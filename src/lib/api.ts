@@ -485,12 +485,45 @@ export interface BlamChatTurn {
   actions?: BlamChatAction[]
 }
 
+export interface BlamSelectedPointContext {
+  kind: 'event' | 'signal'
+  id: string
+  title: string
+  locationName?: string
+  ecosystem?: string
+  category?: string
+  status?: string
+  severity?: string
+  description?: string
+  source?: string
+  signalKind?: string
+  reason?: string
+  date?: string
+  pointCount?: number
+  totalFrp?: number
+  radiusKm?: number
+  confidence?: string
+  dischargeM3s?: number | null
+  dischargeRatio?: number | null
+  rainMm?: number | null
+  verificationState?: string
+  verifiedBy?: string
+  verifiedOrg?: string
+  linkedEventId?: string | null
+  organizationName?: string
+  participantsCount?: number
+  maxParticipants?: number | null
+  actionsCount?: number
+  reportSummary?: string
+}
+
 export interface BlamChatContext {
   userName?: string
   userRole?: string
   mapStyle?: string
   selectedTitle?: string
   selectedLocation?: string
+  selectedPoint?: BlamSelectedPointContext
   activeEvents?: { title: string; ecosystem: string; status: string; locationName: string }[]
   signals?: { title: string; kindLabel: string; source: string; categoryLabel: string }[]
 }

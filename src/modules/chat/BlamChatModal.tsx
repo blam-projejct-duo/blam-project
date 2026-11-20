@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUpRight, MapPin, RotateCcw, Send, X } from 'lucide-react'
+import { ArrowUpRight, CornerDownRight, MapPin, RotateCcw, Send, X } from 'lucide-react'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { DashedOutline } from '../../components/ui/atoms'
 import { BlamAiAvatarIcon, SnapCameraDuotoneIcon } from '../../components/ui/bumpIcons'
@@ -167,21 +167,61 @@ function FormattedText({ text }: { text: string }) {
   )
 }
 
+export interface BlamPointPromptSuggestion {
+  key: number
+  title: string
+  prompts: string[]
+  context?: BlamChatContext
+}
+
 export default function BlamChatModal({
   context,
   onClose,
   onAction,
+  placement = 'center',
+  companionLeft = 220,
+  onBusyChange,
+  onReply,
+  pointSuggestion,
 }: {
   context: BlamChatContext
   onClose: () => void
   onAction?: (action: BlamChatAction) => void
+  /** 'companion' = panel muncul di samping Gajah Blam (desktop), bukan di tengah layar. */
+  placement?: 'center' | 'companion'
+  companionLeft?: number
+  onBusyChange?: (busy: boolean) => void
+  onReply?: () => void
+  pointSuggestion?: BlamPointPromptSuggestion | null
 }) {
   const [messages, setMessages] = useState<BlamChatTurn[]>(() => loadStoredMessages())
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dismissedSuggestionKey, setDismissedSuggestionKey] = useState<number | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const messagesRef = useRef(messages)
+  const isCompanion = placement === 'companion'
+
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
+
+  useEffect(() => {
+    onBusyChange?.(busy)
+  }, [busy, onBusyChange])
+
+  useEffect(() => {
+    if (!isCompanion) return
+    inputRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isCompanion, onClose])
 
   useEffect(() => {
     saveStoredMessages(messages)
@@ -201,13 +241,18 @@ export default function BlamChatModal({
     setMessages([GREETING])
   }
 
-  const submit = async (rawText: string) => {
+  const submit = async (
+    rawText: string,
+    opts?: { contextOverride?: BlamChatContext },
+  ) => {
     const clean = rawText.trim()
     if (!clean || busy) return
     setError(null)
     setInput('')
 
-    const nextHistory: BlamChatTurn[] = [...messages, { role: 'user', text: clean }]
+    const baseMessages = messagesRef.current
+    const nextHistory: BlamChatTurn[] = [...baseMessages, { role: 'user', text: clean }]
+    messagesRef.current = nextHistory
     setMessages(nextHistory)
     setBusy(true)
 
@@ -217,8 +262,10 @@ export default function BlamChatModal({
 
     try {
       const apiTurns = nextHistory.slice(1)
-      const res = await sendBlamChat(apiTurns, context, ctrl.signal)
+      const res = await sendBlamChat(apiTurns, opts?.contextOverride ?? context, ctrl.signal)
+      if (ctrl.signal.aborted) return
       setMessages((prev) => [...prev, { role: 'assistant', text: res.reply, actions: res.actions }])
+      onReply?.()
     } catch (err) {
       if (ctrl.signal.aborted) return
       setError(err instanceof Error ? err.message : 'Gagal menghubungi Blam Chat')
@@ -227,23 +274,56 @@ export default function BlamChatModal({
     }
   }
 
+  const activeSuggestion =
+    pointSuggestion && pointSuggestion.key !== dismissedSuggestionKey && !busy
+      ? pointSuggestion
+      : null
+
   return (
     <motion.div
       role="dialog"
-      aria-modal="true"
+      aria-modal={!isCompanion}
       aria-label="Blam Chat"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.22 }}
-      className="fixed inset-0 z-[1000] flex items-end justify-center bg-ink/35 p-0 backdrop-blur-[2px] md:items-center md:p-6"
+      className={
+        isCompanion
+          ? 'pointer-events-none fixed inset-0 z-[1000]'
+          : 'fixed inset-0 z-[1000] flex items-end justify-center bg-ink/35 p-0 backdrop-blur-[2px] md:items-center md:p-6'
+      }
     >
       <motion.div
-        initial={{ y: 48, opacity: 0, scale: 0.98 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        exit={{ y: 36, opacity: 0, scale: 0.98 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="flex h-[90dvh] w-full flex-col overflow-hidden rounded-t-[20px] border border-line bg-white md:h-[640px] md:max-w-[460px] md:rounded-[20px]"
+        initial={
+          isCompanion
+            ? { left: companionLeft, x: -24, opacity: 0, scale: 0.94 }
+            : { y: 48, opacity: 0, scale: 0.98 }
+        }
+        animate={
+          isCompanion
+            ? { left: companionLeft, x: 0, opacity: 1, scale: 1 }
+            : { y: 0, opacity: 1, scale: 1 }
+        }
+        exit={
+          isCompanion
+            ? { left: companionLeft, x: -20, opacity: 0, scale: 0.94 }
+            : { y: 36, opacity: 0, scale: 0.98 }
+        }
+        transition={
+          isCompanion
+            ? {
+                left: { duration: 0.36, ease: [0.22, 1, 0.36, 1] },
+                default: { type: 'spring', stiffness: 320, damping: 28 },
+              }
+            : { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
+        }
+        style={isCompanion ? { transformOrigin: 'left center' } : undefined}
+        className={
+          isCompanion
+            ? 'pointer-events-auto absolute top-[70px] bottom-4 flex w-[392px] flex-col overflow-hidden rounded-[20px] border border-white/80 bg-white/97 shadow-[0_18px_46px_-8px_rgba(19,36,26,0.28)] backdrop-blur-md'
+            : 'flex h-[90dvh] w-full flex-col overflow-hidden rounded-t-[20px] border border-line bg-white md:h-[640px] md:max-w-[460px] md:rounded-[20px]'
+        }
       >
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
           <div className="flex items-center gap-2.5">
@@ -353,7 +433,7 @@ export default function BlamChatModal({
               </p>
             )}
 
-            {messages.length === 1 && !busy && (
+            {messages.length === 1 && !busy && !activeSuggestion && (
               <div className="mt-0.5 flex flex-wrap gap-1.5 pl-9">
                 {STARTERS.map((q) => (
                   <button
@@ -370,6 +450,34 @@ export default function BlamChatModal({
           </div>
         </div>
 
+        <AnimatePresence>
+          {activeSuggestion && (
+            <motion.div
+              key={activeSuggestion.key}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="flex shrink-0 flex-wrap justify-end gap-1.5 border-t border-line/60 bg-white/95 px-4 py-2"
+            >
+              {activeSuggestion.prompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => {
+                    setDismissedSuggestionKey(activeSuggestion.key)
+                    void submit(prompt, { contextOverride: activeSuggestion.context })
+                  }}
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 py-1.5 text-left text-[11.5px] font-medium text-ink transition-colors hover:bg-[#eaecf0]"
+                >
+                  <CornerDownRight className="size-3.5 shrink-0 text-[#2563eb]" />
+                  <span className="truncate">{prompt}</span>
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -378,6 +486,7 @@ export default function BlamChatModal({
           className="flex shrink-0 items-center gap-2 border-t border-line bg-white px-4 py-2.5 pb-[calc(env(safe-area-inset-bottom)+10px)]"
         >
           <input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Tanya kondisi sekitar atau Blam…"

@@ -148,28 +148,28 @@ const GLOBE_PROJECTION: ProjectionSpecification = {
 }
 
 function skyForStyle(style: MapStyle): SkySpecification {
-  const atmosphereBlend = ['interpolate', ['linear'], ['zoom'], 1.2, 1, 3.8, 0.65, 4.25, 0] as never
+  const atmosphereBlend = ['interpolate', ['linear'], ['zoom'], 1.2, 1, 3.0, 0.75, 3.45, 0] as never
   if (style === 'satelit') {
     return {
-      'sky-color': '#09142c',
-      'horizon-color': '#2563eb',
-      'sky-horizon-blend': 0.6,
+      'sky-color': '#020614',
+      'horizon-color': '#38bdf8',
+      'sky-horizon-blend': 0.85,
       'atmosphere-blend': atmosphereBlend,
     }
   }
   if (style === 'gelap') {
     return {
-      'sky-color': '#0a0f15',
-      'horizon-color': '#1e3a5f',
-      'sky-horizon-blend': 0.55,
+      'sky-color': '#04070f',
+      'horizon-color': '#38bdf8',
+      'sky-horizon-blend': 0.8,
       'atmosphere-blend': atmosphereBlend,
     }
   }
   return {
-    'sky-color': '#cde3f3',
-    'horizon-color': '#7bc2ee',
-    'sky-horizon-blend': 0.6,
-    'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 1.2, 0.9, 3.8, 0.5, 4.25, 0] as never,
+    'sky-color': '#dbeafe',
+    'horizon-color': '#60a5fa',
+    'sky-horizon-blend': 0.75,
+    'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 1.2, 0.9, 3.0, 0.55, 3.45, 0] as never,
   }
 }
 

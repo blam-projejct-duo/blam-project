@@ -6,8 +6,13 @@ import {
   Plus,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
+import { ROLE_LABEL } from '../../lib/constants'
+import type { BlamChatAction, BlamChatContext, BlamSelectedPointContext, BlamSnapPrefill } from '../../lib/api'
+import BlamChatModal from '../../modules/chat/BlamChatModal'
+import type { BlamPointPromptSuggestion } from '../../modules/chat/BlamChatModal'
+import BlamCompanion from '../../modules/chat/BlamCompanion'
 import { DashedOutline, MarkerTierLegend, Orb } from '../ui/atoms'
 import {
   AdminDuotoneIcon,
@@ -39,7 +44,7 @@ import OrgsPanel from '../../modules/organizations/OrgsPanel'
 import NotificationsPanel from '../../modules/notifications/NotificationsPanel'
 import ProfilePanel from '../../modules/profile/ProfilePanel'
 import VerificationRadarPanel from '../../modules/reports/VerificationRadarPanel'
-import type { CitizenReport, SatelliteSignal } from '../../types'
+import type { CitizenReport, ConservationEvent, SatelliteSignal } from '../../types'
 import EventListPanel from './EventListPanel'
 import type { ListTab } from './EventListPanel'
 
@@ -52,6 +57,76 @@ const FLOAT_GAP = 12
 const DRAWER_W = 392
 const JELAJAH_TABS: readonly ListTab[] = ['Satelit', 'Utama']
 const AKSI_TABS: readonly ListTab[] = ['Berjalan', 'Verifikasi', 'Selesai']
+const QuickReportFlow = lazy(() => import('../../modules/reports/QuickReportFlow'))
+const COMPANION_KEY = 'blam:companion:out'
+const COMPANION_SEEN_KEY = 'blam:companion:seen'
+const COMPANION_BOTTOM = 112
+
+function buildSelectedPointContext(
+  ev: ConservationEvent | null,
+  signal: SatelliteSignal | null,
+): BlamSelectedPointContext | undefined {
+  if (signal) {
+    return {
+      kind: 'signal',
+      id: signal.id,
+      title: signal.title,
+      ecosystem: signal.ecosystem,
+      category: signal.categoryLabel,
+      severity: signal.severity,
+      source: signal.source,
+      signalKind: signal.kind ?? 'suspected',
+      reason: signal.reason,
+      date: signal.date,
+      pointCount: signal.pointCount,
+      totalFrp: signal.totalFrp,
+      radiusKm: signal.radiusKm,
+      confidence: signal.confidence,
+      dischargeM3s: signal.dischargeM3s,
+      dischargeRatio: signal.dischargeRatio,
+      rainMm: signal.rainMm,
+      verificationState: signal.verificationState,
+      verifiedBy: signal.verifiedInfo?.verified_by_name,
+      verifiedOrg: signal.verifiedInfo?.verified_org_name ?? undefined,
+      linkedEventId: signal.linkedEventId,
+    }
+  }
+  if (ev) {
+    return {
+      kind: 'event',
+      id: ev.id,
+      title: ev.title,
+      locationName: ev.location_name,
+      ecosystem: ev.ecosystem,
+      category: ev.category,
+      status: ev.status,
+      severity: ev.report?.ai_severity,
+      description: ev.description,
+      organizationName: ev.organization?.name,
+      participantsCount: ev.event_participants?.length ?? 0,
+      maxParticipants: ev.max_participants,
+      actionsCount: ev.event_actions?.length ?? 0,
+      reportSummary: ev.report?.ai_site_brief ?? undefined,
+    }
+  }
+  return undefined
+}
+
+function readFlag(key: string) {
+  try {
+    return window.localStorage.getItem(key) === '1'
+  } catch {
+    return false
+  }
+}
+function writeFlag(key: string, on: boolean) {
+  try {
+    if (on) window.localStorage.setItem(key, '1')
+    else window.localStorage.removeItem(key)
+  } catch {
+    // abaikan
+  }
+}
 
 function RailItem({
   label,
@@ -126,6 +201,36 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const [draftSignal, setDraftSignal] = useState<SatelliteSignal | null>(null)
   const rightMenuRef = useRef<HTMLDivElement>(null)
   const switchTimerRef = useRef<number | null>(null)
+  const logoRef = useRef<HTMLButtonElement>(null)
+  const companionBoundsRef = useRef<HTMLDivElement>(null)
+  const [companionOut, setCompanionOut] = useState(() => readFlag(COMPANION_KEY))
+  const [companionSeen, setCompanionSeen] = useState(() => readFlag(COMPANION_SEEN_KEY))
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatBusy, setChatBusy] = useState(false)
+  const [replyPulse, setReplyPulse] = useState(0)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportPrefill, setReportPrefill] = useState<BlamSnapPrefill | undefined>(undefined)
+  const [pointSuggestion, setPointSuggestion] = useState<BlamPointPromptSuggestion | null>(null)
+  const pointSuggestionSeqRef = useRef(0)
+  const [greetHour] = useState(() => new Date().getHours())
+  const [viewportW, setViewportW] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440))
+
+  useEffect(() => {
+    const onResize = () => setViewportW(window.innerWidth)
+    window.addEventListener('resize', onResize, { passive: true })
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  const toggleCompanion = () => {
+    const next = !companionOut
+    setCompanionOut(next)
+    writeFlag(COMPANION_KEY, next)
+    if (!next) setChatOpen(false)
+    if (!companionSeen) {
+      setCompanionSeen(true)
+      writeFlag(COMPANION_SEEN_KEY, true)
+    }
+  }
 
   const clearSwitchTimer = () => {
     if (switchTimerRef.current !== null) {
@@ -150,6 +255,11 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const initials = profile?.full_name ? profile.full_name.slice(0, 1).toUpperCase() : null
   const selected = radar.selected
   const edge = RAIL_GAP + RAIL_W + (drawerOpen ? FLOAT_GAP + DRAWER_W : 0)
+  const chatLeft = drawerOpen
+    ? RAIL_GAP + RAIL_W + FLOAT_GAP + DRAWER_W + FLOAT_GAP
+    : RAIL_GAP + RAIL_W + FLOAT_GAP
+  const rawCompanionLeft = (chatOpen ? chatLeft + DRAWER_W : edge) - 4
+  const companionLeft = Math.min(rawCompanionLeft, Math.max(RAIL_GAP + RAIL_W - 4, viewportW - 152))
   const canOrganize = Boolean(
     profile && (profile.role === 'volunteer' || profile.role === 'agency' || profile.role === 'admin'),
   )
@@ -191,6 +301,70 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     [radar.events, radar.hazards, radar.satelliteSignals, layers],
   )
 
+  const blamChatContext = useMemo<BlamChatContext>(
+    () => ({
+      userName: profile?.full_name,
+      userRole: profile ? ROLE_LABEL[profile.role] : 'Warga',
+      mapStyle: radar.style,
+      selectedTitle: selected?.title ?? radar.selectedSignal?.title,
+      selectedLocation: selected?.location_name,
+      selectedPoint: buildSelectedPointContext(selected, radar.selectedSignal),
+      activeEvents: visibleEvents
+        .filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled')
+        .slice(0, 6)
+        .map((ev) => ({
+          title: ev.title,
+          ecosystem: ev.ecosystem,
+          status: ev.status,
+          locationName: ev.location_name,
+        })),
+      signals: visibleSignals.slice(0, 5).map((s) => ({
+        title: s.title,
+        kindLabel: s.kind ?? 'suspected',
+        source: s.source,
+        categoryLabel: s.categoryLabel,
+      })),
+    }),
+    [profile, radar.style, radar.selectedSignal, selected, visibleEvents, visibleSignals],
+  )
+
+  const companionTips = useMemo(() => {
+    const firstName = profile?.full_name?.split(' ')[0]
+    const hour = greetHour
+    const greet = hour < 11 ? 'Selamat pagi' : hour < 15 ? 'Selamat siang' : hour < 19 ? 'Selamat sore' : 'Selamat malam'
+    const tips = [`${greet}${firstName ? `, ${firstName}` : ''}! Aku Gajah Blam 🐘`]
+    if (openCount > 0) tips.push(`Ada ${openCount} aksi berjalan. Mau aku rangkumin? 🌱`)
+    if (radar.satelliteSignals.length > 0) tips.push(`${radar.satelliteSignals.length} sinyal satelit terpantau. Tanya aku detailnya!`)
+    tips.push('Klik aku buat ngobrol, seret aku buat pindah! ✨')
+    tips.push('Nemu sampah atau kerusakan alam? Bilang aku, nanti kubantu lapor 📸')
+    return tips
+  }, [profile?.full_name, openCount, radar.satelliteSignals.length, greetHour])
+
+  const handleChatAction = (action: BlamChatAction) => {
+    if (action.type === 'open_blam_snap') {
+      setReportPrefill(action.prefill)
+      setChatOpen(false)
+      setReportOpen(true)
+      return
+    }
+    if (action.type === 'focus_map_point') {
+      const { lat, lng, eventId } = action.target
+      setChatOpen(false)
+      if (eventId && radar.allEvents.some((ev) => ev.id === eventId)) {
+        openDetail(eventId)
+        return
+      }
+      const nearestSignal = radar.satelliteSignals.find(
+        (s) => Math.abs(s.lat - lat) < 0.2 && Math.abs(s.lng - lng) < 0.2,
+      )
+      if (nearestSignal) {
+        openSignalDetail(nearestSignal)
+        return
+      }
+      radar.focusLocation(lat, lng, 9.5)
+    }
+  }
+
   const resetToIndonesia = () => {
     clearSwitchTimer()
     setCreateOpen(false)
@@ -198,6 +372,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     setDraftSignal(null)
     radar.setSelectedSignal(null)
     radar.setSelectedId(null)
+    setPointSuggestion(null)
     radar.setFilter('all')
     setLayers(new Set())
     setQuery('')
@@ -251,22 +426,61 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     }, 250)
   }
 
-  const openDetail = (id: string) => {
+  const openDetail = (id: string, fromMap = false) => {
     clearSwitchTimer()
     setCreateOpen(false)
     radar.setSelectedId(id)
     setTab((prev) => (prev === 'Jelajah' ? 'Jelajah' : 'Gerakan'))
     setView('detail')
     setDrawerOpen(true)
+
+    if (fromMap && chatOpen) {
+      const ev = radar.allEvents.find((item) => item.id === id) ?? null
+      if (ev) {
+        const pointCtx = buildSelectedPointContext(ev, null)
+        setPointSuggestion({
+          key: ++pointSuggestionSeqRef.current,
+          title: ev.title,
+          prompts: [
+            `Jelaskan detail "${ev.title}"`,
+            'Apa tindak lanjut & cara gabungnya?',
+          ],
+          context: {
+            ...blamChatContext,
+            selectedTitle: ev.title,
+            selectedLocation: ev.location_name,
+            selectedPoint: pointCtx,
+          },
+        })
+      }
+    }
   }
 
-  const openSignalDetail = (signal: SatelliteSignal) => {
+  const openSignalDetail = (signal: SatelliteSignal, fromMap = false) => {
     clearSwitchTimer()
     setCreateOpen(false)
     radar.setSelectedSignal(signal)
     setTab('Jelajah')
     setView('detail')
     setDrawerOpen(true)
+
+    if (fromMap && chatOpen) {
+      const pointCtx = buildSelectedPointContext(null, signal)
+      setPointSuggestion({
+        key: ++pointSuggestionSeqRef.current,
+        title: signal.title,
+        prompts: [
+          `Jelaskan sinyal "${signal.title}"`,
+          'Seberapa serius & apa tindak lanjutnya?',
+        ],
+        context: {
+          ...blamChatContext,
+          selectedTitle: signal.title,
+          selectedLocation: undefined,
+          selectedPoint: pointCtx,
+        },
+      })
+    }
   }
 
   const startCreateEvent = (report: CitizenReport | null = null, signal: SatelliteSignal | null = null) => {
@@ -510,8 +724,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           selectedId={radar.selectedId}
           selectedSignal={radar.selectedSignal}
           activeRoute={radar.activeRoute}
-          onSelect={openDetail}
-          onSelectSignal={openSignalDetail}
+          onSelect={(id) => openDetail(id, true)}
+          onSelectSignal={(sig) => openSignalDetail(sig, true)}
           style={radar.style}
           padding={{ bottom: 0, right: 0, left: edge }}
           fitAllSignal={radar.fitAllSignal}
@@ -530,14 +744,26 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         className="absolute top-4 bottom-4 z-[700] flex flex-col items-center rounded-[20px] border border-white/80 bg-white/95 py-4 shadow-[0_14px_38px_-6px_rgba(19,36,26,0.22),0_4px_12px_rgba(19,36,26,0.08)] backdrop-blur-md"
       >
         <button
+          ref={logoRef}
           type="button"
-          onClick={resetToIndonesia}
-          aria-label="Blam — Reset ke Indonesia"
-          title="Reset ke tampilan Indonesia"
-          className="relative mb-3 grid size-13 shrink-0 place-items-center rounded-full transition-transform duration-120 active:scale-95"
+          onClick={toggleCompanion}
+          aria-label={companionOut ? 'Pulangkan Gajah Blam ke logo' : 'Panggil Gajah Blam (asisten AI)'}
+          aria-pressed={companionOut}
+          title={companionOut ? 'Pulangkan Gajah Blam' : 'Panggil Gajah Blam — asisten AI'}
+          className="group relative mb-3 grid size-13 shrink-0 place-items-center rounded-full transition-transform duration-120 hover:scale-105 active:scale-95"
         >
           <span aria-hidden="true" className="orb-sheen z-20 scale-110" />
-          <BlamNatureIcon className="relative z-10 size-full scale-115 drop-shadow-[0_2px_6px_rgba(11,27,77,0.22)]" />
+          <BlamNatureIcon
+            elephantAway={companionOut}
+            interactive={!companionOut}
+            className="relative z-10 size-full scale-115 drop-shadow-[0_2px_6px_rgba(11,27,77,0.22)] transition-transform duration-300 group-hover:-rotate-6"
+          />
+          {!companionSeen && !companionOut && (
+            <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 z-30 flex size-3.5">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-leaf/60" />
+              <span className="relative inline-flex size-3.5 rounded-full border-2 border-white bg-leaf" />
+            </span>
+          )}
         </button>
 
         <div className="flex w-full flex-1 flex-col overflow-y-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -895,6 +1121,86 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           <LocateDuotoneIcon />
         </Orb>
       </div>
+
+      {/* area batas seret Gajah Blam (sepanjang tepi kanan panel/chat/navbar) */}
+      <div
+        ref={companionBoundsRef}
+        aria-hidden="true"
+        style={{ left: companionLeft, width: 140, top: 96, bottom: 24 }}
+        className="pointer-events-none absolute"
+      />
+
+      <MotionConfig reducedMotion="user">
+        <AnimatePresence>
+          {companionOut && (
+            <BlamCompanion
+              key="blam-companion"
+              logoRef={logoRef}
+              boundsRef={companionBoundsRef}
+              left={companionLeft}
+              bottom={COMPANION_BOTTOM}
+              chatOpen={chatOpen}
+              chatBusy={chatOpen && chatBusy}
+              replyPulse={replyPulse}
+              tips={companionTips}
+              onOpenChat={() => setChatOpen(true)}
+              onResetMap={resetToIndonesia}
+              onDismiss={toggleCompanion}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {chatOpen && (
+            <BlamChatModal
+              key="blam-chat-companion"
+              placement="companion"
+              companionLeft={chatLeft}
+              context={blamChatContext}
+              pointSuggestion={pointSuggestion}
+              onClose={() => setChatOpen(false)}
+              onBusyChange={setChatBusy}
+              onReply={() => setReplyPulse((n) => n + 1)}
+              onAction={handleChatAction}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {reportOpen && (
+            <motion.div
+              key="desktop-quick-report"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[1000] grid place-items-center bg-ink/35 p-6 backdrop-blur-[2px]"
+            >
+              <motion.div
+                initial={{ y: 32, scale: 0.97, opacity: 0 }}
+                animate={{ y: 0, scale: 1, opacity: 1 }}
+                exit={{ y: 24, scale: 0.97, opacity: 0 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="relative h-[min(780px,calc(100dvh-48px))] w-[440px] overflow-hidden rounded-[28px] border border-line bg-canvas shadow-[0_24px_60px_-12px_rgba(19,36,26,0.35)]"
+              >
+                <Suspense fallback={<div className="grid h-full place-items-center text-xs font-bold text-ink-soft">Memuat…</div>}>
+                  <QuickReportFlow
+                    initialPrefill={reportPrefill}
+                    onClose={() => {
+                      setReportOpen(false)
+                      setReportPrefill(undefined)
+                    }}
+                    onOpenVerification={() => {
+                      setReportOpen(false)
+                      setReportPrefill(undefined)
+                      openTab('Gerakan')
+                    }}
+                  />
+                </Suspense>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </MotionConfig>
     </div>
   )
 }

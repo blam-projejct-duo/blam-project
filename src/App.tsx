@@ -65,9 +65,9 @@ function BlamRoot({ isDemo, onNavigate }: { isDemo: boolean; onNavigate: (path: 
         onGoLive={
           isDemo
             ? () => {
-                setDemoGuestEntered(false)
-                onNavigate('/')
-              }
+              setDemoGuestEntered(false)
+              onNavigate('/')
+            }
             : undefined
         }
       />

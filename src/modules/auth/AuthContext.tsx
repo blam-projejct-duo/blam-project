@@ -41,6 +41,7 @@ interface AuthContextValue {
   loginWithEmail: (email: string, password: string) => Promise<void>
   registerWithEmail: (email: string, password: string, fullName: string) => Promise<void>
   loginWithGoogle: () => Promise<void>
+  loginWithGoogleIdToken: (idToken: string) => Promise<void>
   logout: () => Promise<void>
   refreshMe: () => Promise<void>
   readNotification: (id: string) => Promise<void>
@@ -205,6 +206,22 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
     if (error) throw new Error(translateAuthError(error.message))
   }, [])
 
+  const loginWithGoogleIdToken = useCallback(
+    async (idToken: string) => {
+      if (!isSupabaseConfigured || !supabase) {
+        throw new Error('Supabase Auth belum dikonfigurasi di .env')
+      }
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
+      })
+      if (error) throw new Error(translateAuthError(error.message))
+      await refreshMe()
+      setAuthModalOpen(false)
+    },
+    [refreshMe],
+  )
+
   const logout = useCallback(async () => {
     if (isDemo) {
       setDemoSessionId(null)
@@ -256,6 +273,7 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
       loginWithEmail,
       registerWithEmail,
       loginWithGoogle,
+      loginWithGoogleIdToken,
       logout,
       refreshMe,
       readNotification,
@@ -276,6 +294,7 @@ export function AuthProvider({ isDemo, children }: { isDemo: boolean; children: 
       loginWithEmail,
       registerWithEmail,
       loginWithGoogle,
+      loginWithGoogleIdToken,
       logout,
       refreshMe,
       readNotification,
