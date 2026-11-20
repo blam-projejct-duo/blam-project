@@ -43,7 +43,7 @@ import type { RadarLayer } from '../../modules/map/radarFilters'
 import type { Radar } from '../../modules/map/useRadar'
 import EventListPanel from './EventListPanel'
 import type { ListTab } from './EventListPanel'
-import type { CitizenReport, SatelliteSignal } from '../../types'
+import type { CitizenReport, SatelliteSignal, SignalVerificationState } from '../../types'
 
 const AdminPanel = lazy(() => import('../../modules/admin/AdminPanel'))
 const AgencyInboxPanel = lazy(() => import('../../modules/agency/AgencyInboxPanel'))
@@ -124,6 +124,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [layers, setLayers] = useState<Set<RadarLayer>>(() => new Set())
+  const [tiers, setTiers] = useState<Set<SignalVerificationState>>(() => new Set())
   const [focusSearch, setFocusSearch] = useState(false)
   const [blamMenuOpen, setBlamMenuOpen] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
@@ -270,9 +271,17 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
       return next
     })
 
+  const toggleTier = (tier: SignalVerificationState) =>
+    setTiers((prev) => {
+      const next = new Set(prev)
+      if (next.has(tier)) next.delete(tier)
+      else next.add(tier)
+      return next
+    })
+
   const { visibleEvents, visibleHazards, visibleSignals } = useMemo(
-    () => filterRadarItems(radar.events, radar.hazards, radar.satelliteSignals, layers),
-    [radar.events, radar.hazards, radar.satelliteSignals, layers],
+    () => filterRadarItems(radar.events, radar.hazards, radar.satelliteSignals, layers, tiers),
+    [radar.events, radar.hazards, radar.satelliteSignals, layers, tiers],
   )
 
   const selected = radar.selected
@@ -376,10 +385,13 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                           .map((c) => c.label)
                           .join(', ')}
                   </span>
-                  {layers.size > 0 && (
+                  {(layers.size > 0 || tiers.size > 0) && (
                     <button
                       type="button"
-                      onClick={() => setLayers(new Set())}
+                      onClick={() => {
+                        setLayers(new Set())
+                        setTiers(new Set())
+                      }}
                       className="shrink-0 pl-2 font-normal text-leaf hover:underline"
                     >
                       Reset
@@ -408,7 +420,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                   })}
                 </div>
                 <div className="pt-1">
-                  <MarkerTierLegend compact />
+                  <MarkerTierLegend compact activeTiers={tiers} onToggleTier={toggleTier} />
                 </div>
               </div>
 
@@ -806,6 +818,8 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                   onExpand={() => setSnap('full')}
                   onOpen={openDetail}
                   onOpenSignal={openSignalDetail}
+                  activeTiers={tiers}
+                  onToggleTier={toggleTier}
                 />
               )}
 
@@ -970,7 +984,11 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         )}
 
         {peekVisible && !chatOpen && !reportOpen && !eventOpen && !donasiOpen && !blamMenuOpen && (
-          <MobilePeekElephant key="mobile-peek-elephant" onClick={() => setChatOpen(true)} />
+          <MobilePeekElephant
+            key="mobile-peek-elephant"
+            onClick={() => setChatOpen(true)}
+            onDismiss={() => setPeekVisible(false)}
+          />
         )}
 
         {chatOpen && (

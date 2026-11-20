@@ -2,8 +2,8 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { ConservationEvent, HazardKind, Profile } from '../../types'
 
 const VERIFIED_HAZARD_COLORS: Record<HazardKind, string> = {
-  wildfire: '#EF4444',
-  suspected: '#EF4444',
+  wildfire: '#F97316',
+  suspected: '#F97316',
   volcano: '#7C3AED',
   flood: '#2563EB',
   storm: '#0891B2',
@@ -295,9 +295,9 @@ export function syncUserMarkerElement(el: HTMLDivElement, profile: Profile | nul
 
 const EVENT_STATUS_STYLE: Record<string, { fill: string; badgeFill: string; halo: string; check?: boolean }> = {
   open: { fill: '#15803D', badgeFill: '#22C55E', halo: 'rgba(21, 128, 61, 0.26)' },
-  in_progress: { fill: '#2563EB', badgeFill: '#3B82F6', halo: 'rgba(37, 99, 235, 0.26)' },
-  resolved: { fill: '#059669', badgeFill: '#047857', halo: 'rgba(5, 150, 105, 0.24)', check: true },
-  cancelled: { fill: '#6B7280', badgeFill: '#9CA3AF', halo: 'rgba(107, 114, 128, 0.2)' },
+  in_progress: { fill: '#15803D', badgeFill: '#22C55E', halo: 'rgba(21, 128, 61, 0.26)' },
+  resolved: { fill: '#15803D', badgeFill: '#22C55E', halo: 'rgba(21, 128, 61, 0.26)', check: true },
+  cancelled: { fill: '#15803D', badgeFill: '#22C55E', halo: 'rgba(21, 128, 61, 0.26)' },
 }
 
 function detectEventShapeKind(ev: ConservationEvent): 'flood' | 'wildfire' | 'waste' | 'leaf' {

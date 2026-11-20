@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchFundraisings } from '../../lib/api'
-import type { FundraisingCampaign, SatelliteSignal } from '../../types'
+import type { ConservationEvent, FundraisingCampaign, SatelliteSignal } from '../../types'
 
 export const FUNDRAISINGS_QUERY_KEY = ['fundraisings'] as const
 
@@ -26,6 +26,21 @@ export function findFundraisingForSignal(
     fundraisings.find(
       (f) => f.ref_source === signal.source && candidates.has(f.ref_external_id) && f.status !== 'closed',
     ) ?? null
+  )
+}
+
+export function findFundraisingForEvent(
+  fundraisings: FundraisingCampaign[],
+  event: ConservationEvent,
+): FundraisingCampaign | null {
+  return (
+    fundraisings.find((f) => {
+      if (f.status === 'closed') return false
+      if (event.ref_source && event.ref_external_id) {
+        if (f.ref_source === event.ref_source && f.ref_external_id === event.ref_external_id) return true
+      }
+      return Math.abs(f.lat - event.lat) < 0.08 && Math.abs(f.lng - event.lng) < 0.08
+    }) ?? null
   )
 }
 

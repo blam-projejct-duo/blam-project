@@ -8,7 +8,7 @@ import {
   usePresence,
   useSpring,
 } from 'framer-motion'
-import { Compass, MessageCircle, MoonStar } from 'lucide-react'
+import { Compass, MessageCircle, MoonStar, X } from 'lucide-react'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react'
 
@@ -1001,9 +1001,16 @@ export default function BlamCompanion({
 /**
  * Avatar Gajah Blam mengintip dari pinggir layar di mobile saat Blam Chat ditutup.
  * - Bisa diseret naik-turun dan dipindah antara sisi kanan dan kiri layar (otomatis menempel ke tepi terdekat).
+ * - Seret ke bagian bawah layar untuk menutup / menyembunyikan avatar.
  * - Tap untuk membuka kembali Blam Chat.
  */
-export function MobilePeekElephant({ onClick }: { onClick: () => void }) {
+export function MobilePeekElephant({
+  onClick,
+  onDismiss,
+}: {
+  onClick: () => void
+  onDismiss?: () => void
+}) {
   const uid = useId().replace(/:/g, '')
   const gHead = `${uid}-mh`
   const gEar = `${uid}-me`
@@ -1016,6 +1023,7 @@ export function MobilePeekElephant({ onClick }: { onClick: () => void }) {
     typeof window !== 'undefined' ? clamp(Math.round(window.innerHeight * 0.48), 116, window.innerHeight - 190) : 380,
   )
   const [dragging, setDragging] = useState(false)
+  const [dismissArmed, setDismissArmed] = useState(false)
   const draggedRef = useRef(false)
 
   const dragX = useMotionValue(0)
@@ -1026,44 +1034,87 @@ export function MobilePeekElephant({ onClick }: { onClick: () => void }) {
   const tiltFrames = isRight ? [-4, 2, -2, 3, -4] : [4, -2, 2, -3, 4]
 
   return (
-    <motion.div
-      drag
-      dragMomentum={false}
-      dragElastic={0.18}
-      style={{
-        top: yPos,
-        x: dragX,
-        y: dragY,
-        left: isRight ? 'auto' : 0,
-        right: isRight ? 0 : 'auto',
-        touchAction: 'none',
-      }}
-      initial={{ x: isRight ? 84 : -84, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: isRight ? 84 : -84, opacity: 0, transition: { duration: 0.2, ease: 'easeIn' } }}
-      transition={{ type: 'spring', stiffness: 320, damping: 26 }}
-      onDragStart={() => {
-        draggedRef.current = true
-        setDragging(true)
-      }}
-      onDragEnd={(_, info) => {
-        setDragging(false)
-        const vw = window.innerWidth || 390
-        const vh = window.innerHeight || 844
-        const nextSide: 'left' | 'right' = info.point.x < vw / 2 ? 'left' : 'right'
-        const nextY = clamp(Math.round(yPos + info.offset.y), 116, Math.max(180, vh - 190))
+    <>
+      <AnimatePresence>
+        {dragging && onDismiss && (
+          <motion.div
+            key="mobile-peek-dismiss-zone"
+            aria-label="Lepas di sini untuk menutup avatar"
+            initial={{ opacity: 0, y: 24, scale: 0.6 }}
+            animate={{ opacity: 1, y: 0, scale: dismissArmed ? 1.22 : 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.6 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 24 }}
+            className={`pointer-events-none fixed bottom-8 left-1/2 z-[515] grid size-12 -translate-x-1/2 place-items-center rounded-full border transition-colors duration-150 ${
+              dismissArmed
+                ? 'border-critical bg-critical text-white shadow-[0_10px_28px_rgba(239,68,68,0.42)]'
+                : 'border-black/10 bg-white/92 text-ink-soft shadow-[0_8px_24px_rgba(19,36,26,0.18)]'
+            }`}
+          >
+            <X className="size-5" strokeWidth={2.4} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        setSide(nextSide)
-        setYPos(nextY)
-        dragY.set(0)
-        void animate(dragX, 0, { type: 'spring', stiffness: 360, damping: 28 })
+      <motion.div
+        drag
+        dragMomentum={false}
+        dragElastic={0.18}
+        style={{
+          top: yPos,
+          x: dragX,
+          y: dragY,
+          left: isRight ? 'auto' : 0,
+          right: isRight ? 0 : 'auto',
+          touchAction: 'none',
+        }}
+        initial={{ x: isRight ? 84 : -84, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: isRight ? 84 : -84, opacity: 0, transition: { duration: 0.2, ease: 'easeIn' } }}
+        transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+        onDragStart={() => {
+          draggedRef.current = true
+          setDragging(true)
+          setDismissArmed(false)
+        }}
+        onDrag={(_, info) => {
+          if (!onDismiss) return
+          const vw = window.innerWidth || 390
+          const vh = window.innerHeight || 844
+          const distToX = Math.hypot(info.point.x - vw / 2, info.point.y - (vh - 56))
+          const armed = distToX <= 80 || info.point.y >= vh - 115
+          setDismissArmed((prev) => (prev === armed ? prev : armed))
+        }}
+        onDragEnd={(_, info) => {
+          const vw = window.innerWidth || 390
+          const vh = window.innerHeight || 844
+          const distToX = Math.hypot(info.point.x - vw / 2, info.point.y - (vh - 56))
+          const shouldDismiss = Boolean(onDismiss) && (distToX <= 80 || info.point.y >= vh - 115)
 
-        window.setTimeout(() => {
-          draggedRef.current = false
-        }, 80)
-      }}
-      className="pointer-events-auto fixed z-[520] -translate-y-1/2 select-none"
-    >
+          setDragging(false)
+          setDismissArmed(false)
+
+          if (shouldDismiss) {
+            onDismiss?.()
+            window.setTimeout(() => {
+              draggedRef.current = false
+            }, 80)
+            return
+          }
+
+          const nextSide: 'left' | 'right' = info.point.x < vw / 2 ? 'left' : 'right'
+          const nextY = clamp(Math.round(yPos + info.offset.y), 116, Math.max(180, vh - 190))
+
+          setSide(nextSide)
+          setYPos(nextY)
+          dragY.set(0)
+          void animate(dragX, 0, { type: 'spring', stiffness: 360, damping: 28 })
+
+          window.setTimeout(() => {
+            draggedRef.current = false
+          }, 80)
+        }}
+        className="pointer-events-auto fixed z-[520] -translate-y-1/2 select-none"
+      >
       <motion.button
         type="button"
         onClick={() => {
@@ -1077,8 +1128,8 @@ export function MobilePeekElephant({ onClick }: { onClick: () => void }) {
         title="Ketuk untuk buka Blam Chat • seret ke kanan/kiri atau atas/bawah"
         animate={
           dragging
-            ? { x: 0, rotate: 0, scale: 1.08 }
-            : { x: peekFrames, rotate: tiltFrames, scale: 1 }
+            ? { x: 0, rotate: 0, scale: dismissArmed ? 0.78 : 1.08, opacity: dismissArmed ? 0.85 : 1 }
+            : { x: peekFrames, rotate: tiltFrames, scale: 1, opacity: 1 }
         }
         transition={
           dragging
@@ -1217,5 +1268,6 @@ export function MobilePeekElephant({ onClick }: { onClick: () => void }) {
         </svg>
       </motion.button>
     </motion.div>
+    </>
   )
 }

@@ -44,7 +44,7 @@ import OrgsPanel from '../../modules/organizations/OrgsPanel'
 import NotificationsPanel from '../../modules/notifications/NotificationsPanel'
 import ProfilePanel from '../../modules/profile/ProfilePanel'
 import VerificationRadarPanel from '../../modules/reports/VerificationRadarPanel'
-import type { CitizenReport, ConservationEvent, SatelliteSignal } from '../../types'
+import type { CitizenReport, ConservationEvent, SatelliteSignal, SignalVerificationState } from '../../types'
 import EventListPanel from './EventListPanel'
 import type { ListTab } from './EventListPanel'
 
@@ -195,6 +195,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const [notifOpen, setNotifOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [layers, setLayers] = useState<Set<RadarLayer>>(() => new Set())
+  const [tiers, setTiers] = useState<Set<SignalVerificationState>>(() => new Set())
   const [createOpen, setCreateOpen] = useState(false)
   const [draftReport, setDraftReport] = useState<CitizenReport | null>(null)
   const [draftSignal, setDraftSignal] = useState<SatelliteSignal | null>(null)
@@ -295,8 +296,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   }, [profile?.role])
 
   const { visibleEvents, visibleHazards, visibleSignals } = useMemo(
-    () => filterRadarItems(radar.events, radar.hazards, radar.satelliteSignals, layers),
-    [radar.events, radar.hazards, radar.satelliteSignals, layers],
+    () => filterRadarItems(radar.events, radar.hazards, radar.satelliteSignals, layers, tiers),
+    [radar.events, radar.hazards, radar.satelliteSignals, layers, tiers],
   )
 
   const blamChatContext = useMemo<BlamChatContext>(
@@ -373,6 +374,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     setPointSuggestion(null)
     radar.setFilter('all')
     setLayers(new Set())
+    setTiers(new Set())
     setQuery('')
     setTab('Jelajah')
     setView('list')
@@ -494,6 +496,14 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
       const next = new Set(prev)
       if (next.has(layer)) next.delete(layer)
       else next.add(layer)
+      return next
+    })
+
+  const toggleTier = (tier: SignalVerificationState) =>
+    setTiers((prev) => {
+      const next = new Set(prev)
+      if (next.has(tier)) next.delete(tier)
+      else next.add(tier)
       return next
     })
 
@@ -668,6 +678,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             title={mode}
             onOpen={openDetail}
             onOpenSignal={isJelajah ? openSignalDetail : undefined}
+            activeTiers={tiers}
+            onToggleTier={toggleTier}
             renderTabContent={
               !isJelajah
                 ? (subTab) => {
@@ -1009,12 +1021,12 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             setNotifOpen(false)
             setFilterOpen((v) => !v)
           }}
-          className={layers.size > 0 ? 'orb-primary relative' : 'relative'}
+          className={layers.size + tiers.size > 0 ? 'orb-primary relative' : 'relative'}
         >
-          <FilterDuotoneIcon light={layers.size > 0} />
-          {layers.size > 0 && (
+          <FilterDuotoneIcon light={layers.size + tiers.size > 0} />
+          {layers.size + tiers.size > 0 && (
             <span className="num absolute -top-1 -right-1 grid size-4.5 place-items-center rounded-full border-2 border-white bg-forest text-[10px] font-bold text-white">
-              {layers.size}
+              {layers.size + tiers.size}
             </span>
           )}
         </Orb>
@@ -1066,10 +1078,13 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                   <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">
                     Lapisan
                   </span>
-                  {layers.size > 0 && (
+                  {(layers.size > 0 || tiers.size > 0) && (
                     <button
                       type="button"
-                      onClick={() => setLayers(new Set())}
+                      onClick={() => {
+                        setLayers(new Set())
+                        setTiers(new Set())
+                      }}
                       className="text-xs font-normal text-leaf hover:underline"
                     >
                       Reset
@@ -1088,7 +1103,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                   })}
                 </div>
                 <div className="mt-3 border-t border-dashed border-dash pt-2.5">
-                  <MarkerTierLegend compact />
+                  <MarkerTierLegend compact activeTiers={tiers} onToggleTier={toggleTier} />
                 </div>
               </div>
             </motion.div>

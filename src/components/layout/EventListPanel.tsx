@@ -5,7 +5,7 @@ import { EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/const
 import { findFundraisingForSignal, useFundraisings } from '../../modules/fundraising/useFundraisings'
 import { formatFloodRiskLabel, formatSignalSource } from '../../modules/map/radarFilters'
 import { DashedOutline, EcoBadge, MarkerTierLegend } from '../ui/atoms'
-import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
+import type { ConservationEvent, HazardKind, SatelliteSignal, SignalVerificationState } from '../../types'
 
 export type ListTab = 'Utama' | 'Terbaru' | 'History' | 'Satelit' | 'Berjalan' | 'Verifikasi' | 'Selesai'
 
@@ -202,6 +202,8 @@ export default function EventListPanel({
   onExpand,
   onOpen,
   onOpenSignal,
+  activeTiers,
+  onToggleTier,
   renderTabContent,
 }: {
   events: ConservationEvent[]
@@ -218,6 +220,8 @@ export default function EventListPanel({
   onExpand?: () => void
   onOpen: (id: string) => void
   onOpenSignal?: (signal: SatelliteSignal) => void
+  activeTiers?: Set<SignalVerificationState>
+  onToggleTier?: (tier: SignalVerificationState) => void
   renderTabContent?: (tab: ListTab) => ReactNode
 }) {
   const [tab, setTab] = useState<ListTab>(() =>
@@ -394,11 +398,11 @@ export default function EventListPanel({
             </ul>
           )}
 
-          {shownSignals.length > 0 && onOpenSignal && (
+          {(shownSignals.length > 0 || (tab === 'Satelit' && Boolean(onOpenSignal))) && onOpenSignal && (
             <div className={rows.length > 0 ? 'mt-4 border-t border-line pt-3.5' : 'mt-2'}>
               {tab === 'Satelit' && (
-                <div className="mb-2.5 rounded-[14px] bg-[#f4f5f7] px-3 py-2">
-                  <MarkerTierLegend compact />
+                <div className="mb-2.5 rounded-[14px] bg-[#f4f5f7] px-2.5 py-2">
+                  <MarkerTierLegend compact activeTiers={activeTiers} onToggleTier={onToggleTier} />
                 </div>
               )}
               <div className="mb-1 flex items-center justify-between">
@@ -418,17 +422,21 @@ export default function EventListPanel({
                   </button>
                 )}
               </div>
-              <ul className="divide-y divide-line">
-                {shownSignals.map((sig) => (
-                  <SignalRow
-                    key={sig.id}
-                    signal={sig}
-                    linked={linkedSet.has(sig.id)}
-                    hasFundraising={Boolean(findFundraisingForSignal(fundraisings, sig))}
-                    onOpen={() => onOpenSignal(sig)}
-                  />
-                ))}
-              </ul>
+              {shownSignals.length === 0 ? (
+                <p className="py-6 text-center text-xs text-ink-soft">Tidak ada sinyal dengan status terpilih.</p>
+              ) : (
+                <ul className="divide-y divide-line">
+                  {shownSignals.map((sig) => (
+                    <SignalRow
+                      key={sig.id}
+                      signal={sig}
+                      linked={linkedSet.has(sig.id)}
+                      hasFundraising={Boolean(findFundraisingForSignal(fundraisings, sig))}
+                      onOpen={() => onOpenSignal(sig)}
+                    />
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 

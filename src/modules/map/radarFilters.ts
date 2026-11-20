@@ -1,4 +1,4 @@
-import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
+import type { ConservationEvent, HazardKind, SatelliteSignal, SignalVerificationState } from '../../types'
 import type { HazardPoint } from './hotspotCluster'
 
 export type RadarLayer = 'wildfire' | 'suspected' | 'flood' | 'volcano' | 'event'
@@ -28,13 +28,22 @@ export function filterRadarItems(
   hazards: HazardPoint[],
   signals: SatelliteSignal[],
   layers: Set<RadarLayer>,
+  tiers?: Set<SignalVerificationState>,
 ) {
-  const showEvents = layers.size === 0 || layers.has('event')
+  const hasTierFilter = Boolean(tiers && tiers.size > 0)
+  const showEvents = (layers.size === 0 || layers.has('event')) && (!hasTierFilter || Boolean(tiers?.has('has_action')))
   const visibleEvents = showEvents
     ? events.filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled')
     : []
-  const visibleHazards = layers.size === 0 ? hazards : hazards.filter((h) => matchesHazardLayer(layers, h.kind))
-  const visibleSignals = layers.size === 0 ? signals : signals.filter((s) => matchesHazardLayer(layers, s.kind))
+  const visibleHazards = hazards.filter(
+    (h) =>
+      matchesHazardLayer(layers, h.kind) &&
+      (!hasTierFilter || Boolean(tiers?.has(h.verificationState ?? 'unverified'))),
+  )
+  const visibleSignals = signals.filter((s) => {
+    const tier: SignalVerificationState = s.verificationState ?? (s.linkedEventId ? 'has_action' : 'unverified')
+    return matchesHazardLayer(layers, s.kind) && (!hasTierFilter || Boolean(tiers?.has(tier)))
+  })
   return { visibleEvents, visibleHazards, visibleSignals }
 }
 

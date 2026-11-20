@@ -18,6 +18,7 @@ import { DashedOutline, StatusPill } from '../../components/ui/atoms'
 import { updateEventVisibility } from '../../lib/api'
 import type { ConservationEvent } from '../../types'
 import { useAuth } from '../auth/AuthContext'
+import FundraisingSection from '../fundraising/FundraisingSection'
 import type { ActiveRoute, RouteMode } from '../map/directions'
 import { formatPulseTiles, usePulse } from '../map/usePulse'
 import { placeText, usePlaceName } from '../map/usePlaceName'
@@ -418,6 +419,8 @@ export default function EventDetail({
           </div>
         )}
       </div>
+
+      <FundraisingSection event={event} />
 
       {canManageVisibility && event.status !== 'resolved' && event.status !== 'cancelled' && (
         <button

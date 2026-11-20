@@ -1,11 +1,12 @@
 import { Building2, EyeOff, HeartHandshake, Landmark, ShieldCheck, Users } from 'lucide-react'
 import { useState } from 'react'
 import { DashedOutline } from '../../components/ui/atoms'
-import type { OrganizerKind, SatelliteSignal } from '../../types'
+import type { ConservationEvent, OrganizerKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import CreateFundraisingModal from './CreateFundraisingModal'
 import DonateModal from './DonateModal'
 import {
+  findFundraisingForEvent,
   findFundraisingForSignal,
   formatRupiah,
   isCriticalRadarSignal,
@@ -29,28 +30,33 @@ function formatTimeAgo(iso: string): string {
 }
 
 interface Props {
-  signal: SatelliteSignal
+  signal?: SatelliteSignal
+  event?: ConservationEvent
 }
 
-export default function FundraisingSection({ signal }: Props) {
+export default function FundraisingSection({ signal, event }: Props) {
   const { profile, memberships } = useAuth()
   const { fundraisings, refreshFundraisings } = useFundraisings()
   const [showCreate, setShowCreate] = useState(false)
   const [showDonate, setShowDonate] = useState(false)
 
-  const campaign = findFundraisingForSignal(fundraisings, signal)
-  const isCritical = isCriticalRadarSignal(signal)
+  const campaign = signal
+    ? findFundraisingForSignal(fundraisings, signal)
+    : event
+      ? findFundraisingForEvent(fundraisings, event)
+      : null
+  const isCritical = signal ? isCriticalRadarSignal(signal) : false
 
   const hasActiveOrg = memberships.some((m) => m.status === 'active')
   const canCreateFundraising = Boolean(
     profile && (profile.role === 'admin' || profile.role === 'agency' || hasActiveOrg),
   )
 
-  if (!campaign && (!isCritical || !canCreateFundraising)) {
+  if (!campaign && (!signal || !isCritical || !canCreateFundraising)) {
     return null
   }
 
-  if (!campaign) {
+  if (!campaign && signal) {
     return (
       <>
         <section className="relative flex flex-col gap-3 rounded-[14px] bg-[#f4f5f7] p-4">
@@ -89,31 +95,42 @@ export default function FundraisingSection({ signal }: Props) {
     )
   }
 
+  if (!campaign) return null
+
   const pct = Math.min(100, Math.round((campaign.collected_amount / Math.max(1, campaign.target_amount)) * 100))
   const badge = ORGANIZER_BADGE[campaign.organizer_kind] ?? ORGANIZER_BADGE.organization
   const BadgeIcon = badge.Icon
+  const showOrganizerBadge = !event || campaign.organizer_name !== event.organization?.name
+  const displayTitle = campaign.title.split(/\s+[—-]\s+/)[0]?.trim() || campaign.title
+  const isTemplateDesc = Boolean(
+    campaign.description && /^Penggalangan dana darurat untuk membantu warga terdampak\b/i.test(campaign.description),
+  )
 
   return (
     <>
-      <section className="relative flex flex-col gap-3.5 rounded-[14px] bg-[#f4f5f7] p-4">
+      <section className="relative flex flex-col gap-3 rounded-[14px] bg-[#f4f5f7] p-4">
         <DashedOutline rx={13} />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-md bg-critical/10 px-2 py-0.5 text-[11px] font-normal text-critical">
             <HeartHandshake className="size-3.5" />
             Galang Dana
           </span>
-          <span className="inline-flex max-w-full items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[11px] font-light text-ink">
-            <BadgeIcon className="size-3 shrink-0 text-[#2563eb]" />
-            <span className="truncate">
-              {badge.label} · {campaign.organizer_name}
+          {showOrganizerBadge && (
+            <span className="inline-flex max-w-full items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[11px] font-light text-ink">
+              <BadgeIcon className="size-3 shrink-0 text-[#2563eb]" />
+              <span className="truncate">
+                {badge.label} · {campaign.organizer_name}
+              </span>
             </span>
-          </span>
+          )}
         </div>
 
         <div>
-          <h3 className="font-sans text-[14.5px] leading-snug font-normal text-ink">{campaign.title}</h3>
-          {campaign.description && (
-            <p className="mt-1 text-[12px] leading-relaxed font-light text-ink-soft">{campaign.description}</p>
+          <h3 className="font-sans text-[14px] leading-snug font-medium text-ink">{displayTitle}</h3>
+          {campaign.description && !isTemplateDesc && (
+            <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed font-light text-ink-soft">
+              {campaign.description}
+            </p>
           )}
         </div>
 
