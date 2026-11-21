@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Droplets, TreePine, Waves, X } from 'lucide-react'
+import { Check, CircleDashed, Droplets, ShieldCheck, Sprout, TreePine, Waves, X } from 'lucide-react'
 import { useId } from 'react'
 import type { ReactNode } from 'react'
 import {
@@ -168,9 +168,9 @@ export function ModalShell({
         animate={{ y: 0, opacity: 1, scale: 1 }}
         exit={{ y: 28, opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className={`flex w-full flex-col overflow-hidden rounded-t-[16px] border border-line bg-white md:rounded-[16px] ${panelClassName}`}
+        className={`atlas-sheet flex w-full flex-col overflow-hidden rounded-t-[24px] md:rounded-[22px] ${panelClassName}`}
       >
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-line px-4 sm:px-5">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-ink/8 px-4 sm:px-5">
           <h2 className="text-[16px] font-semibold text-ink">{title}</h2>
           <button
             type="button"
@@ -188,35 +188,44 @@ export function ModalShell({
 }
 
 const TIER_ITEMS: ReadonlyArray<{ id: SignalVerificationState; label: string; shortLabel: string }> = [
-  { id: 'unverified', label: 'Belum Verifikasi', shortLabel: 'Belum Cek' },
+  { id: 'unverified', label: 'Belum Verifikasi', shortLabel: 'Belum Verifikasi' },
   { id: 'verified', label: 'Terverifikasi', shortLabel: 'Terverifikasi' },
-  { id: 'has_action', label: 'Ada Gerakan', shortLabel: 'Ada Aksi' },
+  { id: 'has_action', label: 'Ada Gerakan', shortLabel: 'Ada Gerakan' },
 ]
 
 export function MarkerTierLegend({
   compact = false,
+  vertical = false,
   activeTiers,
   onToggleTier,
 }: {
   compact?: boolean
+  vertical?: boolean
   activeTiers?: Set<SignalVerificationState>
   onToggleTier?: (tier: SignalVerificationState) => void
 }) {
-  const renderGlyph = (id: SignalVerificationState) => {
-    const dotSize = compact ? 'size-2' : 'size-2.5'
+  const renderGlyph = (id: SignalVerificationState, active: boolean) => {
+    const tone = active ? 'text-forest' : 'text-ink-soft'
     if (id === 'unverified') {
-      return <span className={`${dotSize} shrink-0 rounded-full border border-dashed border-progress bg-progress/15`} />
+      return <CircleDashed className={`size-3.5 shrink-0 ${tone}`} strokeWidth={2} aria-hidden="true" />
     }
     if (id === 'verified') {
-      return <span className={`${dotSize} shrink-0 rounded-full bg-leaf`} />
+      return <ShieldCheck className={`size-3.5 shrink-0 ${tone}`} strokeWidth={2} aria-hidden="true" />
     }
-    return <span className={`${dotSize} shrink-0 rounded-full bg-resolved`} />
+    return <Sprout className={`size-3.5 shrink-0 ${active ? 'text-resolved' : 'text-ink-soft'}`} strokeWidth={2} aria-hidden="true" />
   }
 
   return (
     <div
-      className={`flex items-center text-[12px] font-normal text-ink-soft ${compact ? 'flex-nowrap gap-1 overflow-x-auto [scrollbar-width:none]' : 'flex-wrap gap-1.5'
-        }`}
+      className={`flex text-[12px] font-normal text-ink-soft ${
+        vertical
+          ? 'w-full flex-col gap-0.5'
+          : onToggleTier && compact
+            ? 'w-full flex-nowrap items-center gap-1 rounded-[12px] bg-white/80 p-1 shadow-[0_1px_2px_rgba(15,23,42,0.05)]'
+            : compact
+              ? 'flex-nowrap items-center gap-1 overflow-x-auto [scrollbar-width:none]'
+              : 'flex-wrap items-center gap-1.5'
+      }`}
     >
       {TIER_ITEMS.map((item) => {
         const active = Boolean(activeTiers?.has(item.id))
@@ -228,9 +237,30 @@ export function MarkerTierLegend({
               className={`inline-flex shrink-0 items-center whitespace-nowrap ${compact ? 'gap-1 px-1 py-0.5' : 'gap-1.5 px-1.5 py-0.5'
                 }`}
             >
-              {renderGlyph(item.id)}
+              {renderGlyph(item.id, false)}
               {label}
             </span>
+          )
+        }
+        if (vertical) {
+          return (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onToggleTier(item.id)}
+              className={`flex w-full items-center justify-between gap-2 rounded-[10px] px-2.5 py-2 text-left text-[13px] transition-colors ${
+                active
+                  ? 'bg-mint font-medium text-forest'
+                  : 'text-ink hover:bg-canvas/80'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                {renderGlyph(item.id, active)}
+                {label}
+              </span>
+              {active && <Check className="size-3.5 shrink-0 text-forest" strokeWidth={2.2} aria-hidden="true" />}
+            </button>
           )
         }
         return (
@@ -239,13 +269,18 @@ export function MarkerTierLegend({
             type="button"
             aria-pressed={active}
             onClick={() => onToggleTier(item.id)}
-            className={`inline-flex shrink-0 items-center rounded-[8px] border whitespace-nowrap transition-colors ${compact ? 'gap-1 px-1.5 py-1 tracking-[-0.01em]' : 'gap-1.5 px-2.5 py-1'
-              } ${active
-                ? 'border-leaf/35 bg-mint font-medium text-forest'
+            className={`inline-flex items-center justify-center rounded-[8px] whitespace-nowrap transition-colors ${
+              compact ? 'flex-1 gap-1 px-1.5 py-1.5 tracking-[-0.01em]' : 'shrink-0 gap-1.5 border px-2.5 py-1'
+            } ${active
+              ? compact
+                ? 'bg-mint font-medium text-forest shadow-2xs'
+                : 'border-leaf/35 bg-mint font-medium text-forest'
+              : compact
+                ? 'hover:bg-canvas/70 hover:text-ink'
                 : 'border-line bg-white hover:bg-canvas hover:text-ink'
               }`}
           >
-            {renderGlyph(item.id)}
+            {renderGlyph(item.id, active)}
             {label}
           </button>
         )

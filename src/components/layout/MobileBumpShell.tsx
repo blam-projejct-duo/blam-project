@@ -76,8 +76,9 @@ type Mode =
 
 const SPRING = { type: 'spring', stiffness: 290, damping: 32, mass: 0.9 } as const
 const PEEK_PX = 214
-const JELAJAH_TABS: readonly ListTab[] = ['Satelit', 'Utama']
-const AKSI_TABS: readonly ListTab[] = ['Berjalan', 'Verifikasi', 'Selesai']
+const JELAJAH_TABS: readonly ListTab[] = ['Ringkasan', 'Satelit']
+const AKSI_TABS_VERIFIER: readonly ListTab[] = ['Terdekat', 'Semua', 'Verifikasi']
+const AKSI_TABS_PUBLIC: readonly ListTab[] = ['Terdekat', 'Semua']
 
 const LAYER_CHIP_ICON: Record<RadarLayer, { icon: ReactNode; offCls: string; onCls: string }> = {
   wildfire: {
@@ -744,7 +745,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           aria-hidden={!sheetOpen}
           role="dialog"
           aria-label="Panel informasi"
-          className={`absolute inset-x-0 bottom-0 z-[600] flex flex-col rounded-t-sheet border-t border-line bg-white shadow-[0_-10px_28px_-6px_rgba(15,29,50,0.14)] ${sheetOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          className={`atlas-sheet absolute inset-x-0 bottom-0 z-[600] flex flex-col rounded-t-[24px] border-x-0 border-b-0 ${sheetOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
           style={{ height: sheetH }}
         >
           <div
@@ -846,8 +847,8 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                     onQueryChange={setQuery}
                     autoFocus={focusSearch}
                     showTitle={false}
-                    tabs={AKSI_TABS}
-                    initialTab="Berjalan"
+                    tabs={canOrganize ? AKSI_TABS_VERIFIER : AKSI_TABS_PUBLIC}
+                    initialTab="Terdekat"
                     title="Gerakan"
                     onExpand={() => setSnap('full')}
                     onOpen={openDetail}
@@ -899,7 +900,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                   }}
                 />
               )}
-              {mode === 'orgs' && <OrgsPanel />}
+              {mode === 'orgs' && <OrgsPanel query={query} />}
               {mode === 'profile' && <ProfilePanel />}
               {mode === 'notifications' && <NotificationsPanel onOpenEvent={openDetail} />}
               {mode === 'care' && (

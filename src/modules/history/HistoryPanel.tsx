@@ -1,11 +1,12 @@
+import { useQuery } from '@tanstack/react-query'
 import {
   Check,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Droplets,
-  Flame,
+  CircleDashed,
+  Clock,
   HeartHandshake,
-  Mountain,
   Search,
   SlidersHorizontal,
   X,
@@ -13,14 +14,15 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { BlamNatureIcon } from '../../components/ui/bumpIcons'
-import { MapMarkerGlyph } from '../../components/ui/MapMarkers'
-import { shortLocation } from '../../lib/constants'
-import type { ConservationEvent, FundraisingCampaign, HazardKind, SatelliteSignal } from '../../types'
+import { fetchReportsQueue } from '../../lib/api'
+import { REPORT_STATUS_LABEL, shortLocation } from '../../lib/constants'
+import type { CitizenReport, ConservationEvent, FundraisingCampaign, SatelliteSignal } from '../../types'
+import { useAuth } from '../auth/AuthContext'
 import DonateModal from '../fundraising/DonateModal'
 import { findSignalForFundraising, formatRupiah, useFundraisings } from '../fundraising/useFundraisings'
 
 type HistoryCategory = 'all' | 'karhutla' | 'banjir' | 'gunung' | 'donasi'
-type HistoryStatusFilter = 'all' | 'done' | 'ongoing'
+type HistoryTypeTab = 'all' | 'gerakan' | 'donasi'
 
 interface HistoryItem {
   id: string
@@ -47,108 +49,16 @@ const CATEGORY_OPTIONS: { id: HistoryCategory; label: string }[] = [
   { id: 'donasi', label: 'Donasi' },
 ]
 
-const STATUS_FILTERS: { id: HistoryStatusFilter; label: string }[] = [
+const TYPE_TABS: { id: HistoryTypeTab; label: string }[] = [
   { id: 'all', label: 'Semua' },
-  { id: 'done', label: 'Selesai' },
-  { id: 'ongoing', label: 'Ditangani' },
+  { id: 'gerakan', label: 'Gerakan' },
+  { id: 'donasi', label: 'Donasi' },
 ]
 
-const CATEGORY_META: Record<
-  Exclude<HistoryCategory, 'all'>,
-  { label: string; Icon: typeof Flame; tone: string; hazardKind?: HazardKind }
-> = {
-  karhutla: { label: 'Karhutla', Icon: Flame, tone: 'text-critical', hazardKind: 'wildfire' },
-  banjir: { label: 'Banjir', Icon: Droplets, tone: 'text-cobalt', hazardKind: 'flood' },
-  gunung: { label: 'Gunung', Icon: Mountain, tone: 'text-volcano', hazardKind: 'volcano' },
-  donasi: { label: 'Donasi', Icon: HeartHandshake, tone: 'text-critical' },
+function formatMonthGroup(sortTime: number): string {
+  if (!sortTime) return 'Arsip Lainnya'
+  return new Date(sortTime).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
 }
-
-const ARCHIVE_HISTORY: HistoryItem[] = [
-  {
-    id: 'arc-karhutla-oki',
-    category: 'karhutla',
-    status: 'done',
-    statusLabel: 'Selesai',
-    title: 'Karhutla Gambut Ogan Komering Ilir',
-    location: 'OKI, Sumsel',
-    lat: -3.3833,
-    lng: 105.05,
-    dateLabel: '14 Okt',
-    sortTime: Date.parse('2026-10-14T10:00:00Z'),
-    summary: 'Titik api di 3 blok gambut padam melalui sekat kanal dan patroli Manggala Agni bersama relawan.',
-    metaLine: '142 ha terkendali · 64 relawan · Manggala Agni',
-  },
-  {
-    id: 'arc-banjir-demak',
-    category: 'banjir',
-    status: 'done',
-    statusLabel: 'Usai',
-    title: 'Banjir Tanggul Sungai Wulan Demak',
-    location: 'Demak, Jateng',
-    lat: -6.8906,
-    lng: 110.6396,
-    dateLabel: '03 Nov',
-    sortTime: Date.parse('2026-11-03T08:00:00Z'),
-    summary: 'Genangan di 11 desa surut usai penutupan tanggul darurat dan normalisasi pintu air hilir.',
-    metaLine: 'Surut 100% · 11 desa pulih · BPBD Jateng',
-  },
-  {
-    id: 'arc-karhutla-riau',
-    category: 'karhutla',
-    status: 'ongoing',
-    statusLabel: 'Ditangani',
-    title: 'Kebakaran Semak Pesisir Bengkalis',
-    location: 'Bengkalis, Riau',
-    lat: 1.4796,
-    lng: 102.1194,
-    dateLabel: '18 Nov',
-    sortTime: Date.parse('2026-11-18T06:00:00Z'),
-    summary: 'Pendinginan sisa asap bawah permukaan dan pemantauan hotspot satelit masih berlangsung.',
-    metaLine: 'Pendinginan aktif · 28 personel · Satgas Karhutla',
-  },
-  {
-    id: 'arc-gunung-ruang',
-    category: 'gunung',
-    status: 'done',
-    statusLabel: 'Selesai',
-    title: 'Penanganan Abu Vulkanik Gunung Ruang',
-    location: 'Sitaro, Sulut',
-    lat: 2.3,
-    lng: 125.37,
-    dateLabel: '19 Sep',
-    sortTime: Date.parse('2026-09-19T09:00:00Z'),
-    summary: 'Aktivitas vulkanik melandai; pembersihan abu dan pemulihan vegetasi pesisir pulau rampung.',
-    metaLine: 'Status Normal · 42 relawan · PVMBG',
-  },
-  {
-    id: 'arc-gunung-lewotobi',
-    category: 'gunung',
-    status: 'done',
-    statusLabel: 'Selesai',
-    title: 'Pemulihan Pasca Erupsi Lewotobi',
-    location: 'Flores Timur, NTT',
-    lat: -8.542,
-    lng: 122.775,
-    dateLabel: '08 Okt',
-    sortTime: Date.parse('2026-10-08T11:00:00Z'),
-    summary: 'Filtrasi sumber air desa dan penanaman ulang area terdampak abu selesai dilakukan.',
-    metaLine: '4 sumber air pulih · 350 bibit',
-  },
-  {
-    id: 'arc-banjir-aceh',
-    category: 'banjir',
-    status: 'ongoing',
-    statusLabel: 'Ditangani',
-    title: 'Luapan DAS Krueng Peusangan',
-    location: 'Bireuen, Aceh',
-    lat: 5.203,
-    lng: 96.7009,
-    dateLabel: '17 Nov',
-    sortTime: Date.parse('2026-11-17T07:00:00Z'),
-    summary: 'Pembersihan material kayu hanyutan dan penguatan tebing alur sungai masih berjalan.',
-    metaLine: 'Pembersihan alur · 19 relawan',
-  },
-]
 
 function formatShortDate(iso: string): string {
   const d = new Date(iso)
@@ -156,7 +66,7 @@ function formatShortDate(iso: string): string {
   return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short' }).format(d)
 }
 
-function classifyEventCategory(ev: ConservationEvent): Exclude<HistoryCategory, 'all'> | null {
+function classifyEventCategory(ev: ConservationEvent): Exclude<HistoryCategory, 'all'> {
   const text = `${ev.title} ${ev.category} ${ev.description} ${ev.ref_source ?? ''}`.toLowerCase()
   if (
     ev.ref_source === 'nasa_firms' ||
@@ -179,14 +89,22 @@ function classifyEventCategory(ev: ConservationEvent): Exclude<HistoryCategory, 
   if (text.includes('gunung') || text.includes('erupsi') || text.includes('vulkanik')) {
     return 'gunung'
   }
-  return null
+  return 'karhutla'
 }
 
-function eventToHistoryItem(ev: ConservationEvent): HistoryItem | null {
-  if (ev.status !== 'resolved' && ev.status !== 'in_progress') return null
-  const category = classifyEventCategory(ev)
-  if (!category) return null
+function classifyReportCategory(r: CitizenReport): Exclude<HistoryCategory, 'all'> {
+  const text = `${r.title} ${r.threat_category} ${r.description}`.toLowerCase()
+  if (text.includes('banjir') || r.ecosystem === 'watershed') return 'banjir'
+  if (text.includes('gunung') || text.includes('erupsi')) return 'gunung'
+  return 'karhutla'
+}
 
+function eventToHistoryItem(ev: ConservationEvent, userId: string): HistoryItem | null {
+  const isParticipant = ev.event_participants?.some((p) => p.user_id === userId)
+  const isCreator = ev.created_by === userId
+  if (!isParticipant && !isCreator) return null
+
+  const category = classifyEventCategory(ev)
   const latestAction = ev.event_actions?.[0]
   const stamp = latestAction?.completed_at ?? ev.updated_at ?? ev.created_at
   let wasteKg = 0
@@ -196,18 +114,17 @@ function eventToHistoryItem(ev: ConservationEvent): HistoryItem | null {
     trees += a.trees_planted || 0
   }
 
-  const parts: string[] = []
+  const parts: string[] = [isCreator ? 'Dibuat kamu' : 'Tergabung']
   if (ev.organization?.name) parts.push(ev.organization.name)
   if (wasteKg > 0) parts.push(`${wasteKg} kg`)
   if (trees > 0) parts.push(`${trees} bibit`)
-  if (latestAction?.ai_recovery_score != null) parts.push(`${latestAction.ai_recovery_score}% pulih`)
 
   const isDone = ev.status === 'resolved'
   return {
     id: `ev-${ev.id}`,
     category,
     status: isDone ? 'done' : 'ongoing',
-    statusLabel: isDone ? 'Selesai' : 'Ditangani',
+    statusLabel: isDone ? 'Selesai' : 'Berjalan',
     title: ev.title,
     location: shortLocation(ev.location_name),
     lat: ev.lat,
@@ -219,15 +136,37 @@ function eventToHistoryItem(ev: ConservationEvent): HistoryItem | null {
       latestAction?.notes?.trim() ||
       ev.description?.trim() ||
       'Kegiatan pemulihan lingkungan.',
-    metaLine: parts.join(' · ') || (isDone ? 'Gerakan selesai' : 'Penanganan berjalan'),
+    metaLine: parts.join(' · '),
     eventId: ev.id,
   }
 }
 
-function fundraisingToHistoryItem(f: FundraisingCampaign): HistoryItem {
-  const isDone =
-    f.status === 'completed' || f.status === 'closed' || f.collected_amount >= f.target_amount
-  const pct = Math.min(100, Math.round((f.collected_amount / Math.max(1, f.target_amount)) * 100))
+function reportToHistoryItem(r: CitizenReport, userId: string): HistoryItem | null {
+  if (r.reporter_id !== userId) return null
+  const isDone = r.status === 'verified'
+  return {
+    id: `rep-${r.id}`,
+    category: classifyReportCategory(r),
+    status: isDone ? 'done' : 'ongoing',
+    statusLabel: REPORT_STATUS_LABEL[r.status],
+    title: r.title || 'Laporan Lapangan',
+    location: shortLocation(r.location_name),
+    lat: r.lat,
+    lng: r.lng,
+    dateLabel: formatShortDate(r.created_at),
+    sortTime: new Date(r.created_at).getTime() || 0,
+    summary: r.description?.trim() || r.ai_site_brief?.trim() || 'Laporan lapangan Blam Snap.',
+    metaLine: `Blam Snap · ${REPORT_STATUS_LABEL[r.status]}${r.location_name ? ` · ${shortLocation(r.location_name)}` : ''}`,
+  }
+}
+
+function fundraisingToHistoryItem(f: FundraisingCampaign, userId: string): HistoryItem | null {
+  const myDonations = f.donations.filter((d) => d.donor_id === userId)
+  if (myDonations.length === 0) return null
+
+  const totalMine = myDonations.reduce((sum, d) => sum + d.amount, 0)
+  const latestAt = myDonations[0]?.created_at ?? f.created_at
+  const isDone = f.status === 'completed' || f.status === 'closed' || f.collected_amount >= f.target_amount
 
   return {
     id: `don-${f.id}`,
@@ -238,10 +177,10 @@ function fundraisingToHistoryItem(f: FundraisingCampaign): HistoryItem {
     location: shortLocation(f.location_name),
     lat: f.lat,
     lng: f.lng,
-    dateLabel: formatShortDate(f.created_at),
-    sortTime: new Date(f.created_at).getTime() || 0,
+    dateLabel: formatShortDate(latestAt),
+    sortTime: new Date(latestAt).getTime() || 0,
     summary: f.description?.trim() || `Penggalangan dana darurat oleh ${f.organizer_name}.`,
-    metaLine: `${formatRupiah(f.collected_amount)} / ${formatRupiah(f.target_amount)} (${pct}%) · ${f.donations.length} donatur`,
+    metaLine: `Donasimu ${formatRupiah(totalMine)} (${myDonations.length}×)`,
     fundraising: f,
   }
 }
@@ -249,6 +188,8 @@ function fundraisingToHistoryItem(f: FundraisingCampaign): HistoryItem {
 export default function HistoryPanel({
   events,
   signals = [],
+  query: externalQuery,
+  showSearch = true,
   headerAction,
   onSelectEvent,
   onOpenSignal,
@@ -256,19 +197,28 @@ export default function HistoryPanel({
 }: {
   events: ConservationEvent[]
   signals?: SatelliteSignal[]
+  query?: string
+  showSearch?: boolean
   headerAction?: ReactNode
   onSelectEvent: (id: string) => void
   onOpenSignal?: (signal: SatelliteSignal) => void
   onFocusLocation: (lat: number, lng: number) => void
 }) {
+  const { profile, openAuthModal } = useAuth()
   const { fundraisings, refreshFundraisings } = useFundraisings()
+  const { data: reports = [] } = useQuery({
+    queryKey: ['reports-queue', profile?.id ?? 'guest'],
+    queryFn: () => fetchReportsQueue(true),
+    enabled: Boolean(profile),
+  })
   const [category, setCategory] = useState<HistoryCategory>('all')
-  const [statusFilter, setStatusFilter] = useState<HistoryStatusFilter>('all')
-  const [query, setQuery] = useState('')
+  const [typeTab, setTypeTab] = useState<HistoryTypeTab>('all')
+  const [localQuery, setLocalQuery] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filterOpen, setFilterOpen] = useState(false)
   const [donateCampaign, setDonateCampaign] = useState<FundraisingCampaign | null>(null)
   const filterRef = useRef<HTMLDivElement>(null)
+  const effectiveQuery = externalQuery ?? localQuery
 
   useEffect(() => {
     if (!filterOpen) return
@@ -289,20 +239,41 @@ export default function HistoryPanel({
   }, [filterOpen])
 
   const allItems = useMemo(() => {
-    const liveEvents = events
-      .map(eventToHistoryItem)
+    if (!profile) return []
+    const myEvents = events
+      .map((ev) => eventToHistoryItem(ev, profile.id))
       .filter((item): item is HistoryItem => item !== null)
-    const liveDonations = fundraisings.map(fundraisingToHistoryItem)
-    return [...liveEvents, ...liveDonations, ...ARCHIVE_HISTORY].sort(
+    const myReports = reports
+      .map((r) => reportToHistoryItem(r, profile.id))
+      .filter((item): item is HistoryItem => item !== null)
+    const myDonations = fundraisings
+      .map((f) => fundraisingToHistoryItem(f, profile.id))
+      .filter((item): item is HistoryItem => item !== null)
+    return [...myEvents, ...myReports, ...myDonations].sort(
       (a, b) => b.sortTime - a.sortTime,
     )
-  }, [events, fundraisings])
+  }, [profile, events, reports, fundraisings])
+
+  const stats = useMemo(() => {
+    let actionsCount = 0
+    let donationsCount = 0
+    for (const item of allItems) {
+      if (item.category === 'donasi') donationsCount += 1
+      else actionsCount += 1
+    }
+    return {
+      points: profile?.points ?? 0,
+      actionsCount,
+      donationsCount,
+    }
+  }, [allItems, profile?.points])
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
+    const q = effectiveQuery.trim().toLowerCase()
     return allItems.filter((item) => {
+      if (typeTab === 'gerakan' && item.category === 'donasi') return false
+      if (typeTab === 'donasi' && item.category !== 'donasi') return false
       if (category !== 'all' && item.category !== category) return false
-      if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (!q) return true
       return (
         item.title.toLowerCase().includes(q) ||
@@ -310,56 +281,104 @@ export default function HistoryPanel({
         item.summary.toLowerCase().includes(q)
       )
     })
-  }, [allItems, category, statusFilter, query])
+  }, [allItems, category, typeTab, effectiveQuery])
 
-  const activeCategoryLabel =
-    category === 'all' ? 'Filter' : (CATEGORY_META[category]?.label ?? 'Filter')
+  const monthGroups = useMemo(() => {
+    const groups: { month: string; items: HistoryItem[] }[] = []
+    for (const item of filtered) {
+      const month = formatMonthGroup(item.sortTime)
+      const last = groups[groups.length - 1]
+      if (last && last.month === month) last.items.push(item)
+      else groups.push({ month, items: [item] })
+    }
+    return groups
+  }, [filtered])
+
+  if (!profile) {
+    return (
+      <div className="flex min-w-0 flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-[20px] font-semibold text-ink">History</h2>
+          {headerAction}
+        </div>
+        <div className="atlas-group flex flex-col items-center gap-2.5 p-6 text-center">
+          <span className="grid size-11 place-items-center rounded-full bg-mint text-leaf">
+            <Clock className="size-5" strokeWidth={2} />
+          </span>
+          <p className="text-[14px] font-semibold text-ink">Riwayat Aktivitas Kamu</p>
+          <p className="max-w-[260px] text-[12px] leading-relaxed text-ink-soft">
+            Masuk untuk melihat gerakan yang kamu ikuti, laporan Blam Snap, dan donasi kamu.
+          </p>
+          <button
+            type="button"
+            onClick={openAuthModal}
+            className="btn-primary mt-1 h-9 px-5 text-[13px]"
+          >
+            Masuk
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-baseline gap-2">
           <h2 className="text-[20px] font-semibold text-ink">History</h2>
-          <span className="num rounded-[8px] border border-line bg-white px-2 py-0.5 text-[12px] font-medium text-ink-soft">
-            {filtered.length}
-          </span>
+          <span className="num text-[12px] font-normal text-ink-soft">{filtered.length} catatan</span>
         </div>
         {headerAction}
       </div>
 
-      <label className="flex h-10 w-full min-w-0 items-center gap-2 rounded-full border border-line bg-white px-3.5 transition-colors focus-within:border-leaf">
-        <Search className="size-4 shrink-0 text-leaf" strokeWidth={1.75} />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cari"
-          className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-soft"
-        />
-        {query && (
-          <button type="button" aria-label="Hapus" onClick={() => setQuery('')}>
-            <X className="size-4 text-ink-soft" strokeWidth={1.75} />
-          </button>
-        )}
-      </label>
+      <div className="atlas-group p-1">
+        <div className="atlas-strip grid-cols-3 divide-x divide-ink/8 border-y-0 text-center">
+          <div className="atlas-strip-cell">
+            <p className="num text-[17px] font-semibold text-leaf">{stats.points}</p>
+            <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Poin</p>
+          </div>
+          <div className="atlas-strip-cell">
+            <p className="num text-[17px] font-semibold text-ink">{stats.actionsCount}</p>
+            <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Gerakan</p>
+          </div>
+          <div className="atlas-strip-cell">
+            <p className="num text-[17px] font-semibold text-resolved">{stats.donationsCount}</p>
+            <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Donasi</p>
+          </div>
+        </div>
+      </div>
 
-      <div className="flex min-w-0 items-center justify-between gap-2">
-        <div
-          role="tablist"
-          aria-label="Filter status riwayat"
-          className="panel-tabs p-0.5"
-        >
-          {STATUS_FILTERS.map((sf) => {
-            const active = statusFilter === sf.id
+      {showSearch && (
+        <label className="flex h-10 w-full min-w-0 items-center gap-2 rounded-full bg-white px-3.5 shadow-[0_1px_3px_rgba(15,23,42,0.05)] focus-within:ring-2 focus-within:ring-leaf/25">
+          <Search className="size-4 shrink-0 text-leaf" strokeWidth={1.75} />
+          <input
+            value={localQuery}
+            onChange={(e) => setLocalQuery(e.target.value)}
+            placeholder="Cari riwayat"
+            className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-soft"
+          />
+          {localQuery && (
+            <button type="button" aria-label="Hapus" onClick={() => setLocalQuery('')}>
+              <X className="size-4 text-ink-soft" strokeWidth={1.75} />
+            </button>
+          )}
+        </label>
+      )}
+
+      <div className="flex min-w-0 items-center gap-2">
+        <div role="tablist" aria-label="Jenis riwayat" className="panel-tabs min-w-0 flex-1">
+          {TYPE_TABS.map((t) => {
+            const active = typeTab === t.id
             return (
               <button
-                key={sf.id}
+                key={t.id}
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => setStatusFilter(sf.id)}
-                className={`panel-tab whitespace-nowrap px-2.5 py-1 text-[12px] ${active ? 'is-active' : ''}`}
+                onClick={() => setTypeTab(t.id)}
+                className={`panel-tab flex-1 whitespace-nowrap ${active ? 'is-active' : ''}`}
               >
-                {sf.label}
+                {t.label}
               </button>
             )
           })}
@@ -370,26 +389,28 @@ export default function HistoryPanel({
             type="button"
             aria-expanded={filterOpen}
             aria-haspopup="menu"
+            aria-label="Filter kategori riwayat"
+            title="Filter kategori riwayat"
             onClick={() => setFilterOpen((v) => !v)}
-            className={`inline-flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[12px] font-medium whitespace-nowrap transition-colors ${
-              category !== 'all'
-                ? 'bg-ink text-white'
-                : 'btn-soft'
+            className={`relative grid size-9 place-items-center rounded-[11px] transition-colors ${
+              category !== 'all' || filterOpen
+                ? 'bg-leaf text-white shadow-xs'
+                : 'bg-white/85 text-ink-soft shadow-[0_1px_2px_rgba(15,23,42,0.05)] hover:text-ink'
             }`}
           >
-            <SlidersHorizontal className="size-4 shrink-0" strokeWidth={1.75} />
-            <span>{activeCategoryLabel}</span>
-            <ChevronDown
-              className={`size-4 shrink-0 transition-transform ${filterOpen ? 'rotate-180' : ''}`}
-              strokeWidth={1.75}
-            />
+            <SlidersHorizontal className="size-4" strokeWidth={2} />
+            {category !== 'all' && (
+              <span className="num absolute -top-1 -right-1 grid size-4 place-items-center rounded-full border-2 border-white bg-forest text-[10px] font-semibold text-white">
+                1
+              </span>
+            )}
           </button>
 
           {filterOpen && (
             <div
               role="menu"
               aria-label="Filter kategori riwayat"
-              className="absolute top-10 right-0 z-30 min-w-[168px] rounded-[12px] border border-line bg-white p-1.5 shadow-[0_12px_28px_rgba(15,29,50,0.14)]"
+              className="atlas-sheet absolute top-11 right-0 z-30 w-44 rounded-[16px] p-1.5"
             >
               {CATEGORY_OPTIONS.map((opt) => {
                 const active = category === opt.id
@@ -403,12 +424,12 @@ export default function HistoryPanel({
                       setCategory(opt.id)
                       setFilterOpen(false)
                     }}
-                    className={`flex w-full items-center justify-between gap-2 rounded-[8px] px-3 py-2 text-left text-[12px] font-medium transition-colors ${
-                      active ? 'bg-mint text-forest' : 'text-ink-soft hover:bg-canvas hover:text-ink'
+                    className={`flex w-full items-center justify-between gap-2 rounded-[10px] px-2.5 py-2 text-left text-[13px] transition-colors ${
+                      active ? 'bg-mint font-medium text-forest' : 'text-ink hover:bg-canvas/80'
                     }`}
                   >
                     <span>{opt.label}</span>
-                    {active && <Check className="size-4 shrink-0 text-leaf" strokeWidth={1.75} />}
+                    {active && <Check className="size-3.5 shrink-0 text-forest" strokeWidth={2.2} />}
                   </button>
                 )
               })}
@@ -418,115 +439,142 @@ export default function HistoryPanel({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card-quiet flex flex-col items-center gap-2 p-6 text-center">
+        <div className="atlas-group flex flex-col items-center gap-2 p-6 text-center">
           <BlamNatureIcon className="size-12 opacity-85" />
           <p className="text-[12px] font-medium text-ink-soft">Tidak ada riwayat cocok</p>
         </div>
       ) : (
-        <ul className="flex min-w-0 flex-col gap-2">
-          {filtered.map((item) => {
-            const meta = CATEGORY_META[item.category]
-            const Icon = meta.Icon
-            const expanded = expandedId === item.id
-            const isDone = item.status === 'done'
-            const matchedSignal =
-              item.fundraising && onOpenSignal
-                ? findSignalForFundraising(signals, item.fundraising)
-                : null
-            const opensDirect = Boolean(item.eventId || matchedSignal)
-            const locClean = item.location.trim()
-            const showLoc =
-              Boolean(locClean) &&
-              !item.title.toLowerCase().includes(locClean.slice(0, 12).toLowerCase()) &&
-              locClean.toLowerCase() !== meta.label.toLowerCase()
-            const subtitle = [meta.label, ...(showLoc ? [locClean] : []), item.dateLabel].join(' · ')
+        <div className="flex min-w-0 flex-col gap-3.5">
+          {monthGroups.map((group) => (
+            <section key={group.month} className="flex min-w-0 flex-col gap-1.5">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">
+                  {group.month}
+                </h3>
+                <span className="num text-[11px] font-medium text-ink-soft">{group.items.length}</span>
+              </div>
 
-            return (
-              <li
-                key={item.id}
-                className="card-quiet min-w-0 transition-colors hover:border-dash"
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (item.eventId) {
-                      onSelectEvent(item.eventId)
-                    } else if (matchedSignal && onOpenSignal) {
-                      onOpenSignal(matchedSignal)
-                    } else {
-                      onFocusLocation(item.lat, item.lng)
-                      setExpandedId((prev) => (prev === item.id ? null : item.id))
-                    }
-                  }}
-                  className="flex w-full min-w-0 flex-col gap-2 px-3 py-2.5 text-left"
-                >
-                  <div className="flex w-full min-w-0 items-center gap-2.5">
-                    {meta.hazardKind ? (
-                      <MapMarkerGlyph
-                        kind={meta.hazardKind}
-                        tier={isDone ? 'has_action' : 'verified'}
-                        size="md"
-                      />
-                    ) : (
-                      <span className={`row-icon ${meta.tone}`}>
-                        <Icon className="size-4" strokeWidth={1.75} />
-                      </span>
-                    )}
+              <ul className="atlas-group divide-y divide-ink/6 p-1">
+                {group.items.map((item, idx) => {
+                  const expanded = expandedId === item.id
+                  const isDone = item.status === 'done'
+                  const matchedSignal =
+                    item.fundraising && onOpenSignal
+                      ? findSignalForFundraising(signals, item.fundraising)
+                      : null
+                  const opensDirect = Boolean(item.eventId || matchedSignal)
+                  const isLastInGroup = idx === group.items.length - 1
+                  const donationPct = item.fundraising
+                    ? Math.min(
+                        100,
+                        Math.round(
+                          (item.fundraising.collected_amount / Math.max(1, item.fundraising.target_amount)) * 100,
+                        ),
+                      )
+                    : null
 
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-medium text-ink">{item.title}</p>
-                      <p className="truncate text-[12px] text-ink-soft">{subtitle}</p>
-                    </div>
+                  return (
+                    <li key={item.id} className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (item.eventId) {
+                            onSelectEvent(item.eventId)
+                          } else if (matchedSignal && onOpenSignal) {
+                            onOpenSignal(matchedSignal)
+                          } else {
+                            onFocusLocation(item.lat, item.lng)
+                            setExpandedId((prev) => (prev === item.id ? null : item.id))
+                          }
+                        }}
+                        className="flex w-full min-w-0 flex-col gap-2 rounded-[12px] px-2.5 py-2.5 text-left transition-colors hover:bg-canvas"
+                      >
+                        <div className="flex w-full min-w-0 items-start gap-2.5">
+                          {/* Kolom tanggal + simpul timeline */}
+                          <div className="flex shrink-0 items-center gap-2 pt-0.5">
+                            <span className="num w-10 text-right text-[11px] font-medium text-ink-soft">
+                              {item.dateLabel}
+                            </span>
+                            <div className="relative flex flex-col items-center">
+                              {isDone ? (
+                                <CheckCircle2 className="size-3.5 text-resolved" strokeWidth={2.1} aria-label="Selesai" />
+                              ) : (
+                                <CircleDashed className="size-3.5 text-leaf" strokeWidth={2.1} aria-label="Berjalan" />
+                              )}
+                              {!isLastInGroup && (
+                                <span
+                                  aria-hidden="true"
+                                  className="absolute top-4 h-6 w-px bg-ink/10"
+                                />
+                              )}
+                            </div>
+                          </div>
 
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <span className={`text-[12px] font-medium ${isDone ? 'text-resolved' : 'text-progress'}`}>
-                        {item.statusLabel}
-                      </span>
-                      {opensDirect ? (
-                        <ChevronRight className="size-4 text-ink-soft" strokeWidth={1.75} />
-                      ) : (
-                        <ChevronDown
-                          className={`size-4 text-ink-soft transition-transform ${
-                            expanded ? 'rotate-180' : ''
-                          }`}
-                          strokeWidth={1.75}
-                        />
-                      )}
-                    </div>
-                  </div>
+                          {/* Judul & ringkasan dampak */}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[14px] font-medium text-ink">{item.title}</p>
+                            <p className="mt-0.5 truncate text-[12px] text-ink-soft">{item.metaLine}</p>
+                            {donationPct !== null && (
+                              <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full rounded-full bg-leaf"
+                                  style={{ width: `${Math.max(6, donationPct)}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
 
-                  {expanded && (
-                    <div className="w-full min-w-0 border-t border-line pt-2 text-[12px] leading-relaxed break-words text-ink-soft">
-                      <p>{item.summary}</p>
-                      <p className="mt-1 font-medium text-forest">{item.metaLine}</p>
-                      {item.fundraising && item.fundraising.status === 'active' && (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDonateCampaign(item.fundraising ?? null)
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              setDonateCampaign(item.fundraising ?? null)
-                            }
-                          }}
-                          className="btn-primary mt-2 inline-flex h-8 px-3.5 text-[12px]"
-                        >
-                          <HeartHandshake className="size-4" strokeWidth={1.75} />
-                          Donasi Sekarang
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
+                          <div className="shrink-0 pt-0.5">
+                            {opensDirect ? (
+                              <ChevronRight className="size-4 text-ink-soft" strokeWidth={1.75} />
+                            ) : (
+                              <ChevronDown
+                                className={`size-4 text-ink-soft transition-transform ${
+                                  expanded ? 'rotate-180' : ''
+                                }`}
+                                strokeWidth={1.75}
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        {expanded && (
+                          <div className="ml-[58px] min-w-0 border-t border-ink/6 pt-2 text-[12px] leading-relaxed break-words text-ink-soft">
+                            <p>{item.summary}</p>
+                            {item.location && (
+                              <p className="mt-1 font-medium text-ink">{item.location}</p>
+                            )}
+                            {item.fundraising && item.fundraising.status === 'active' && (
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setDonateCampaign(item.fundraising ?? null)
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    setDonateCampaign(item.fundraising ?? null)
+                                  }
+                                }}
+                                className="btn-primary mt-2 inline-flex h-8 px-3.5 text-[12px]"
+                              >
+                                <HeartHandshake className="size-4" strokeWidth={1.75} />
+                                Donasi Sekarang
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
       )}
 
       {donateCampaign && (

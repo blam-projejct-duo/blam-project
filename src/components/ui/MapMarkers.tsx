@@ -1,66 +1,20 @@
 import type { HazardKind, SignalVerificationState } from '../../types'
 
 const HAZARD_HEX: Record<HazardKind | 'event', string> = {
-  wildfire: '#F97316',
-  suspected: '#F59E0B',
-  volcano: '#7C3AED',
+  wildfire: '#EA580C',
+  suspected: '#D97706',
+  volcano: '#6D28D9',
   flood: '#2563EB',
-  storm: '#0891B2',
-  other: '#F59E0B',
+  storm: '#0E7490',
+  other: '#D97706',
   event: '#15803D',
-}
-
-const HAZARD_TINT: Record<HazardKind | 'event', string> = {
-  wildfire: '#FFF3E8',
-  suspected: '#FEF7E0',
-  volcano: '#F3EEFE',
-  flood: '#EDF3FE',
-  storm: '#E8F7FA',
-  other: '#FEF7E0',
-  event: '#ECF7F0',
 }
 
 function InnerGlyph({ kind, color }: { kind: HazardKind | 'event'; color: string }) {
   if (kind === 'volcano') {
     return (
       <path
-        d="M12.5 18.5 16 12.5 19.5 18.5 23 14.5 26 23.5H10L12.5 18.5Z"
-        fill="none"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    )
-  }
-  if (kind === 'flood') {
-    return (
-      <path
-        d="M18 11.5c1.8 2.4 4.2 5 4.2 7.3a4.2 4.2 0 1 1-8.4 0c0-2.3 2.4-4.9 4.2-7.3Z"
-        fill="none"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    )
-  }
-  if (kind === 'storm') {
-    return (
-      <path
-        d="M13 15.5h8.2a2 2 0 1 0-1.6-3.2M13 19h9.5a2 2 0 1 1-1.5 3.3M13 22h5.2"
-        fill="none"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    )
-  }
-  if (kind === 'event') {
-    return (
-      <path
-        d="M18 22.5v-5.5m0 0c0-3 2.3-4.8 4.8-4.8 0 2.6-1.8 4.8-4.8 4.8Zm0 0c0-2.5-1.9-4.1-4.2-4.1 0 2.3 1.5 4.1 4.2 4.1Z"
+        d="M12.5 16.8 15.8 11.2 18.8 16 21.8 13 24.5 19.5H11.5L12.5 16.8Z"
         fill="none"
         stroke={color}
         strokeWidth="1.9"
@@ -69,12 +23,48 @@ function InnerGlyph({ kind, color }: { kind: HazardKind | 'event'; color: string
       />
     )
   }
+  if (kind === 'flood') {
+    return (
+      <path
+        d="M18 9.8c1.7 2.1 3.8 4.4 3.8 6.4a3.8 3.8 0 1 1-7.6 0c0-2 2.1-4.3 3.8-6.4Z"
+        fill="none"
+        stroke={color}
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    )
+  }
+  if (kind === 'storm') {
+    return (
+      <path
+        d="M13.2 13h7.4a1.8 1.8 0 1 0-1.4-2.8M13.2 16.2h8.6a1.8 1.8 0 1 1-1.4 2.9M13.2 19h4.6"
+        fill="none"
+        stroke={color}
+        strokeWidth="1.85"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    )
+  }
+  if (kind === 'event') {
+    return (
+      <path
+        d="M18 20v-4.8m0 0c0-2.6 2-4.2 4.2-4.2 0 2.3-1.6 4.2-4.2 4.2Zm0 0c0-2.2-1.7-3.6-3.7-3.6 0 2 1.3 3.6 3.7 3.6Z"
+        fill="none"
+        stroke={color}
+        strokeWidth="1.85"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    )
+  }
   return (
     <path
-      d="M18.2 11.2c.6 2 2.4 3.3 3.4 5.2a4.6 4.6 0 1 1-7.8 3.2c0-1.4.6-2.6 1.5-3.6.2 1.1.9 1.6 1.6 1.6.9 0 1.3-.8 1.1-2-.2-1.4-.4-2.7.2-4.4Z"
+      d="M18.2 9.6c.5 1.8 2.1 2.9 3 4.6a4.1 4.1 0 1 1-6.9 2.8c0-1.2.5-2.3 1.3-3.2.2 1 .8 1.4 1.4 1.4.8 0 1.2-.7 1-1.7-.2-1.2-.4-2.4.2-3.9Z"
       fill="none"
       stroke={color}
-      strokeWidth="1.9"
+      strokeWidth="1.85"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
@@ -82,8 +72,8 @@ function InnerGlyph({ kind, color }: { kind: HazardKind | 'event'; color: string
 }
 
 /**
- * Bahasa marker peta Blam (tetesan api, segitiga gunung, tetes banjir, pin gerakan)
- * digunakan konsisten di baris daftar, filter, dan header detail.
+ * Bahasa marker pinpoint Blam yang seragam di peta, daftar, dan header detail,
+ * dibedakan lewat warna, simbol dalam, serta garis putus-putus vs solid.
  */
 export function MapMarkerGlyph({
   kind,
@@ -98,65 +88,21 @@ export function MapMarkerGlyph({
 }) {
   const effectiveKind: HazardKind | 'event' = tier === 'has_action' ? 'event' : kind
   const hex = HAZARD_HEX[effectiveKind]
-  const tint = HAZARD_TINT[effectiveKind]
   const isUnverified = tier === 'unverified' && effectiveKind !== 'event'
   const px = size === 'sm' ? 'size-6' : size === 'lg' ? 'size-11' : 'size-9'
-  const strokeColor = isUnverified ? hex : '#FFFFFF'
-  const fillColor = isUnverified ? tint : hex
+  const strokeColor = isUnverified ? '#475569' : '#FFFFFF'
+  const fillColor = isUnverified ? '#FFFFFF' : hex
 
   return (
     <svg viewBox="0 0 36 36" className={`${px} shrink-0 ${className}`} aria-hidden="true">
-      {effectiveKind === 'volcano' ? (
-        <path
-          d="M18 4.5 Q25 14 31.5 27.5 Q32 30.5 28.5 30.5 L7.5 30.5 Q4 30.5 4.5 27.5 Q11 14 18 4.5 Z"
-          fill={fillColor}
-          stroke={isUnverified ? hex : '#FFFFFF'}
-          strokeWidth={isUnverified ? 2.1 : 2}
-          strokeDasharray={isUnverified ? '4 3' : undefined}
-          strokeLinejoin="round"
-        />
-      ) : effectiveKind === 'flood' ? (
-        <path
-          d="M18 3.8 C26.8 12.2 29.8 18.8 29.8 22.8 C29.8 28.6 24.5 32.5 18 32.5 C11.5 32.5 6.2 28.6 6.2 22.8 C6.2 18.8 9.2 12.2 18 3.8 Z"
-          fill={fillColor}
-          stroke={isUnverified ? hex : '#FFFFFF'}
-          strokeWidth={isUnverified ? 2.1 : 2}
-          strokeDasharray={isUnverified ? '4 3' : undefined}
-        />
-      ) : effectiveKind === 'event' ? (
-        <path
-          d="M18 3.8 C24.8 3.8 30 9 30 15.6 C30 23.2 21.4 30.4 18 33 C14.6 30.4 6 23.2 6 15.6 C6 9 11.2 3.8 18 3.8 Z"
-          fill={fillColor}
-          stroke="#FFFFFF"
-          strokeWidth="2"
-        />
-      ) : effectiveKind === 'storm' ? (
-        <polygon
-          points="18,4 30,11 30,25 18,32 6,25 6,11"
-          fill={fillColor}
-          stroke={isUnverified ? hex : '#FFFFFF'}
-          strokeWidth={isUnverified ? 2.1 : 2}
-          strokeDasharray={isUnverified ? '4 3' : undefined}
-          strokeLinejoin="round"
-        />
-      ) : effectiveKind === 'suspected' || isUnverified ? (
-        <circle
-          cx="18"
-          cy="18"
-          r="13.2"
-          fill={fillColor}
-          stroke={hex}
-          strokeWidth="2.2"
-          strokeDasharray="4.5 3"
-        />
-      ) : (
-        <path
-          d="M18 3.5 C23.5 9.8 30.2 15.6 29.2 22.6 C28.2 28.8 23.6 32.4 18 32.4 C12.4 32.4 7.8 28.8 6.8 22.6 C5.8 15.6 12.5 9.8 18 3.5 Z"
-          fill={fillColor}
-          stroke="#FFFFFF"
-          strokeWidth="2"
-        />
-      )}
+      <path
+        d="M18 3.5 C24.8 3.5 30 8.7 30 15.3 C30 23 21.4 30.5 18 33.2 C14.6 30.5 6 23 6 15.3 C6 8.7 11.2 3.5 18 3.5 Z"
+        fill={fillColor}
+        stroke={isUnverified ? '#94A3B8' : '#FFFFFF'}
+        strokeWidth={isUnverified ? 2 : 2}
+        strokeDasharray={isUnverified ? '4.2 3' : undefined}
+        strokeLinejoin="round"
+      />
       <InnerGlyph kind={effectiveKind} color={strokeColor} />
     </svg>
   )
@@ -196,7 +142,7 @@ export function AtlasCoordinateHero({
 
   return (
     <div
-      className={`relative overflow-hidden bg-[#eef3f8] ${compact ? 'h-32' : 'h-40'} ${className}`}
+      className={`relative overflow-hidden bg-gradient-to-br from-[#edf3fa] via-[#f4f7fb] to-[#e7eff7] ${compact ? 'h-32' : 'h-40'} ${className}`}
     >
       {/* Garis graticule & kontur atlas */}
       <svg
@@ -232,7 +178,7 @@ export function AtlasCoordinateHero({
 
       {/* Label kiri atas (opsional) */}
       {badge && (
-        <span className="absolute top-3 left-3 z-10 rounded-[8px] border border-line bg-white/92 px-2.5 py-1 text-[12px] font-medium text-ink">
+        <span className="absolute top-3 left-3 z-10 rounded-[8px] bg-white/88 px-2.5 py-1 text-[12px] font-medium text-ink shadow-[0_1px_3px_rgba(15,23,42,0.08)] backdrop-blur-sm">
           {badge}
         </span>
       )}
@@ -240,13 +186,13 @@ export function AtlasCoordinateHero({
       {/* Koordinat & wilayah di kiri/kanan bawah */}
       <div className="pointer-events-none absolute inset-x-3 bottom-2.5 z-10 flex items-center justify-between gap-2 text-[12px]">
         {subtitle ? (
-          <span className="truncate rounded-[8px] border border-line bg-white/92 px-2 py-0.5 font-medium text-ink">
+          <span className="max-w-[54%] truncate rounded-[8px] bg-white/88 px-2 py-0.5 font-medium text-ink shadow-[0_1px_3px_rgba(15,23,42,0.08)] backdrop-blur-sm">
             {subtitle}
           </span>
         ) : (
           <span />
         )}
-        <span className="num shrink-0 rounded-[8px] border border-line bg-white/92 px-2 py-0.5 font-normal text-ink-soft">
+        <span className="num shrink-0 rounded-[8px] bg-white/88 px-2 py-0.5 font-normal text-ink-soft shadow-[0_1px_3px_rgba(15,23,42,0.08)] backdrop-blur-sm">
           {coordText}
         </span>
       </div>

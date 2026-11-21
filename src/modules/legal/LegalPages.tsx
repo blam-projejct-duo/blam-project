@@ -16,9 +16,9 @@ function LegalSection({
   children: ReactNode
 }) {
   return (
-    <section className="card-quiet p-4 sm:p-5">
+    <section className="atlas-group p-4 sm:p-5">
       <div className="flex items-center gap-2.5">
-        <span className="num grid size-7 shrink-0 place-items-center rounded-full border border-line bg-canvas text-[12px] text-forest">
+        <span className="num grid size-7 shrink-0 place-items-center rounded-full bg-canvas text-[12px] text-forest">
           {number}
         </span>
         <h3 className="text-[16px] font-semibold text-ink">{title}</h3>

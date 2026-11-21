@@ -170,8 +170,8 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[16px] border border-line bg-surface shadow-[0_24px_48px_-12px_rgba(15,29,50,0.22)] sm:rounded-[16px]">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-white px-5 py-4">
+      <div className="atlas-sheet flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[24px] sm:rounded-[22px]">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-ink/8 px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="row-icon text-forest">
               <HeartHandshake className="size-5" strokeWidth={1.75} />

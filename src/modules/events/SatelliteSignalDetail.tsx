@@ -14,6 +14,7 @@ import {
 import { useState } from 'react'
 import { AtlasCoordinateHero, MapMarkerGlyph } from '../../components/ui/MapMarkers'
 import { moderateHotspotAdmin, verifyRadarSignal } from '../../lib/api'
+import { shortLocation } from '../../lib/constants'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import FundraisingSection from '../fundraising/FundraisingSection'
@@ -46,16 +47,16 @@ interface Props {
   onModerated: () => Promise<void>
 }
 
-function Tile({ value, unit, label, status, tone = 'neutral' }: PulseTileData) {
+function StripMetric({ value, unit, label, status, tone = 'neutral' }: PulseTileData) {
   return (
-    <div className="card-quiet p-3.5">
-      <div className="flex items-center justify-between gap-2 text-[12px]">
-        <span className="truncate font-normal text-ink-soft">{label}</span>
-        {status && <span className={`shrink-0 font-medium ${STATUS_TONE[tone]}`}>{status}</span>}
+    <div className="atlas-strip-cell min-w-0">
+      <div className="flex items-center justify-between gap-1 text-[11px] font-medium text-ink-soft">
+        <span className="truncate">{label}</span>
+        {status && <span className={`shrink-0 ${STATUS_TONE[tone]}`}>{status}</span>}
       </div>
-      <p className="num mt-1.5 flex items-baseline gap-1 text-[20px] leading-none font-semibold text-ink">
+      <p className="num mt-1 flex items-baseline gap-1 text-[17px] leading-none font-semibold text-ink">
         <span>{value}</span>
-        {unit && <span className="text-[12px] font-normal text-ink-soft">{unit}</span>}
+        {unit && <span className="text-[11px] font-normal text-ink-soft">{unit}</span>}
       </p>
     </div>
   )
@@ -137,14 +138,14 @@ export default function SatelliteSignalDetail({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="-mx-5 border-b border-line">
+      <div className="overflow-hidden rounded-[16px] shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
         <AtlasCoordinateHero
           lat={signal.lat}
           lng={signal.lng}
           kind={kind}
           tier={tier}
           badge={formatSignalSource(signal.source)}
-          subtitle={placeText(place)}
+          subtitle={shortLocation(placeText(place))}
         />
       </div>
 
@@ -243,7 +244,7 @@ export default function SatelliteSignalDetail({
         </p>
       )}
 
-      <div className="divide-y divide-line border-t border-line">
+      <div className="atlas-group divide-y divide-ink/6 px-4">
         <div className="flex items-start gap-3 py-3.5">
           <MapPin className="mt-0.5 size-4 shrink-0 text-leaf" strokeWidth={1.75} />
           <span className="text-[14px] font-normal text-ink" title={`${signal.lat.toFixed(4)}, ${signal.lng.toFixed(4)}`}>
@@ -256,20 +257,20 @@ export default function SatelliteSignalDetail({
           <div className="py-3.5">
             <p className="text-[14px] leading-relaxed font-normal text-ink">{signal.reason}</p>
             {(signal.kind === 'wildfire' || signal.kind === 'suspected') && (signal.pointCount ?? 0) > 0 && (
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <Tile
+              <div className="atlas-strip mt-3 grid-cols-3 divide-x divide-ink/8">
+                <StripMetric
                   value={String(signal.pointCount)}
                   label={signal.kind === 'suspected' ? 'Titik Panas' : 'Titik Api'}
                 />
-                <Tile value={formatHeatScale(signal.totalFrp, signal.frp)} label="Skala Panas" />
-                <Tile value={`±${signal.radiusKm ?? 1}`} unit="km" label="Radius Area" />
+                <StripMetric value={formatHeatScale(signal.totalFrp, signal.frp)} label="Skala Panas" />
+                <StripMetric value={`±${signal.radiusKm ?? 1}`} unit="km" label="Radius Area" />
               </div>
             )}
             {signal.kind === 'flood' && signal.dischargeM3s != null && (
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <Tile value={String(signal.dischargeM3s)} unit="m³/s" label="Debit Sungai" />
-                <Tile value={`${signal.dischargeRatio ?? 1}×`} label="Dari Normal" />
-                <Tile value={String(signal.rainMm ?? 0)} unit="mm" label="Hujan 72j" />
+              <div className="atlas-strip mt-3 grid-cols-3 divide-x divide-ink/8">
+                <StripMetric value={String(signal.dischargeM3s)} unit="m³/s" label="Debit Sungai" />
+                <StripMetric value={`${signal.dischargeRatio ?? 1}×`} label="Dari Normal" />
+                <StripMetric value={String(signal.rainMm ?? 0)} unit="mm" label="Hujan 72j" />
               </div>
             )}
           </div>
@@ -296,9 +297,9 @@ export default function SatelliteSignalDetail({
         )}
       </div>
 
-      <div className={`grid grid-cols-2 gap-3 ${pulseStatus === 'loading' ? 'opacity-60' : ''}`}>
+      <div className={`atlas-group grid grid-cols-2 divide-x divide-y divide-ink/6 overflow-hidden ${pulseStatus === 'loading' ? 'opacity-60' : ''}`}>
         {pulseTiles.map((tile) => (
-          <Tile key={tile.label} {...tile} />
+          <StripMetric key={tile.label} {...tile} />
         ))}
       </div>
 

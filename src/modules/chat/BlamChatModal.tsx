@@ -320,13 +320,13 @@ export default function BlamChatModal({
         style={isCompanion ? { transformOrigin: 'left center' } : undefined}
         className={
           isCompanion
-            ? 'pointer-events-auto absolute top-[70px] bottom-4 flex w-[392px] flex-col overflow-hidden rounded-[16px] border border-line bg-white shadow-[0_18px_40px_-8px_rgba(15,29,50,0.2)]'
-            : 'flex h-[90dvh] w-full flex-col overflow-hidden rounded-t-[16px] border border-line bg-white md:h-[640px] md:max-w-[460px] md:rounded-[16px]'
+            ? 'atlas-sheet pointer-events-auto absolute top-[70px] bottom-4 flex w-[392px] flex-col overflow-hidden rounded-[22px]'
+            : 'atlas-sheet flex h-[90dvh] w-full flex-col overflow-hidden rounded-t-[24px] md:h-[640px] md:max-w-[460px] md:rounded-[22px]'
         }
       >
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-ink/8 px-4">
           <div className="flex items-center gap-2.5">
-            <span className="relative grid size-9 shrink-0 place-items-center rounded-full border border-line bg-white">
+            <span className="relative grid size-9 shrink-0 place-items-center rounded-full bg-white shadow-xs">
               <BlamAiAvatarIcon withBadge={false} className="size-7" />
             </span>
             <h2 className="font-sans text-[16px] font-semibold text-ink">Blam Chat</h2>
@@ -358,7 +358,7 @@ export default function BlamChatModal({
           {messages.length === 1 && !busy && !activeSuggestion ? (
             <div className="flex h-full flex-col items-center justify-center gap-5 px-2 py-6 text-center">
               <div className="flex flex-col items-center gap-2">
-                <span className="grid size-20 place-items-center rounded-[20px] border border-line bg-canvas">
+                <span className="atlas-group grid size-20 place-items-center rounded-[20px]">
                   <BlamNatureIcon className="size-16" />
                 </span>
                 <p className="font-display text-[20px] font-semibold text-ink">Blam</p>
@@ -372,7 +372,7 @@ export default function BlamChatModal({
                     key={label}
                     type="button"
                     onClick={() => void submit(label)}
-                    className="card-quiet flex w-full items-center gap-3 px-3.5 py-3 text-left text-[14px] font-medium text-ink transition-colors hover:bg-canvas"
+                    className="atlas-group flex w-full items-center gap-3 px-3.5 py-3 text-left text-[14px] font-medium text-ink transition-colors hover:bg-canvas/70"
                   >
                     <span className="row-icon text-leaf">
                       <Icon className="size-4" strokeWidth={1.75} />

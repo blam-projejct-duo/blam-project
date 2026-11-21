@@ -73,8 +73,19 @@ export function formatFloodRiskLabel(item: {
  */
 export function formatSignalDate(item: { source?: string; kind?: HazardKind; date?: string }): string {
   if (!item.date) return ''
-  if (item.source === 'nasa_eonet' && item.kind === 'volcano') {
-    return `Aktif sejak ${item.date}`
+  let formatted = item.date
+  if (/^\d{4}-\d{2}-\d{2}/.test(item.date)) {
+    const parsed = new Date(item.date)
+    if (!Number.isNaN(parsed.getTime())) {
+      formatted = parsed.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    }
   }
-  return item.date
+  if (item.source === 'nasa_eonet' && item.kind === 'volcano') {
+    return `Aktif sejak ${formatted}`
+  }
+  return formatted
 }

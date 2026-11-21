@@ -21,7 +21,7 @@ import type { FundraisingCampaign, HazardKind, SatelliteSignal } from '../../typ
 import DonateModal from './DonateModal'
 import { findSignalForFundraising, formatRupiah, useFundraisings } from './useFundraisings'
 
-const KIND_META: Record<
+export const KIND_META: Record<
   HazardKind,
   { Icon: typeof Flame; label: string; iconCls: string }
 > = {
@@ -82,14 +82,14 @@ const STATUS_OPTIONS: ReadonlyArray<{ id: StatusFilter; label: string }> = [
   { id: 'all', label: 'Semua Status' },
 ]
 
-function compactRupiah(n: number): string {
+export function compactRupiah(n: number): string {
   if (n >= 1_000_000_000) return `Rp${(n / 1_000_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} M`
   if (n >= 1_000_000) return `Rp${(n / 1_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} jt`
   if (n >= 1_000) return `Rp${Math.round(n / 1_000).toLocaleString('id-ID')} rb`
   return `Rp${n.toLocaleString('id-ID')}`
 }
 
-function percentOf(c: FundraisingCampaign): number {
+export function percentOf(c: FundraisingCampaign): number {
   return Math.min(100, Math.round((c.collected_amount / Math.max(1, c.target_amount)) * 100))
 }
 
@@ -183,7 +183,7 @@ export default function BlamDonasiModal({
       {/* Bar atas gaya Kitabisa dengan dropdown */}
       <div
         ref={filterBarRef}
-        className={`relative border-b border-line bg-white ${embedded ? '-mx-5' : '-mx-4 sm:-mx-5'}`}
+        className={`relative border-b border-ink/8 bg-white/75 backdrop-blur-md ${embedded ? '-mx-5' : '-mx-4 sm:-mx-5'}`}
       >
               <div className="grid grid-cols-3 divide-x divide-line py-2.5 text-[12px]">
                 <button
@@ -401,7 +401,7 @@ export default function BlamDonasiModal({
   )
 }
 
-function CampaignDetail({
+export function CampaignDetail({
   campaign: c,
   onBack,
   onOpenPoint,
@@ -515,7 +515,7 @@ function CampaignDetail({
         )}
       </div>
 
-      <div className="sticky bottom-0 -mx-4 border-t border-line bg-white px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+14px)] sm:-mx-5 sm:px-5">
+      <div className="sticky bottom-0 -mx-4 border-t border-ink/8 bg-white/85 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+14px)] backdrop-blur-md sm:-mx-5 sm:px-5">
         {c.status === 'active' ? (
           <button type="button" onClick={onDonate} className="btn-primary h-12 w-full text-[14px]">
             <HeartHandshake className="size-4" strokeWidth={1.75} />

@@ -17,6 +17,7 @@ import { useState } from 'react'
 import { StatusPill } from '../../components/ui/atoms'
 import { AtlasCoordinateHero } from '../../components/ui/MapMarkers'
 import { updateEventVisibility } from '../../lib/api'
+import { shortLocation } from '../../lib/constants'
 import type { ConservationEvent } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import FundraisingSection from '../fundraising/FundraisingSection'
@@ -48,16 +49,16 @@ const STATUS_TONE = {
   neutral: 'text-ink-soft',
 } as const
 
-function Tile({ value, unit, label, status, tone = 'neutral' }: PulseTileData) {
+function StripMetric({ value, unit, label, status, tone = 'neutral' }: PulseTileData) {
   return (
-    <div className="card-quiet p-3.5">
-      <div className="flex items-center justify-between gap-2 text-[12px]">
-        <span className="truncate font-normal text-ink-soft">{label}</span>
-        {status && <span className={`shrink-0 font-medium ${STATUS_TONE[tone]}`}>{status}</span>}
+    <div className="atlas-strip-cell min-w-0">
+      <div className="flex items-center justify-between gap-1 text-[11px] font-medium text-ink-soft">
+        <span className="truncate">{label}</span>
+        {status && <span className={`shrink-0 ${STATUS_TONE[tone]}`}>{status}</span>}
       </div>
-      <p className="num mt-1.5 flex items-baseline gap-1 text-[20px] leading-none font-semibold text-ink">
+      <p className="num mt-1 flex items-baseline gap-1 text-[17px] leading-none font-semibold text-ink">
         <span>{value}</span>
-        {unit && <span className="text-[12px] font-normal text-ink-soft">{unit}</span>}
+        {unit && <span className="text-[11px] font-normal text-ink-soft">{unit}</span>}
       </p>
     </div>
   )
@@ -155,8 +156,8 @@ export default function EventDetail({
   const pulseTiles = formatPulseTiles(pulse)
   const score = latestAction?.ai_recovery_score ?? event.report?.ai_confidence ?? null
   const recommendations = event.report?.ai_recommendations ?? []
-  const photoClass = 'relative -mx-5 aspect-[4/3] overflow-hidden bg-muted'
-  const labelClass = 'absolute top-3 rounded-[8px] bg-white/92 px-2.5 py-1 text-[12px] font-medium text-ink'
+  const photoClass = 'relative aspect-[4/3] overflow-hidden rounded-[16px] bg-muted shadow-[0_1px_3px_rgba(15,23,42,0.06)]'
+  const labelClass = 'absolute top-3 rounded-[8px] bg-white/88 px-2.5 py-1 text-[12px] font-medium text-ink shadow-[0_1px_3px_rgba(15,23,42,0.08)] backdrop-blur-sm'
   const quotaText = event.max_participants ? `${participantsCount}/${event.max_participants}` : `${participantsCount}`
   const quotaPct = event.max_participants
     ? Math.min(100, Math.round((participantsCount / Math.max(1, event.max_participants)) * 100))
@@ -172,7 +173,7 @@ export default function EventDetail({
   return (
     <div className="@container flex flex-col gap-4">
       {resolved && latestAction && beforeImage ? (
-        <div className="-mx-5 overflow-hidden">
+        <div className="overflow-hidden rounded-[16px] shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
           <BeforeAfterSlider before={beforeImage} after={latestAction.after_image_url} />
         </div>
       ) : resolved && latestAction ? (
@@ -186,14 +187,14 @@ export default function EventDetail({
           <span className={`${labelClass} left-3`}>Sebelum</span>
         </div>
       ) : (
-        <div className="-mx-5 border-b border-line">
+        <div className="overflow-hidden rounded-[16px] shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
           <AtlasCoordinateHero
             lat={event.lat}
             lng={event.lng}
             kind="event"
             tier="has_action"
             badge={event.category}
-            subtitle={placeText(place)}
+            subtitle={shortLocation(placeText(place))}
           />
         </div>
       )}
@@ -247,22 +248,31 @@ export default function EventDetail({
             className={`h-11 w-full text-[14px] ${joined ? 'btn-joined' : 'btn-primary'} disabled:opacity-80`}
           >
             {joined && <Check className="size-4" strokeWidth={1.75} />}
-            {joined ? 'Tergabung' : membersOnlyLocked ? 'Khusus anggota' : 'Gabung Gerakan'} · {quotaText}
+            {joined ? 'Tergabung' : membersOnlyLocked ? 'Khusus anggota' : 'Gabung Gerakan'}
+            {event.max_participants ? ` · ${quotaText}` : ''}
           </button>
         )}
 
-        <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none]">
+        <div
+          className={
+            canResolve
+              ? 'grid grid-cols-2 gap-2'
+              : 'flex items-center gap-2'
+          }
+        >
           {onStartRoute && (
             <button
               type="button"
               disabled={routeLoading}
               onClick={() => (routeForEvent ? onClearRoute?.() : void onStartRoute())}
               aria-pressed={Boolean(routeForEvent)}
-              className={`h-9 shrink-0 flex-1 gap-1.5 !rounded-[10px] px-3 text-[12px] disabled:opacity-60 ${
+              className={`h-9 gap-1.5 whitespace-nowrap !rounded-[10px] px-3 text-[12px] disabled:opacity-60 ${
+                !canResolve ? 'flex-1' : ''
+              } ${
                 routeForEvent ? 'inline-flex items-center justify-center bg-ink font-medium text-white' : 'btn-soft'
               }`}
             >
-              <Navigation className="size-4" strokeWidth={1.75} />
+              <Navigation className="size-4 shrink-0" strokeWidth={1.75} />
               {routeLoading ? 'Rute…' : 'Rute'}
             </button>
           )}
@@ -270,9 +280,9 @@ export default function EventDetail({
             <button
               type="button"
               onClick={() => setResolveOpen(true)}
-              className="btn-soft h-9 shrink-0 flex-1 gap-1.5 !rounded-[10px] px-3 text-[12px]"
+              className="btn-soft h-9 gap-1.5 whitespace-nowrap !rounded-[10px] px-3 text-[12px]"
             >
-              <Camera className="size-4" strokeWidth={1.75} />
+              <Camera className="size-4 shrink-0" strokeWidth={1.75} />
               Lapor Selesai
             </button>
           )}
@@ -281,9 +291,9 @@ export default function EventDetail({
               type="button"
               onClick={() => setQrOpen(true)}
               aria-label="QR Gerakan"
-              className="btn-soft h-9 shrink-0 gap-1.5 !rounded-[10px] px-3 text-[12px]"
+              className="btn-soft h-9 gap-1.5 whitespace-nowrap !rounded-[10px] px-3 text-[12px]"
             >
-              <QrCode className="size-4" strokeWidth={1.75} />
+              <QrCode className="size-4 shrink-0" strokeWidth={1.75} />
               QR
             </button>
           )}
@@ -291,9 +301,11 @@ export default function EventDetail({
             type="button"
             onClick={() => void copyLink()}
             aria-label="Salin tautan gerakan"
-            className="btn-soft h-9 shrink-0 flex-1 gap-1.5 !rounded-[10px] px-3 text-[12px]"
+            className={`btn-soft h-9 gap-1.5 whitespace-nowrap !rounded-[10px] px-3 text-[12px] ${
+              !canResolve ? 'flex-1' : ''
+            }`}
           >
-            {copied ? <Check className="size-4 text-leaf" strokeWidth={1.75} /> : <Link2 className="size-4" strokeWidth={1.75} />}
+            {copied ? <Check className="size-4 shrink-0 text-leaf" strokeWidth={1.75} /> : <Link2 className="size-4 shrink-0" strokeWidth={1.75} />}
             {copied ? 'Tersalin' : 'Bagikan'}
           </button>
         </div>
@@ -407,13 +419,13 @@ export default function EventDetail({
         </section>
       )}
 
-      <div className={`grid grid-cols-2 gap-3 ${pulseStatus === 'loading' ? 'opacity-60' : ''}`}>
+      <div className={`atlas-group grid grid-cols-2 divide-x divide-y divide-ink/6 overflow-hidden ${pulseStatus === 'loading' ? 'opacity-60' : ''}`}>
         {pulseTiles.map((tile) => (
-          <Tile key={tile.label} {...tile} />
+          <StripMetric key={tile.label} {...tile} />
         ))}
       </div>
 
-      <div className="divide-y divide-line border-t border-line">
+      <div className="atlas-group divide-y divide-ink/6 px-4">
         <p className="py-3.5 text-[14px] leading-relaxed font-normal text-ink">
           {event.description || event.report?.ai_site_brief || event.category}
         </p>

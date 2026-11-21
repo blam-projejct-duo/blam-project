@@ -1,17 +1,17 @@
-@import '@fontsource-variable/dm-sans';
+@import '@fontsource-variable/plus-jakarta-sans';
 @import '@fontsource-variable/bricolage-grotesque';
 @import 'tailwindcss';
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
 @theme {
-  --font-sans: 'DM Sans Variable', system-ui, sans-serif;
-  --font-display: 'Bricolage Grotesque Variable', 'DM Sans Variable', system-ui, sans-serif;
+  --font-sans: 'Plus Jakarta Sans Variable', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Plus Jakarta Sans Variable', system-ui, sans-serif;
 
-  --color-canvas: #f5f7fa;
+  --color-canvas: #eef2f7;
   --color-surface: #ffffff;
-  --color-muted: #eceff4;
-  --color-line: #e3e9f0;
-  --color-dash: #d7e0eb;
+  --color-muted: #e5ebf3;
+  --color-line: #dfe6ef;
+  --color-dash: #cfd9e6;
   --color-ink: #111827;
   --color-ink-soft: #4b5565;
 
@@ -65,11 +65,16 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-h1,
-h2 {
+h1 {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
   line-height: 1.2;
+}
+
+h2 {
+  font-family: var(--font-sans);
+  letter-spacing: -0.015em;
+  line-height: 1.25;
 }
 
 h3 {
@@ -86,6 +91,11 @@ button {
 :focus-visible {
   outline: 2px solid var(--color-leaf);
   outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(37, 99, 235, 0.16);
+  color: var(--color-ink);
 }
 
 .num {
@@ -297,7 +307,7 @@ button {
 }
 
 .blam-logo-peek {
-  animation: blam-logo-peek 4.6s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+  animation: blam-logo-peek 4.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
 
 .blam-logo-ear {
@@ -425,7 +435,8 @@ button {
     border-radius: 10px;
     background: #ffffff;
     color: var(--color-ink);
-    border: 1px solid var(--color-line);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     font-family: var(--font-sans);
     font-weight: 500;
     letter-spacing: 0;
@@ -437,15 +448,51 @@ button {
   }
 
   .card-quiet {
-    border-radius: 12px;
-    border: 1px solid var(--color-line);
+    border-radius: 16px;
     background: #ffffff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  }
+
+  .atlas-sheet {
+    background: rgba(242, 246, 250, 0.84);
+    -webkit-backdrop-filter: blur(26px) saturate(1.45);
+    backdrop-filter: blur(26px) saturate(1.45);
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    box-shadow:
+      0 18px 42px -10px rgba(15, 29, 50, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  }
+
+  [data-map-style='satelit'] .atlas-sheet,
+  [data-map-style='gelap'] .atlas-sheet {
+    background: rgba(244, 247, 252, 0.9);
+    border-color: rgba(255, 255, 255, 0.68);
+    box-shadow:
+      0 22px 50px -10px rgba(8, 15, 48, 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  }
+
+  .atlas-group {
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  }
+
+  .atlas-strip {
+    display: grid;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    padding: 10px 0;
+  }
+
+  .atlas-strip-cell {
+    padding: 2px 10px;
   }
 
   .list-group {
-    border-radius: 12px;
-    border: 1px solid var(--color-line);
+    border-radius: 16px;
     background: #ffffff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
     overflow: hidden;
   }
 
@@ -482,8 +529,7 @@ button {
     display: flex;
     gap: 4px;
     border-radius: 12px;
-    border: 1px solid var(--color-line);
-    background: var(--color-canvas);
+    background: rgba(15, 23, 42, 0.055);
     padding: 4px;
   }
 
@@ -491,12 +537,12 @@ button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
+    border-radius: 9px;
     padding: 0.375rem 0.75rem;
     font-size: 12px;
-    font-weight: 400;
+    font-weight: 500;
     color: var(--color-ink-soft);
-    transition: background-color 120ms ease, color 120ms ease;
+    transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
   }
 
   .panel-tab:hover {
@@ -506,8 +552,8 @@ button {
   .panel-tab.is-active {
     background: #ffffff;
     color: var(--color-ink);
-    font-weight: 500;
-    box-shadow: 0 1px 2px rgba(15, 29, 50, 0.06);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(15, 29, 50, 0.09);
   }
 
   .dashed-row {

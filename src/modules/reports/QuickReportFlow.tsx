@@ -281,7 +281,7 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
   }
 
   return (
-    <div className="relative flex h-full flex-col bg-white">
+    <div className="atlas-sheet relative flex h-full flex-col">
       <header className="flex h-16 shrink-0 items-center justify-between px-4 pt-[env(safe-area-inset-top)]">
         <button
           type="button"

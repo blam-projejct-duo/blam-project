@@ -51,9 +51,9 @@ export default function ProfilePanel({ headerAction }: { headerAction?: ReactNod
           </h2>
           {headerAction}
         </div>
-        <div className="card-quiet flex flex-col gap-4 p-5">
-          <div className="flex items-center gap-3 border-b border-line pb-4">
-            <span className="grid size-12 shrink-0 place-items-center rounded-[12px] border border-line bg-canvas">
+        <div className="atlas-group flex flex-col gap-4 p-5">
+          <div className="flex items-center gap-3 border-b border-ink/6 pb-4">
+            <span className="grid size-12 shrink-0 place-items-center rounded-[12px] bg-canvas">
               <BlamNatureIcon className="size-9" />
             </span>
             <div className="min-w-0">
@@ -120,9 +120,9 @@ export default function ProfilePanel({ headerAction }: { headerAction?: ReactNod
               {profile.email && <p className="truncate text-[12px] font-normal text-ink-soft">{profile.email}</p>}
             </div>
           </div>
-          <div className="shrink-0 rounded-[12px] border border-line bg-canvas px-3 py-1.5 text-center">
+          <div className="shrink-0 rounded-[12px] bg-canvas px-3 py-1.5 text-center">
             <p className="num text-[20px] leading-none font-semibold text-ink">{profile.points}</p>
-            <p className="mt-0.5 text-[12px] font-normal text-ink-soft">Poin</p>
+            <p className="mt-0.5 text-[11px] font-medium text-ink-soft uppercase tracking-[0.04em]">Poin</p>
           </div>
         </div>
 

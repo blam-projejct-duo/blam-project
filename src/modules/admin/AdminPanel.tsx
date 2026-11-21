@@ -112,14 +112,16 @@ export default function AdminPanel({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="card-quiet p-3.5">
-          <p className="text-[12px] font-medium text-ink-soft">Antrean Verifikasi</p>
-          <p className="num mt-1 text-[20px] font-semibold text-ink">{orgs.length + reports.length}</p>
-        </div>
-        <div className="card-quiet p-3.5">
-          <p className="text-[12px] font-medium text-ink-soft">Gerakan Aktif</p>
-          <p className="num mt-1 text-[20px] font-semibold text-leaf">{activeCount}</p>
+      <div className="atlas-group p-1">
+        <div className="atlas-strip grid-cols-2 divide-x divide-ink/8 border-y-0">
+          <div className="atlas-strip-cell">
+            <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Antrean</p>
+            <p className="num mt-1 text-[20px] font-semibold text-ink">{orgs.length + reports.length}</p>
+          </div>
+          <div className="atlas-strip-cell">
+            <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Gerakan Aktif</p>
+            <p className="num mt-1 text-[20px] font-semibold text-leaf">{activeCount}</p>
+          </div>
         </div>
       </div>
 

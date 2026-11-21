@@ -1,3 +1,13 @@
+import {
+  Buildings,
+  ClockCounterClockwise,
+  Compass,
+  HandHeart,
+  Plant,
+  ShieldCheck,
+  Siren,
+  UserCircle,
+} from '@phosphor-icons/react'
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
 import {
   ChevronLeft,
@@ -17,17 +27,10 @@ import type { BlamPointPromptSuggestion } from '../../modules/chat/BlamChatModal
 import BlamCompanion from '../../modules/chat/BlamCompanion'
 import { MarkerTierLegend, Orb } from '../ui/atoms'
 import {
-  AdminDuotoneIcon,
-  AksiActionIcon,
   BellSolidIcon,
   BlamNatureIcon,
-  EscalateDuotoneIcon,
   FilterDuotoneIcon,
-  GuestAvatarIcon,
-  HistoryDuotoneIcon,
   LocateDuotoneIcon,
-  OrgDuotoneIcon,
-  RadarCompassIcon,
   SearchDuotoneIcon,
 } from '../ui/bumpIcons'
 import AdminPanel from '../../modules/admin/AdminPanel'
@@ -37,6 +40,7 @@ import CreateEventForm from '../../modules/events/CreateEventForm'
 import EventDetail from '../../modules/events/EventDetail'
 import SatelliteSignalDetail from '../../modules/events/SatelliteSignalDetail'
 import HistoryPanel from '../../modules/history/HistoryPanel'
+import CarePanel from '../../modules/fundraising/CarePanel'
 import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
 import MapView from '../../modules/map/MapView'
 import { filterRadarItems, LAYER_CHIPS } from '../../modules/map/radarFilters'
@@ -50,15 +54,16 @@ import type { CitizenReport, ConservationEvent, SatelliteSignal, SignalVerificat
 import EventListPanel from './EventListPanel'
 import type { ListTab } from './EventListPanel'
 
-type NavTab = 'Jelajah' | 'Gerakan' | 'History' | 'Org' | 'Eskalasi' | 'Admin'
+type NavTab = 'Jelajah' | 'Gerakan' | 'Care' | 'History' | 'Org' | 'Eskalasi' | 'Admin'
 type Tab = NavTab | 'Profil'
 
 const RAIL_GAP = 16
 const RAIL_W = 72
 const FLOAT_GAP = 12
 const DRAWER_W = 392
-const JELAJAH_TABS: readonly ListTab[] = ['Satelit', 'Utama']
-const AKSI_TABS: readonly ListTab[] = ['Berjalan', 'Verifikasi', 'Selesai']
+const JELAJAH_TABS: readonly ListTab[] = ['Ringkasan', 'Satelit']
+const AKSI_TABS_VERIFIER: readonly ListTab[] = ['Terdekat', 'Semua', 'Verifikasi']
+const AKSI_TABS_PUBLIC: readonly ListTab[] = ['Terdekat', 'Semua']
 const QuickReportFlow = lazy(() => import('../../modules/reports/QuickReportFlow'))
 const COMPANION_SEEN_KEY = 'blam:companion:seen'
 const COMPANION_BOTTOM = 112
@@ -153,7 +158,7 @@ function RailItem({
         <motion.span
           layoutId="desktop-nav-pill"
           transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-          className="absolute inset-x-1 inset-y-0.5 rounded-[12px] border border-leaf/15 bg-mint"
+          className="absolute inset-x-1 inset-y-0.5 rounded-[12px] bg-white shadow-[0_2px_8px_rgba(15,23,42,0.07)]"
         />
       )}
       <span
@@ -296,6 +301,18 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const openCount = radar.events.filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled').length
   const isRadarMode = drawerOpen && tab === 'Jelajah' && view === 'list' && !radar.selectedId && !radar.selectedSignal
 
+  const expandBtn = (
+    <button
+      type="button"
+      onClick={() => setDrawerExpanded((v) => !v)}
+      aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
+      title={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
+      className="btn-soft size-8 shrink-0 !rounded-[10px] p-0 text-ink-soft hover:text-ink"
+    >
+      {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.9} /> : <Maximize2 className="size-4" strokeWidth={1.9} />}
+    </button>
+  )
+
   useEffect(() => {
     if (!filterOpen && !notifOpen) return
     const onPointerDown = (e: PointerEvent) => {
@@ -320,7 +337,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   }, [filterOpen, notifOpen])
 
   const navTabs = useMemo<NavTab[]>(() => {
-    const base: NavTab[] = ['Jelajah', 'Gerakan', 'History', 'Org']
+    const base: NavTab[] = ['Jelajah', 'Gerakan', 'Care', 'History', 'Org']
     if (profile?.role === 'agency') base.push('Eskalasi')
     if (profile?.role === 'admin') base.push('Admin')
     return base
@@ -547,20 +564,23 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     setDrawerOpen(true)
   }
 
-  const renderRailIcon = (label: NavTab) => {
+  const renderRailIcon = (label: NavTab, active: boolean) => {
+    const weight = active ? 'duotone' : 'regular'
     switch (label) {
       case 'Jelajah':
-        return <RadarCompassIcon className="relative z-10 size-6" />
+        return <Compass size={22} weight={weight} />
       case 'Gerakan':
-        return <AksiActionIcon className="relative z-10 size-6" />
+        return <Plant size={22} weight={weight} />
+      case 'Care':
+        return <HandHeart size={22} weight={weight} />
       case 'History':
-        return <HistoryDuotoneIcon className="relative z-10 size-6" />
+        return <ClockCounterClockwise size={22} weight={weight} />
       case 'Org':
-        return <OrgDuotoneIcon className="relative z-10 size-6" />
+        return <Buildings size={22} weight={weight} />
       case 'Eskalasi':
-        return <EscalateDuotoneIcon className="relative z-10 size-6" />
+        return <Siren size={22} weight={weight} />
       case 'Admin':
-        return <AdminDuotoneIcon className="relative z-10 size-6" />
+        return <ShieldCheck size={22} weight={weight} />
     }
   }
 
@@ -609,15 +629,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               </button>
               <span className="text-[14px] font-medium text-ink-soft">{mode}</span>
             </div>
-            <button
-              type="button"
-              onClick={() => setDrawerExpanded((v) => !v)}
-              aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
-              className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
-            >
-              {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
-              {drawerExpanded ? 'Perkecil' : 'Perluas'}
-            </button>
+            {expandBtn}
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
             <SatelliteSignalDetail
@@ -657,15 +669,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               </button>
               <span className="text-[14px] font-medium text-ink-soft">{mode}</span>
             </div>
-            <button
-              type="button"
-              onClick={() => setDrawerExpanded((v) => !v)}
-              aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
-              className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
-            >
-              {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
-              {drawerExpanded ? 'Perkecil' : 'Perluas'}
-            </button>
+            {expandBtn}
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
             <EventDetail
@@ -705,15 +709,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             <span className="num text-[12px] font-normal text-ink-soft">{countText}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setDrawerExpanded((v) => !v)}
-              aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
-              className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
-            >
-              {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
-              <span className="hidden sm:inline">{drawerExpanded ? 'Perkecil' : 'Perluas'}</span>
-            </button>
             {canOrganize && (
               <button
                 type="button"
@@ -723,6 +718,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                 <Plus className="size-4" strokeWidth={1.75} /> Event
               </button>
             )}
+            {expandBtn}
           </div>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
@@ -735,8 +731,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             onQueryChange={setQuery}
             showSearch={false}
             showTitle={false}
-            tabs={isJelajah ? JELAJAH_TABS : AKSI_TABS}
-            initialTab={isJelajah ? 'Satelit' : 'Berjalan'}
+            tabs={isJelajah ? JELAJAH_TABS : canOrganize ? AKSI_TABS_VERIFIER : AKSI_TABS_PUBLIC}
+            initialTab={isJelajah ? 'Satelit' : 'Terdekat'}
             title={mode}
             onOpen={openDetail}
             onOpenSignal={isJelajah ? openSignalDetail : undefined}
@@ -824,7 +820,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               borderRadius: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
             }}
             aria-label="Utama"
-            className={`pointer-events-auto flex w-full flex-col items-center border border-white/80 bg-white/95 px-1 shadow-[0_14px_38px_-6px_rgba(19,36,26,0.22),0_4px_12px_rgba(19,36,26,0.08)] backdrop-blur-md ${drawerOpen ? 'flex-1 py-4' : 'max-h-full py-3'
+            className={`atlas-sheet pointer-events-auto flex w-full flex-col items-center px-1 ${drawerOpen ? 'flex-1 py-4' : 'max-h-full py-3'
               }`}
           >
             <motion.button
@@ -857,17 +853,20 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               className={`flex w-full flex-col gap-0.5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${drawerOpen ? 'flex-1' : ''
                 }`}
             >
-              {navTabs.map((label) => (
-                <RailItem
-                  key={label}
-                  label={label}
-                  active={tab === label && drawerOpen}
-                  badge={label === 'Gerakan' ? openCount : undefined}
-                  onClick={() => openTab(label)}
-                >
-                  {renderRailIcon(label)}
-                </RailItem>
-              ))}
+              {navTabs.map((label) => {
+                const isActive = tab === label && drawerOpen
+                return (
+                  <RailItem
+                    key={label}
+                    label={label}
+                    active={isActive}
+                    badge={label === 'Gerakan' ? openCount : undefined}
+                    onClick={() => openTab(label)}
+                  >
+                    {renderRailIcon(label, isActive)}
+                  </RailItem>
+                )
+              })}
             </motion.div>
 
             <motion.div layout="position" className="mt-1 w-full border-t border-line pt-1.5">
@@ -886,7 +885,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                 ) : initials ? (
                   <span className="text-[14px] font-semibold text-forest">{initials}</span>
                 ) : (
-                  <GuestAvatarIcon />
+                  <UserCircle size={22} weight={tab === 'Profil' && drawerOpen ? 'duotone' : 'regular'} />
                 )}
               </RailItem>
             </motion.div>
@@ -910,10 +909,11 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             left: RAIL_GAP - 6,
             width: RAIL_W + FLOAT_GAP + drawerWidth + 12,
           }}
-          className={`pointer-events-none absolute top-[10px] bottom-[10px] z-[590] rounded-[26px] backdrop-blur-xl transition-[width] duration-200 ${isDarkMap
-            ? 'border border-white/40 bg-white/24 shadow-[0_22px_50px_-10px_rgba(8,15,48,0.45),inset_0_1px_1px_rgba(255,255,255,0.48)]'
-            : 'border border-white/80 bg-[#f5f7fa]/82 shadow-[0_22px_50px_-10px_rgba(15,29,50,0.16),inset_0_1px_1px_rgba(255,255,255,0.9)]'
-            }`}
+          className={`pointer-events-none absolute top-[10px] bottom-[10px] z-[590] rounded-[26px] backdrop-blur-xl transition-[width] duration-200 ${
+            isDarkMap
+              ? 'border border-white/40 bg-white/24 shadow-[0_22px_50px_-10px_rgba(8,15,48,0.45),inset_0_1px_1px_rgba(255,255,255,0.48)]'
+              : 'border border-white/80 bg-[#f2f6fa]/78 shadow-[0_22px_50px_-10px_rgba(15,29,50,0.16),inset_0_1px_1px_rgba(255,255,255,0.9)]'
+          }`}
         />
 
         <motion.aside
@@ -932,8 +932,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               : { duration: 0.22, ease: [0.4, 0, 0.2, 1] }
           }
           style={{ left: RAIL_GAP + RAIL_W + FLOAT_GAP, width: drawerWidth, transformOrigin: 'left center' }}
-          className={`absolute top-[70px] bottom-4 z-[600] flex flex-col overflow-hidden rounded-[16px] border border-line shadow-[0_14px_38px_-8px_rgba(15,29,50,0.16)] transition-[width,background-color] duration-200 ${!createOpen && (tab === 'Jelajah' || tab === 'Gerakan') ? 'bg-white' : 'bg-canvas'
-            } ${drawerOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          className={`atlas-sheet absolute top-[70px] bottom-4 z-[600] flex flex-col overflow-hidden rounded-[22px] transition-[width] duration-200 ${drawerOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
         >
           <div className="flex min-h-0 flex-1 flex-col">
             <motion.div
@@ -966,22 +965,26 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                 <>
                   {(tab === 'Jelajah' || tab === 'Gerakan') && radarOrAksiBody(tab)}
 
+                  {tab === 'Care' && (
+                    <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                      <CarePanel
+                        signals={radar.satelliteSignals}
+                        query={query}
+                        headerAction={expandBtn}
+                        onOpenSignal={openSignalDetail}
+                        onFocusLocation={(lat, lng) => radar.focusLocation(lat, lng)}
+                      />
+                    </div>
+                  )}
+
                   {tab === 'History' && (
                     <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-5">
                       <HistoryPanel
                         events={radar.allEvents}
                         signals={radar.satelliteSignals}
-                        headerAction={
-                          <button
-                            type="button"
-                            onClick={() => setDrawerExpanded((v) => !v)}
-                            aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
-                            className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
-                          >
-                            {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
-                            {drawerExpanded ? 'Perkecil' : 'Perluas'}
-                          </button>
-                        }
+                        query={query}
+                        showSearch={false}
+                        headerAction={expandBtn}
                         onSelectEvent={openDetail}
                         onOpenSignal={openSignalDetail}
                         onFocusLocation={(lat, lng) => radar.focusLocation(lat, lng)}
@@ -991,19 +994,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
 
                   {tab === 'Org' && (
                     <div className="min-h-0 flex-1 overflow-y-auto p-5">
-                      <OrgsPanel
-                        headerAction={
-                          <button
-                            type="button"
-                            onClick={() => setDrawerExpanded((v) => !v)}
-                            aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
-                            className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
-                          >
-                            {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
-                            {drawerExpanded ? 'Perkecil' : 'Perluas'}
-                          </button>
-                        }
-                      />
+                      <OrgsPanel headerAction={expandBtn} query={query} />
                     </div>
                   )}
 
@@ -1011,17 +1002,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                     <div className="min-h-0 flex-1 overflow-y-auto p-5">
                       <AgencyInboxPanel
                         events={radar.allEvents}
-                        headerAction={
-                          <button
-                            type="button"
-                            onClick={() => setDrawerExpanded((v) => !v)}
-                            aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
-                            className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
-                          >
-                            {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
-                            {drawerExpanded ? 'Perkecil' : 'Perluas'}
-                          </button>
-                        }
+                        headerAction={expandBtn}
                         onSelectEvent={openDetail}
                         onCreateEventFromReport={(report) => startCreateEvent(report)}
                         onRefresh={radar.refresh}
@@ -1033,17 +1014,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                     <div className="min-h-0 flex-1 overflow-y-auto p-5">
                       <AdminPanel
                         events={radar.allEvents}
-                        headerAction={
-                          <button
-                            type="button"
-                            onClick={() => setDrawerExpanded((v) => !v)}
-                            aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
-                            className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
-                          >
-                            {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
-                            {drawerExpanded ? 'Perkecil' : 'Perluas'}
-                          </button>
-                        }
+                        headerAction={expandBtn}
                         onRefreshEvents={radar.refresh}
                       />
                     </div>
@@ -1051,19 +1022,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
 
                   {tab === 'Profil' && (
                     <div className="min-h-0 flex-1 overflow-y-auto p-5">
-                      <ProfilePanel
-                        headerAction={
-                          <button
-                            type="button"
-                            onClick={() => setDrawerExpanded((v) => !v)}
-                            aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
-                            className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
-                          >
-                            {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
-                            {drawerExpanded ? 'Perkecil' : 'Perluas'}
-                          </button>
-                        }
-                      />
+                      <ProfilePanel headerAction={expandBtn} />
                     </div>
                   )}
                 </>
@@ -1130,7 +1089,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               className="size-full rounded-full object-cover"
             />
           ) : (
-            initials ?? <GuestAvatarIcon />
+            initials ?? <UserCircle size={20} weight="regular" />
           )}
         </Orb>
         <Orb
@@ -1175,7 +1134,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               exit={{ opacity: 0, x: 8, y: -4, scale: 0.97 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               style={{ transformOrigin: 'top right' }}
-              className="absolute top-0 right-14 flex w-[340px] flex-col rounded-[16px] border border-line bg-white p-5 shadow-[0_16px_38px_-8px_rgba(15,29,50,0.18)]"
+              className="atlas-sheet absolute top-0 right-14 flex w-[340px] flex-col rounded-[20px] p-5"
             >
               <NotificationsPanel
                 compact
@@ -1195,7 +1154,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               exit={{ opacity: 0, x: 8, y: -4, scale: 0.97 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               style={{ transformOrigin: 'top right' }}
-              className="absolute top-0 right-14 flex w-[356px] flex-col gap-3 rounded-[16px] border border-line bg-white p-5 shadow-[0_16px_38px_-8px_rgba(15,29,50,0.18)]"
+              className="atlas-sheet absolute top-0 right-14 flex w-[376px] flex-col gap-3 rounded-[20px] p-5"
             >
               <div>
                 <p className="mb-2 text-[12px] font-medium text-ink-soft">
@@ -1329,7 +1288,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                 animate={{ y: 0, scale: 1, opacity: 1 }}
                 exit={{ y: 24, scale: 0.97, opacity: 0 }}
                 transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                className="relative h-[min(780px,calc(100dvh-48px))] w-[440px] overflow-hidden rounded-[16px] border border-line bg-canvas shadow-[0_24px_48px_-12px_rgba(15,29,50,0.22)]"
+                className="atlas-sheet relative h-[min(780px,calc(100dvh-48px))] w-[440px] overflow-hidden rounded-[22px]"
               >
                 <Suspense fallback={<div className="grid h-full place-items-center text-[12px] font-medium text-ink-soft">Memuat…</div>}>
                   <QuickReportFlow
