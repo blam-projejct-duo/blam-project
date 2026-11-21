@@ -1,13 +1,13 @@
 import {
-  Buildings,
-  ClockCounterClockwise,
-  Compass,
-  HandHeart,
-  Plant,
-  ShieldCheck,
-  Siren,
-  UserCircle,
-} from '@phosphor-icons/react'
+  FcClock,
+  FcDepartment,
+  FcDonate,
+  FcGlobe,
+  FcHighPriority,
+  FcLandscape,
+  FcPortraitMode,
+  FcSettings,
+} from 'react-icons/fc'
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
 import {
   ChevronLeft,
@@ -564,23 +564,22 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     setDrawerOpen(true)
   }
 
-  const renderRailIcon = (label: NavTab, active: boolean) => {
-    const weight = active ? 'duotone' : 'regular'
+  const renderRailIcon = (label: NavTab) => {
     switch (label) {
       case 'Jelajah':
-        return <Compass size={22} weight={weight} />
+        return <FcGlobe size={24} />
       case 'Gerakan':
-        return <Plant size={22} weight={weight} />
+        return <FcLandscape size={24} />
       case 'Care':
-        return <HandHeart size={22} weight={weight} />
+        return <FcDonate size={24} />
       case 'History':
-        return <ClockCounterClockwise size={22} weight={weight} />
+        return <FcClock size={24} />
       case 'Org':
-        return <Buildings size={22} weight={weight} />
+        return <FcDepartment size={24} />
       case 'Eskalasi':
-        return <Siren size={22} weight={weight} />
+        return <FcHighPriority size={24} />
       case 'Admin':
-        return <ShieldCheck size={22} weight={weight} />
+        return <FcSettings size={24} />
     }
   }
 
@@ -863,7 +862,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                     badge={label === 'Gerakan' ? openCount : undefined}
                     onClick={() => openTab(label)}
                   >
-                    {renderRailIcon(label, isActive)}
+                    {renderRailIcon(label)}
                   </RailItem>
                 )
               })}
@@ -885,7 +884,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                 ) : initials ? (
                   <span className="text-[14px] font-semibold text-forest">{initials}</span>
                 ) : (
-                  <UserCircle size={22} weight={tab === 'Profil' && drawerOpen ? 'duotone' : 'regular'} />
+                  <FcPortraitMode size={24} />
                 )}
               </RailItem>
             </motion.div>
@@ -1089,7 +1088,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               className="size-full rounded-full object-cover"
             />
           ) : (
-            initials ?? <UserCircle size={20} weight="regular" />
+            initials ?? <FcPortraitMode size={22} />
           )}
         </Orb>
         <Orb
