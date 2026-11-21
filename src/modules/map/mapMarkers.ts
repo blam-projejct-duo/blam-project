@@ -3,7 +3,7 @@ import type { ConservationEvent, HazardKind, Profile } from '../../types'
 
 const VERIFIED_HAZARD_COLORS: Record<HazardKind, string> = {
   wildfire: '#EA580C',
-  suspected: '#EA580C',
+  suspected: '#EAB308',
   volcano: '#6D28D9',
   flood: '#2563EB',
   storm: '#0E7490',
