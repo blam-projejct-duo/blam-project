@@ -1,7 +1,8 @@
 import { Camera, ChevronRight, FileText, LogOut, ShieldCheck } from 'lucide-react'
 import { useRef, useState } from 'react'
-import type { ChangeEvent, MouseEvent } from 'react'
+import type { ChangeEvent, MouseEvent, ReactNode } from 'react'
 import { DashedRow, Pill } from '../../components/ui/atoms'
+import { BlamNatureIcon } from '../../components/ui/bumpIcons'
 import { updateMyProfile } from '../../lib/api'
 import { ROLE_LABEL } from '../../lib/constants'
 import { compressImage } from '../../lib/imageCompress'
@@ -9,7 +10,7 @@ import { navigateApp } from '../../lib/route'
 import { useAuth } from '../auth/AuthContext'
 import { AuthPanel } from '../auth/AuthModal'
 
-export default function ProfilePanel() {
+export default function ProfilePanel({ headerAction }: { headerAction?: ReactNode } = {}) {
   const { isDemo, profile, memberships, openAuthModal, logout, refreshMe } = useAuth()
   const fileRef = useRef<HTMLInputElement | null>(null)
   const [avatarBusy, setAvatarBusy] = useState(false)
@@ -44,10 +45,24 @@ export default function ProfilePanel() {
   if (!profile) {
     return (
       <div className="flex flex-col gap-4">
-        <h2 className="text-[20px] font-semibold text-ink">
-          {isDemo ? 'Peran Demo' : 'Masuk'}
-        </h2>
-        <div className="card-quiet p-5">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-[20px] font-semibold text-ink">
+            {isDemo ? 'Peran Demo' : 'Masuk'}
+          </h2>
+          {headerAction}
+        </div>
+        <div className="card-quiet flex flex-col gap-4 p-5">
+          <div className="flex items-center gap-3 border-b border-line pb-4">
+            <span className="grid size-12 shrink-0 place-items-center rounded-[12px] border border-line bg-canvas">
+              <BlamNatureIcon className="size-9" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-display text-[16px] leading-tight font-semibold text-ink">Blam</p>
+              <p className="mt-0.5 text-[12px] leading-snug text-ink-soft">
+                Pantau titik kritis, ikut aksi, dan dukung konservasi
+              </p>
+            </div>
+          </div>
           <AuthPanel />
         </div>
       </div>
@@ -58,6 +73,12 @@ export default function ProfilePanel() {
 
   return (
     <div className="flex flex-col gap-4">
+      {headerAction && (
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-[20px] font-semibold text-ink">Profil</h2>
+          {headerAction}
+        </div>
+      )}
       <section className="card-quiet p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">

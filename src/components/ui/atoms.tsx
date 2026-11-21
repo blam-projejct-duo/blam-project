@@ -80,7 +80,6 @@ export function Orb({
   children: ReactNode
 }) {
   const arcId = useId()
-  const markSize = watermark && watermark.length <= 4 ? 29 : 25
 
   return (
     <button
@@ -94,13 +93,13 @@ export function Orb({
         <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-full">
           <svg viewBox="0 0 100 100" className="size-full select-none">
             <defs>
-              <path id={arcId} d="M 5,62 A 45,35 0 0,0 95,62" />
+              <path id={arcId} d="M 10,75 A 42,42 0 0,0 90,75" />
             </defs>
             <text
               className={tone === 'primary' ? 'orb-mark-primary' : 'orb-mark'}
-              fontSize={markSize}
-              fontWeight="800"
-              letterSpacing="-0.04em"
+              fontSize="11.5"
+              fontWeight="700"
+              letterSpacing="0.14em"
             >
               <textPath href={`#${arcId}`} startOffset="50%" textAnchor="middle">
                 {watermark}
@@ -188,14 +187,14 @@ export function ModalShell({
   )
 }
 
-const TIER_ITEMS: ReadonlyArray<{ id: SignalVerificationState; label: string }> = [
-  { id: 'unverified', label: 'Belum Verifikasi' },
-  { id: 'verified', label: 'Terverifikasi' },
-  { id: 'has_action', label: 'Ada Gerakan' },
+const TIER_ITEMS: ReadonlyArray<{ id: SignalVerificationState; label: string; shortLabel: string }> = [
+  { id: 'unverified', label: 'Belum Verifikasi', shortLabel: 'Belum Cek' },
+  { id: 'verified', label: 'Terverifikasi', shortLabel: 'Terverifikasi' },
+  { id: 'has_action', label: 'Ada Gerakan', shortLabel: 'Ada Aksi' },
 ]
 
 export function MarkerTierLegend({
-  compact: _compact = false,
+  compact = false,
   activeTiers,
   onToggleTier,
 }: {
@@ -204,24 +203,33 @@ export function MarkerTierLegend({
   onToggleTier?: (tier: SignalVerificationState) => void
 }) {
   const renderGlyph = (id: SignalVerificationState) => {
+    const dotSize = compact ? 'size-2' : 'size-2.5'
     if (id === 'unverified') {
-      return <span className="size-2.5 shrink-0 rounded-full border border-dashed border-progress bg-progress/15" />
+      return <span className={`${dotSize} shrink-0 rounded-full border border-dashed border-progress bg-progress/15`} />
     }
     if (id === 'verified') {
-      return <span className="size-2.5 shrink-0 rounded-full bg-leaf" />
+      return <span className={`${dotSize} shrink-0 rounded-full bg-leaf`} />
     }
-    return <span className="size-2.5 shrink-0 rounded-full bg-resolved" />
+    return <span className={`${dotSize} shrink-0 rounded-full bg-resolved`} />
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-[12px] font-normal text-ink-soft">
+    <div
+      className={`flex items-center text-[12px] font-normal text-ink-soft ${compact ? 'flex-nowrap gap-1 overflow-x-auto [scrollbar-width:none]' : 'flex-wrap gap-1.5'
+        }`}
+    >
       {TIER_ITEMS.map((item) => {
         const active = Boolean(activeTiers?.has(item.id))
+        const label = compact ? item.shortLabel : item.label
         if (!onToggleTier) {
           return (
-            <span key={item.id} className="inline-flex items-center gap-1.5 px-1.5 py-0.5">
+            <span
+              key={item.id}
+              className={`inline-flex shrink-0 items-center whitespace-nowrap ${compact ? 'gap-1 px-1 py-0.5' : 'gap-1.5 px-1.5 py-0.5'
+                }`}
+            >
               {renderGlyph(item.id)}
-              {item.label}
+              {label}
             </span>
           )
         }
@@ -231,14 +239,14 @@ export function MarkerTierLegend({
             type="button"
             aria-pressed={active}
             onClick={() => onToggleTier(item.id)}
-            className={`inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 transition-colors ${
-              active
-                ? 'bg-mint font-medium text-forest ring-1 ring-leaf/30'
-                : 'hover:bg-canvas hover:text-ink'
-            }`}
+            className={`inline-flex shrink-0 items-center rounded-[8px] border whitespace-nowrap transition-colors ${compact ? 'gap-1 px-1.5 py-1 tracking-[-0.01em]' : 'gap-1.5 px-2.5 py-1'
+              } ${active
+                ? 'border-leaf/35 bg-mint font-medium text-forest'
+                : 'border-line bg-white hover:bg-canvas hover:text-ink'
+              }`}
           >
             {renderGlyph(item.id)}
-            {item.label}
+            {label}
           </button>
         )
       })}

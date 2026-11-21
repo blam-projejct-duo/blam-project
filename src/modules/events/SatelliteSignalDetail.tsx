@@ -12,22 +12,31 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { useState } from 'react'
+import { AtlasCoordinateHero, MapMarkerGlyph } from '../../components/ui/MapMarkers'
 import { moderateHotspotAdmin, verifyRadarSignal } from '../../lib/api'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import FundraisingSection from '../fundraising/FundraisingSection'
 import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from '../map/radarFilters'
 import { formatFloodPulseTiles, formatPulseTiles, usePulse } from '../map/usePulse'
+import type { PulseTileData } from '../map/usePulse'
 import { placeText, usePlaceName } from '../map/usePlaceName'
 
 const KIND_TEXT_CLASS: Record<HazardKind, string> = {
   wildfire: 'text-critical',
-  volcano: 'text-progress',
+  volcano: 'text-volcano',
   flood: 'text-leaf',
-  storm: 'text-ink-soft',
+  storm: 'text-storm',
   suspected: 'text-progress',
   other: 'text-progress',
 }
+
+const STATUS_TONE = {
+  good: 'text-resolved',
+  warn: 'text-progress',
+  bad: 'text-critical',
+  neutral: 'text-ink-soft',
+} as const
 
 interface Props {
   signal: SatelliteSignal
@@ -37,22 +46,17 @@ interface Props {
   onModerated: () => Promise<void>
 }
 
-function Tile({
-  value,
-  unit,
-  label,
-}: {
-  value: string
-  unit?: string
-  label: string
-}) {
+function Tile({ value, unit, label, status, tone = 'neutral' }: PulseTileData) {
   return (
     <div className="card-quiet p-3.5">
-      <p className="num flex flex-wrap items-baseline gap-x-1 text-[16px] leading-snug text-ink">
+      <div className="flex items-center justify-between gap-2 text-[12px]">
+        <span className="truncate font-normal text-ink-soft">{label}</span>
+        {status && <span className={`shrink-0 font-medium ${STATUS_TONE[tone]}`}>{status}</span>}
+      </div>
+      <p className="num mt-1.5 flex items-baseline gap-1 text-[20px] leading-none font-semibold text-ink">
         <span>{value}</span>
-        {unit && <span className="text-xs font-normal text-ink-soft">{unit}</span>}
+        {unit && <span className="text-[12px] font-normal text-ink-soft">{unit}</span>}
       </p>
-      <p className="mt-1 text-xs font-normal text-ink-soft">{label}</p>
     </div>
   )
 }
@@ -129,11 +133,24 @@ export default function SatelliteSignalDetail({
   const SignalIcon = kind === 'flood' ? Droplets : kind === 'volcano' ? Mountain : Flame
   const floodRisk = formatFloodRiskLabel(signal)
   const pulseTiles = kind === 'flood' ? formatFloodPulseTiles(pulse) : formatPulseTiles(pulse)
+  const tier = linkedEvent ? 'has_action' : isVerified ? 'verified' : 'unverified'
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="-mx-5 border-b border-line">
+        <AtlasCoordinateHero
+          lat={signal.lat}
+          lng={signal.lng}
+          kind={kind}
+          tier={tier}
+          badge={formatSignalSource(signal.source)}
+          subtitle={placeText(place)}
+        />
+      </div>
+
       <header className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2 text-[12px] font-medium text-ink-soft">
+          <MapMarkerGlyph kind={kind} tier={tier} size="sm" />
           {linkedEvent ? (
             <span className="inline-flex items-center gap-1 text-resolved">
               <CheckCircle2 className="size-4" strokeWidth={1.75} />
@@ -281,7 +298,7 @@ export default function SatelliteSignalDetail({
 
       <div className={`grid grid-cols-2 gap-3 ${pulseStatus === 'loading' ? 'opacity-60' : ''}`}>
         {pulseTiles.map((tile) => (
-          <Tile key={tile.label} value={tile.value} unit={tile.unit} label={tile.label} />
+          <Tile key={tile.label} {...tile} />
         ))}
       </div>
 

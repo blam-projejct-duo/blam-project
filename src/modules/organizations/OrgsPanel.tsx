@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Building2, Check, Plus, UserCheck, UserMinus, Users } from 'lucide-react'
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { DashedRow } from '../../components/ui/atoms'
 import { createOrg, fetchOrgs, joinOrg, manageOrgMember } from '../../lib/api'
 import { CACHE_TTL_MS } from '../../lib/queryClient'
@@ -10,7 +11,7 @@ import { useAuth } from '../auth/AuthContext'
 const field =
   'h-11 w-full rounded-xl border border-line bg-white px-3.5 text-sm font-normal text-ink placeholder:text-ink-soft focus:border-leaf focus:outline-none'
 
-export default function OrgsPanel() {
+export default function OrgsPanel({ headerAction }: { headerAction?: ReactNode } = {}) {
   const queryClient = useQueryClient()
   const { profile, memberships, openAuthModal, refreshMe, isLeadOf } = useAuth()
   const [actionError, setActionError] = useState<string | null>(null)
@@ -92,16 +93,19 @@ export default function OrgsPanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="text-[20px] font-semibold text-ink">Organisasi</h2>
-        <button
-          type="button"
-          onClick={() => (profile ? setShowCreate((v) => !v) : openAuthModal())}
-          className="btn-primary h-9 px-3.5 text-[12px]"
-        >
-          <Plus className="size-4" strokeWidth={1.75} />
-          Buat
-        </button>
+        <div className="flex items-center gap-1.5">
+          {headerAction}
+          <button
+            type="button"
+            onClick={() => (profile ? setShowCreate((v) => !v) : openAuthModal())}
+            className="btn-primary h-8 px-3 text-[12px]"
+          >
+            <Plus className="size-4" strokeWidth={1.75} />
+            Buat
+          </button>
+        </div>
       </div>
 
       {showCreate && (

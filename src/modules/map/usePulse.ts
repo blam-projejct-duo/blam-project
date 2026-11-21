@@ -7,28 +7,48 @@ export interface PulseTileData {
   label: string
   value: string
   unit?: string
+  status?: string
+  tone?: 'good' | 'warn' | 'bad' | 'neutral'
 }
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
 function formatRainTile(rainMm: unknown): PulseTileData {
-  if (!isNum(rainMm)) return { label: 'Curah Hujan', value: '-' }
-  if (rainMm === 0) return { label: 'Curah Hujan', value: 'Kering · 0', unit: 'mm' }
+  if (!isNum(rainMm)) return { label: 'Curah Hujan', value: '-', tone: 'neutral' }
+  if (rainMm === 0) return { label: 'Curah Hujan', value: '0', unit: 'mm', status: 'Kering', tone: 'neutral' }
   const status = rainMm <= 10 ? 'Hujan' : 'Deras'
-  return { label: 'Curah Hujan', value: `${status} · ${rainMm.toFixed(1)}`, unit: 'mm' }
+  return {
+    label: 'Curah Hujan',
+    value: rainMm.toFixed(1),
+    unit: 'mm',
+    status,
+    tone: rainMm > 10 ? 'warn' : 'neutral',
+  }
 }
 
 function formatWindTile(windKmh: unknown): PulseTileData {
-  if (!isNum(windKmh)) return { label: 'Tiupan Angin', value: '-' }
+  if (!isNum(windKmh)) return { label: 'Tiupan Angin', value: '-', tone: 'neutral' }
   const w = Math.round(windKmh)
   const status = w < 15 ? 'Tenang' : w <= 30 ? 'Sedang' : 'Kencang'
-  return { label: 'Tiupan Angin', value: `${status} · ${w}`, unit: 'km/j' }
+  return {
+    label: 'Tiupan Angin',
+    value: String(w),
+    unit: 'km/j',
+    status,
+    tone: w > 30 ? 'warn' : 'neutral',
+  }
 }
 
 function formatWaveTile(waveM: unknown): PulseTileData | null {
   if (!isNum(waveM)) return null
   const status = waveM < 0.5 ? 'Tenang' : waveM <= 1.5 ? 'Sedang' : 'Tinggi'
-  return { label: 'Gelombang Laut', value: `${status} · ${waveM.toFixed(1)}`, unit: 'm' }
+  return {
+    label: 'Gelombang Laut',
+    value: waveM.toFixed(1),
+    unit: 'm',
+    status,
+    tone: waveM > 1.5 ? 'warn' : 'neutral',
+  }
 }
 
 export function formatPulseTiles(pulse: EnvPulse | null): PulseTileData[] {
@@ -36,17 +56,19 @@ export function formatPulseTiles(pulse: EnvPulse | null): PulseTileData[] {
     ? (() => {
         const aqi = Math.round(pulse.aqi)
         const status = aqi <= 50 ? 'Bersih' : aqi <= 100 ? 'Sedang' : aqi <= 150 ? 'Tercemar' : 'Bahaya'
-        return { label: 'Kualitas Udara', value: `${status} · ${aqi}`, unit: 'AQI' }
+        const tone = aqi <= 50 ? 'good' : aqi <= 100 ? 'warn' : 'bad'
+        return { label: 'Kualitas Udara', value: String(aqi), unit: 'AQI', status, tone }
       })()
-    : { label: 'Kualitas Udara', value: '-' }
+    : { label: 'Kualitas Udara', value: '-', tone: 'neutral' }
 
   const smokeTile: PulseTileData = isNum(pulse?.pm25)
     ? (() => {
         const pm = Math.round(pulse.pm25)
         const status = pm < 15 ? 'Normal' : pm <= 35 ? 'Sedang' : pm <= 55 ? 'Pekat' : 'Bahaya'
-        return { label: 'Kepekatan Asap', value: `${status} · ${pm}`, unit: 'µg/m³' }
+        const tone = pm < 15 ? 'good' : pm <= 35 ? 'warn' : 'bad'
+        return { label: 'Kepekatan Asap', value: String(pm), unit: 'µg/m³', status, tone }
       })()
-    : { label: 'Kepekatan Asap', value: '-' }
+    : { label: 'Kepekatan Asap', value: '-', tone: 'neutral' }
 
   const surfaceTile = formatWaveTile(pulse?.waveM) ?? formatRainTile(pulse?.rainMm)
   const windTile = formatWindTile(pulse?.windKmh)

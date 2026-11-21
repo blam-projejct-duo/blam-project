@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ModalShell } from '../../components/ui/atoms'
+import { MapMarkerGlyph } from '../../components/ui/MapMarkers'
 import { shortLocation } from '../../lib/constants'
 import type { FundraisingCampaign, HazardKind, SatelliteSignal } from '../../types'
 import DonateModal from './DonateModal'
@@ -37,7 +38,7 @@ const KIND_META: Record<
   volcano: {
     Icon: Mountain,
     label: 'Vulkanik',
-    iconCls: 'text-progress',
+    iconCls: 'text-volcano',
   },
   flood: {
     Icon: Droplets,
@@ -47,7 +48,7 @@ const KIND_META: Record<
   storm: {
     Icon: Droplets,
     label: 'Badai',
-    iconCls: 'text-ink-soft',
+    iconCls: 'text-storm',
   },
   other: {
     Icon: HeartHandshake,
@@ -318,7 +319,7 @@ export default function BlamDonasiModal({
                         onClick={() => setDetailId(c.id)}
                         className="flex w-full items-stretch gap-3.5 py-4 text-left transition-colors hover:bg-canvas/70 active:opacity-80"
                       >
-                        <div className="relative flex w-[132px] shrink-0 flex-col items-center justify-center overflow-hidden rounded-[12px] border border-line bg-canvas sm:w-[152px]">
+                        <div className="relative flex min-h-[104px] w-[132px] shrink-0 flex-col items-center justify-center overflow-hidden rounded-[12px] border border-line bg-canvas sm:w-[152px]">
                           {c.cover_image_url ? (
                             <img
                               src={c.cover_image_url}
@@ -326,7 +327,7 @@ export default function BlamDonasiModal({
                               className="absolute inset-0 size-full object-cover"
                             />
                           ) : (
-                            <meta.Icon className={`size-8 ${meta.iconCls}`} strokeWidth={1.75} />
+                            <MapMarkerGlyph kind={c.hazard_kind} tier="verified" size="lg" />
                           )}
                         </div>
 

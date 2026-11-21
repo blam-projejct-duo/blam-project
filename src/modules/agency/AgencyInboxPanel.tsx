@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { CalendarPlus } from 'lucide-react'
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { ReportStatusPill } from '../../components/ui/atoms'
 import { fetchReportsQueue, verifyActionAgency } from '../../lib/api'
 import type { CitizenReport, ConservationEvent } from '../../types'
@@ -8,11 +9,13 @@ import { useAuth } from '../auth/AuthContext'
 
 export default function AgencyInboxPanel({
   events,
+  headerAction,
   onSelectEvent,
   onCreateEventFromReport,
   onRefresh,
 }: {
   events: ConservationEvent[]
+  headerAction?: ReactNode
   onSelectEvent: (id: string) => void
   onCreateEventFromReport: (report: CitizenReport) => void
   onRefresh: () => Promise<void>
@@ -52,7 +55,10 @@ export default function AgencyInboxPanel({
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-[20px] font-semibold text-ink">Eskalasi</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-[20px] font-semibold text-ink">Eskalasi</h2>
+        {headerAction}
+      </div>
 
       {error && (
         <p role="alert" className="card-quiet px-4 py-3 text-[12px] font-medium text-critical">

@@ -1,13 +1,14 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUpRight, CornerDownRight, MapPin, RotateCcw, Send, X } from 'lucide-react'
+import { ArrowUpRight, Camera, Compass, CornerDownRight, Flame, MapPin, RotateCcw, Send, X } from 'lucide-react'
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { BlamAiAvatarIcon, SnapCameraDuotoneIcon } from '../../components/ui/bumpIcons'
+import { BlamAiAvatarIcon, BlamNatureIcon, SnapCameraDuotoneIcon } from '../../components/ui/bumpIcons'
 import { sendBlamChat } from '../../lib/api'
 import type { BlamChatAction, BlamChatContext, BlamChatTurn } from '../../lib/api'
 
 const STARTERS = [
-  'Gerakan apa yang lagi jalan?',
-  'Cara lapor lewat Blam Snap',
+  { label: 'Gerakan apa yang lagi jalan?', Icon: Compass },
+  { label: 'Cara lapor lewat Blam Snap', Icon: Camera },
+  { label: 'Ringkas sinyal karhutla & banjir aktif', Icon: Flame },
 ] as const
 
 const LOADING_PHASES = [
@@ -354,6 +355,35 @@ export default function BlamChatModal({
         </header>
 
         <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3.5">
+          {messages.length === 1 && !busy && !activeSuggestion ? (
+            <div className="flex h-full flex-col items-center justify-center gap-5 px-2 py-6 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <span className="grid size-20 place-items-center rounded-[20px] border border-line bg-canvas">
+                  <BlamNatureIcon className="size-16" />
+                </span>
+                <p className="font-display text-[20px] font-semibold text-ink">Blam</p>
+                <p className="max-w-[260px] text-[14px] leading-snug text-ink-soft">
+                  Tanya kondisi titik rawan, gerakan sekitar, atau panduan lapor lapangan
+                </p>
+              </div>
+              <div className="flex w-full flex-col gap-2">
+                {STARTERS.map(({ label, Icon }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => void submit(label)}
+                    className="card-quiet flex w-full items-center gap-3 px-3.5 py-3 text-left text-[14px] font-medium text-ink transition-colors hover:bg-canvas"
+                  >
+                    <span className="row-icon text-leaf">
+                      <Icon className="size-4" strokeWidth={1.75} />
+                    </span>
+                    <span className="min-w-0 flex-1">{label}</span>
+                    <ArrowUpRight className="size-4 shrink-0 text-ink-soft" strokeWidth={1.75} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
           <div className="flex flex-col gap-3">
             {messages.map((m, i) =>
               m.role === 'user' ? (
@@ -429,22 +459,8 @@ export default function BlamChatModal({
                 {error}
               </p>
             )}
-
-            {messages.length === 1 && !busy && !activeSuggestion && (
-              <div className="mt-0.5 flex flex-wrap gap-1.5 pl-9">
-                {STARTERS.map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => void submit(q)}
-                    className="btn-soft !rounded-[10px] px-3 py-1.5 text-left text-[12px] leading-[1.4] font-normal"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
+          )}
         </div>
 
         <AnimatePresence>

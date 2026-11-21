@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Ban, Check } from 'lucide-react'
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { ReportStatusPill, StatusPill } from '../../components/ui/atoms'
 import {
   fetchOrgs,
@@ -13,9 +14,11 @@ import type { ConservationEvent } from '../../types'
 
 export default function AdminPanel({
   events,
+  headerAction,
   onRefreshEvents,
 }: {
   events: ConservationEvent[]
+  headerAction?: ReactNode
   onRefreshEvents: () => Promise<void>
 }) {
   const queryClient = useQueryClient()
@@ -98,7 +101,10 @@ export default function AdminPanel({
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-[20px] font-semibold text-ink">Admin</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-[20px] font-semibold text-ink">Admin</h2>
+        {headerAction}
+      </div>
 
       {error && (
         <p role="alert" className="card-quiet px-4 py-3 text-[12px] font-medium text-critical">

@@ -15,12 +15,14 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { StatusPill } from '../../components/ui/atoms'
+import { AtlasCoordinateHero } from '../../components/ui/MapMarkers'
 import { updateEventVisibility } from '../../lib/api'
 import type { ConservationEvent } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import FundraisingSection from '../fundraising/FundraisingSection'
 import type { ActiveRoute, RouteMode } from '../map/directions'
 import { formatPulseTiles, usePulse } from '../map/usePulse'
+import type { PulseTileData } from '../map/usePulse'
 import { placeText, usePlaceName } from '../map/usePlaceName'
 import BeforeAfterSlider from './BeforeAfterSlider'
 import QrActionModal from './QrActionModal'
@@ -39,14 +41,24 @@ interface Props {
   onClearRoute?: () => void
 }
 
-function Tile({ value, unit, label }: { value: string; unit?: string; label: string }) {
+const STATUS_TONE = {
+  good: 'text-resolved',
+  warn: 'text-progress',
+  bad: 'text-critical',
+  neutral: 'text-ink-soft',
+} as const
+
+function Tile({ value, unit, label, status, tone = 'neutral' }: PulseTileData) {
   return (
     <div className="card-quiet p-3.5">
-      <p className="num flex flex-wrap items-baseline gap-x-1 text-[16px] leading-snug text-ink">
+      <div className="flex items-center justify-between gap-2 text-[12px]">
+        <span className="truncate font-normal text-ink-soft">{label}</span>
+        {status && <span className={`shrink-0 font-medium ${STATUS_TONE[tone]}`}>{status}</span>}
+      </div>
+      <p className="num mt-1.5 flex items-baseline gap-1 text-[20px] leading-none font-semibold text-ink">
         <span>{value}</span>
-        {unit && <span className="text-xs font-normal text-ink-soft">{unit}</span>}
+        {unit && <span className="text-[12px] font-normal text-ink-soft">{unit}</span>}
       </p>
-      <p className="mt-1 text-xs font-normal text-ink-soft">{label}</p>
     </div>
   )
 }
@@ -87,12 +99,12 @@ export default function EventDetail({
     profile?.role !== 'admin' &&
     !isActiveMemberOf(event.organization_id)
   const scheduleLabel = event.start_at
-    ? new Intl.DateTimeFormat('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(new Date(event.start_at))
+    ? (() => {
+        const d = new Date(event.start_at)
+        const datePart = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+        const timePart = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+        return `${datePart} · ${timePart}`
+      })()
     : null
   const canResolve =
     profile &&
@@ -174,9 +186,15 @@ export default function EventDetail({
           <span className={`${labelClass} left-3`}>Sebelum</span>
         </div>
       ) : (
-        <div className={`${photoClass} flex flex-col items-center justify-center gap-1 border-b border-line bg-canvas px-6 text-center`}>
-          <p className="text-[16px] font-semibold text-ink">{event.category}</p>
-          <p className="text-[12px] font-normal text-ink-soft">{placeText(place)}</p>
+        <div className="-mx-5 border-b border-line">
+          <AtlasCoordinateHero
+            lat={event.lat}
+            lng={event.lng}
+            kind="event"
+            tier="has_action"
+            badge={event.category}
+            subtitle={placeText(place)}
+          />
         </div>
       )}
 
@@ -391,7 +409,7 @@ export default function EventDetail({
 
       <div className={`grid grid-cols-2 gap-3 ${pulseStatus === 'loading' ? 'opacity-60' : ''}`}>
         {pulseTiles.map((tile) => (
-          <Tile key={tile.label} value={tile.value} unit={tile.unit} label={tile.label} />
+          <Tile key={tile.label} {...tile} />
         ))}
       </div>
 

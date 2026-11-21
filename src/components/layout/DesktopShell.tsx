@@ -149,7 +149,7 @@ function RailItem({
       aria-current={active ? 'page' : undefined}
       className="group relative flex w-full flex-col items-center gap-0.5 rounded-2xl py-1.5"
     >
-        {active && (
+      {active && (
         <motion.span
           layoutId="desktop-nav-pill"
           transition={{ type: 'spring', stiffness: 420, damping: 32 }}
@@ -157,9 +157,8 @@ function RailItem({
         />
       )}
       <span
-        className={`relative z-10 grid h-9 w-11 place-items-center rounded-[10px] transition-colors ${
-          active ? 'text-forest' : 'text-ink-soft group-hover:text-ink'
-        }`}
+        className={`relative z-10 grid h-9 w-11 place-items-center rounded-[10px] transition-colors ${active ? 'text-forest' : 'text-ink-soft group-hover:text-ink'
+          }`}
       >
         {children}
         {badge !== undefined && badge > 0 && (
@@ -181,11 +180,10 @@ function LayerChip({ active, onClick, children }: { active: boolean; onClick: ()
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`font-sans relative flex h-9 items-center gap-2 rounded-xl px-3.5 text-[12px] font-medium whitespace-nowrap transition-colors ${
-        active
-          ? 'bg-ink text-white'
-          : 'border border-line bg-white text-ink hover:bg-canvas'
-      }`}
+      className={`font-sans relative flex h-9 items-center gap-2 rounded-xl px-3.5 text-[12px] font-medium whitespace-nowrap transition-colors ${active
+        ? 'bg-ink text-white'
+        : 'border border-line bg-white text-ink hover:bg-canvas'
+        }`}
     >
       {children}
     </button>
@@ -590,7 +588,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             (ev.ref_source === sig.source &&
               Boolean(
                 ev.ref_external_id &&
-                  (ev.ref_external_id === sig.externalId || sig.memberIds?.includes(ev.ref_external_id)),
+                (ev.ref_external_id === sig.externalId || sig.memberIds?.includes(ev.ref_external_id)),
               )),
         ) ?? null
       return (
@@ -747,37 +745,37 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             renderTabContent={
               !isJelajah
                 ? (subTab) => {
-                    if (subTab !== 'Verifikasi') return null
-                    if (!canOrganize) {
-                      return (
-                        <div className="card-quiet p-5 text-center">
-                          <p className="text-[14px] font-semibold text-ink">Khusus Verifikator</p>
-                          <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-                            {!profile
-                              ? 'Masuk sebagai relawan, instansi, atau admin terverifikasi untuk memverifikasi titik laporan'
-                              : 'Hanya relawan, instansi, atau admin terverifikasi yang dapat memverifikasi laporan'}
-                          </p>
-                          {!profile && (
-                            <button
-                              type="button"
-                              onClick={openAuthModal}
-                              className="btn-primary mt-3 h-9 px-4 text-xs"
-                            >
-                              Masuk
-                            </button>
-                          )}
-                        </div>
-                      )
-                    }
+                  if (subTab !== 'Verifikasi') return null
+                  if (!canOrganize) {
                     return (
-                      <VerificationRadarPanel
-                        embedded
-                        query={query}
-                        onCreateEvent={(report) => startCreateEvent(report)}
-                        onCreateStandaloneEvent={() => startCreateEvent(null)}
-                      />
+                      <div className="card-quiet p-5 text-center">
+                        <p className="text-[14px] font-semibold text-ink">Khusus Verifikator</p>
+                        <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
+                          {!profile
+                            ? 'Masuk sebagai relawan, instansi, atau admin terverifikasi untuk memverifikasi titik laporan'
+                            : 'Hanya relawan, instansi, atau admin terverifikasi yang dapat memverifikasi laporan'}
+                        </p>
+                        {!profile && (
+                          <button
+                            type="button"
+                            onClick={openAuthModal}
+                            className="btn-primary mt-3 h-9 px-4 text-xs"
+                          >
+                            Masuk
+                          </button>
+                        )}
+                      </div>
                     )
                   }
+                  return (
+                    <VerificationRadarPanel
+                      embedded
+                      query={query}
+                      onCreateEvent={(report) => startCreateEvent(report)}
+                      onCreateStandaloneEvent={() => startCreateEvent(null)}
+                    />
+                  )
+                }
                 : undefined
             }
           />
@@ -826,9 +824,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               borderRadius: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
             }}
             aria-label="Utama"
-            className={`pointer-events-auto flex w-full flex-col items-center border border-white/80 bg-white/95 px-1 shadow-[0_14px_38px_-6px_rgba(19,36,26,0.22),0_4px_12px_rgba(19,36,26,0.08)] backdrop-blur-md ${
-              drawerOpen ? 'flex-1 py-4' : 'max-h-full py-3'
-            }`}
+            className={`pointer-events-auto flex w-full flex-col items-center border border-white/80 bg-white/95 px-1 shadow-[0_14px_38px_-6px_rgba(19,36,26,0.22),0_4px_12px_rgba(19,36,26,0.08)] backdrop-blur-md ${drawerOpen ? 'flex-1 py-4' : 'max-h-full py-3'
+              }`}
           >
             <motion.button
               layout="position"
@@ -838,9 +835,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               aria-label={companionOut ? 'Pulangkan Gajah Blam ke logo' : 'Panggil Gajah Blam (asisten AI)'}
               aria-pressed={companionOut}
               title={companionOut ? 'Pulangkan Gajah Blam' : 'Panggil Gajah Blam — asisten AI'}
-              className={`group relative grid size-12 shrink-0 place-items-center rounded-full transition-transform duration-120 hover:scale-105 active:scale-95 ${
-                drawerOpen ? 'mb-3' : 'mb-2'
-              }`}
+              className={`group relative grid size-12 shrink-0 place-items-center rounded-full transition-transform duration-120 hover:scale-105 active:scale-95 ${drawerOpen ? 'mb-3' : 'mb-2'
+                }`}
             >
               <span aria-hidden="true" className="orb-sheen z-20 scale-105" />
               <BlamNatureIcon
@@ -858,9 +854,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
 
             <motion.div
               layout="position"
-              className={`flex w-full flex-col gap-0.5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-                drawerOpen ? 'flex-1' : ''
-              }`}
+              className={`flex w-full flex-col gap-0.5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${drawerOpen ? 'flex-1' : ''
+                }`}
             >
               {navTabs.map((label) => (
                 <RailItem
@@ -915,11 +910,10 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             left: RAIL_GAP - 6,
             width: RAIL_W + FLOAT_GAP + drawerWidth + 12,
           }}
-          className={`pointer-events-none absolute top-[10px] bottom-[10px] z-[590] rounded-[26px] backdrop-blur-xl transition-[width] duration-200 ${
-            isDarkMap
-              ? 'border border-white/40 bg-gradient-to-br from-[#dff6e6]/34 via-[#c9ead3]/24 to-[#b4dec1]/20 shadow-[0_22px_50px_-10px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.48)]'
-              : 'border border-leaf/25 bg-gradient-to-br from-[#e2f5e7]/84 via-[#d4eedb]/76 to-[#c4e6ce]/70 shadow-[0_22px_50px_-10px_rgba(19,36,26,0.18),inset_0_1px_1px_rgba(255,255,255,0.9)]'
-          }`}
+          className={`pointer-events-none absolute top-[10px] bottom-[10px] z-[590] rounded-[26px] backdrop-blur-xl transition-[width] duration-200 ${isDarkMap
+            ? 'border border-white/40 bg-white/24 shadow-[0_22px_50px_-10px_rgba(8,15,48,0.45),inset_0_1px_1px_rgba(255,255,255,0.48)]'
+            : 'border border-white/80 bg-[#f5f7fa]/82 shadow-[0_22px_50px_-10px_rgba(15,29,50,0.16),inset_0_1px_1px_rgba(255,255,255,0.9)]'
+            }`}
         />
 
         <motion.aside
@@ -938,101 +932,143 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               : { duration: 0.22, ease: [0.4, 0, 0.2, 1] }
           }
           style={{ left: RAIL_GAP + RAIL_W + FLOAT_GAP, width: drawerWidth, transformOrigin: 'left center' }}
-          className={`absolute top-[70px] bottom-4 z-[600] flex flex-col overflow-hidden rounded-[16px] border border-line shadow-[0_14px_38px_-8px_rgba(15,29,50,0.16)] transition-[width,background-color] duration-200 ${
-            !createOpen && (tab === 'Jelajah' || tab === 'Gerakan') ? 'bg-white' : 'bg-canvas'
-          } ${drawerOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          className={`absolute top-[70px] bottom-4 z-[600] flex flex-col overflow-hidden rounded-[16px] border border-line shadow-[0_14px_38px_-8px_rgba(15,29,50,0.16)] transition-[width,background-color] duration-200 ${!createOpen && (tab === 'Jelajah' || tab === 'Gerakan') ? 'bg-white' : 'bg-canvas'
+            } ${drawerOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
         >
-          {!createOpen && tab !== 'Jelajah' && tab !== 'Gerakan' && (
-            <div className="flex shrink-0 items-center justify-between border-b border-line bg-white px-5 py-2.5">
-              <span className="text-[12px] font-medium text-ink-soft">{tab === 'Org' ? 'Organisasi' : tab}</span>
-              <button
-                type="button"
-                onClick={() => setDrawerExpanded((v) => !v)}
-                aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
-                className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
-              >
-                {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
-                {drawerExpanded ? 'Perkecil' : 'Perluas'}
-              </button>
-            </div>
-          )}
           <div className="flex min-h-0 flex-1 flex-col">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={createOpen ? 'create-event' : tab}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 8 }}
-                transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
-                className="flex min-h-0 flex-1 flex-col"
-              >
-                {createOpen ? (
-                  <CreateEventForm
-                    key={draftReport?.id ?? draftSignal?.id ?? 'standalone'}
-                    initialReport={draftReport}
-                    initialSignal={draftSignal}
-                    onClose={() => {
-                      setCreateOpen(false)
-                      setDraftReport(null)
-                      setDraftSignal(null)
-                    }}
-                    onCreated={async (id) => {
-                      setCreateOpen(false)
-                      setDraftReport(null)
-                      setDraftSignal(null)
-                      radar.setFilter('all')
-                      await radar.refresh()
-                      openDetail(id)
-                    }}
-                  />
-                ) : (
-                  <>
-                    {(tab === 'Jelajah' || tab === 'Gerakan') && radarOrAksiBody(tab)}
+            <motion.div
+              key={createOpen ? 'create-event' : tab}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              {createOpen ? (
+                <CreateEventForm
+                  key={draftReport?.id ?? draftSignal?.id ?? 'standalone'}
+                  initialReport={draftReport}
+                  initialSignal={draftSignal}
+                  onClose={() => {
+                    setCreateOpen(false)
+                    setDraftReport(null)
+                    setDraftSignal(null)
+                  }}
+                  onCreated={async (id) => {
+                    setCreateOpen(false)
+                    setDraftReport(null)
+                    setDraftSignal(null)
+                    radar.setFilter('all')
+                    await radar.refresh()
+                    openDetail(id)
+                  }}
+                />
+              ) : (
+                <>
+                  {(tab === 'Jelajah' || tab === 'Gerakan') && radarOrAksiBody(tab)}
 
-                    {tab === 'History' && (
-                  <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-5">
-                    <HistoryPanel
-                      events={radar.allEvents}
-                      signals={radar.satelliteSignals}
-                      onSelectEvent={openDetail}
-                      onOpenSignal={openSignalDetail}
-                      onFocusLocation={(lat, lng) => radar.focusLocation(lat, lng)}
-                    />
-                  </div>
-                )}
+                  {tab === 'History' && (
+                    <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-5">
+                      <HistoryPanel
+                        events={radar.allEvents}
+                        signals={radar.satelliteSignals}
+                        headerAction={
+                          <button
+                            type="button"
+                            onClick={() => setDrawerExpanded((v) => !v)}
+                            aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
+                            className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
+                          >
+                            {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
+                            {drawerExpanded ? 'Perkecil' : 'Perluas'}
+                          </button>
+                        }
+                        onSelectEvent={openDetail}
+                        onOpenSignal={openSignalDetail}
+                        onFocusLocation={(lat, lng) => radar.focusLocation(lat, lng)}
+                      />
+                    </div>
+                  )}
 
-                {tab === 'Org' && (
-                  <div className="min-h-0 flex-1 overflow-y-auto p-5">
-                    <OrgsPanel />
-                  </div>
-                )}
+                  {tab === 'Org' && (
+                    <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                      <OrgsPanel
+                        headerAction={
+                          <button
+                            type="button"
+                            onClick={() => setDrawerExpanded((v) => !v)}
+                            aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
+                            className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
+                          >
+                            {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
+                            {drawerExpanded ? 'Perkecil' : 'Perluas'}
+                          </button>
+                        }
+                      />
+                    </div>
+                  )}
 
-                {tab === 'Eskalasi' && (
-                  <div className="min-h-0 flex-1 overflow-y-auto p-5">
-                    <AgencyInboxPanel
-                      events={radar.allEvents}
-                      onSelectEvent={openDetail}
-                      onCreateEventFromReport={(report) => startCreateEvent(report)}
-                      onRefresh={radar.refresh}
-                    />
-                  </div>
-                )}
+                  {tab === 'Eskalasi' && (
+                    <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                      <AgencyInboxPanel
+                        events={radar.allEvents}
+                        headerAction={
+                          <button
+                            type="button"
+                            onClick={() => setDrawerExpanded((v) => !v)}
+                            aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
+                            className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
+                          >
+                            {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
+                            {drawerExpanded ? 'Perkecil' : 'Perluas'}
+                          </button>
+                        }
+                        onSelectEvent={openDetail}
+                        onCreateEventFromReport={(report) => startCreateEvent(report)}
+                        onRefresh={radar.refresh}
+                      />
+                    </div>
+                  )}
 
-                {tab === 'Admin' && (
-                  <div className="min-h-0 flex-1 overflow-y-auto p-5">
-                    <AdminPanel events={radar.allEvents} onRefreshEvents={radar.refresh} />
-                  </div>
-                )}
+                  {tab === 'Admin' && (
+                    <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                      <AdminPanel
+                        events={radar.allEvents}
+                        headerAction={
+                          <button
+                            type="button"
+                            onClick={() => setDrawerExpanded((v) => !v)}
+                            aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
+                            className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
+                          >
+                            {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
+                            {drawerExpanded ? 'Perkecil' : 'Perluas'}
+                          </button>
+                        }
+                        onRefreshEvents={radar.refresh}
+                      />
+                    </div>
+                  )}
 
-                    {tab === 'Profil' && (
-                      <div className="min-h-0 flex-1 overflow-y-auto p-5">
-                        <ProfilePanel />
-                      </div>
-                    )}
-                  </>
-                )}
-              </motion.div>
-            </AnimatePresence>
+                  {tab === 'Profil' && (
+                    <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                      <ProfilePanel
+                        headerAction={
+                          <button
+                            type="button"
+                            onClick={() => setDrawerExpanded((v) => !v)}
+                            aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
+                            className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
+                          >
+                            {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
+                            {drawerExpanded ? 'Perkecil' : 'Perluas'}
+                          </button>
+                        }
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </motion.div>
           </div>
         </motion.aside>
       </MotionConfig>

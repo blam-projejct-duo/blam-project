@@ -97,8 +97,8 @@ const LAYER_CHIP_ICON: Record<RadarLayer, { icon: ReactNode; offCls: string; onC
   },
   volcano: {
     icon: <Mountain className="size-4" strokeWidth={1.75} />,
-    offCls: 'bg-progress/10 text-progress hover:bg-progress/18',
-    onCls: 'bg-progress text-white',
+    offCls: 'bg-volcano/10 text-volcano hover:bg-volcano/18',
+    onCls: 'bg-volcano text-white',
   },
   event: {
     icon: <Sprout className="size-4" strokeWidth={1.75} />,
@@ -409,11 +409,12 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                         aria-pressed={on}
                         aria-label={c.label}
                         title={c.label}
-                        className={`grid h-9 place-items-center rounded-[10px] transition-colors ${
+                        className={`flex h-13 flex-col items-center justify-center gap-0.5 rounded-[10px] px-1 transition-colors ${
                           on ? ui.onCls : ui.offCls
                         }`}
                       >
                         {ui.icon}
+                        <span className="text-[10px] leading-none font-medium">{c.shortLabel}</span>
                       </button>
                     )
                   })}
@@ -749,7 +750,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           <div
             onPointerDown={(e) => controls.start(e)}
             onClick={cycleSnap}
-            className="flex h-9 shrink-0 cursor-grab touch-none items-center justify-center"
+            className="flex h-7 shrink-0 cursor-grab touch-none items-center justify-center"
           >
             <span className="h-1 w-9 rounded-full bg-line" />
           </div>
@@ -824,7 +825,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
 
               {mode === 'list' && (
                 <div>
-                  <div className="mb-2.5 flex items-center justify-between gap-2">
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
                     <h2 className="text-[20px] font-semibold text-ink">Gerakan</h2>
                     {canOrganize && (
                       <button

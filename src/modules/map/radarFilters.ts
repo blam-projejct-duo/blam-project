@@ -3,12 +3,12 @@ import type { HazardPoint } from './hotspotCluster'
 
 export type RadarLayer = 'wildfire' | 'suspected' | 'flood' | 'volcano' | 'event'
 
-export const LAYER_CHIPS: ReadonlyArray<{ layer: RadarLayer; label: string; dot: string }> = [
-  { layer: 'wildfire', label: 'Karhutla', dot: 'bg-critical' },
-  { layer: 'suspected', label: 'Titik Panas', dot: 'bg-progress' },
-  { layer: 'flood', label: 'Banjir', dot: 'bg-cobalt' },
-  { layer: 'volcano', label: 'Gunung Berapi', dot: 'bg-progress' },
-  { layer: 'event', label: 'Gerakan', dot: 'bg-resolved' },
+export const LAYER_CHIPS: ReadonlyArray<{ layer: RadarLayer; label: string; shortLabel: string; dot: string }> = [
+  { layer: 'wildfire', label: 'Karhutla', shortLabel: 'Api', dot: 'bg-critical' },
+  { layer: 'suspected', label: 'Titik Panas', shortLabel: 'Panas', dot: 'bg-progress' },
+  { layer: 'flood', label: 'Banjir', shortLabel: 'Banjir', dot: 'bg-cobalt' },
+  { layer: 'volcano', label: 'Gunung Berapi', shortLabel: 'Gunung', dot: 'bg-volcano' },
+  { layer: 'event', label: 'Gerakan', shortLabel: 'Aksi', dot: 'bg-resolved' },
 ]
 
 function matchesHazardLayer(layers: Set<RadarLayer>, kind?: HazardKind): boolean {

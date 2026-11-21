@@ -1,10 +1,12 @@
-import { BadgeCheck, Droplets, Flame, HeartHandshake, Mountain, Search, Users, X } from 'lucide-react'
+import { BadgeCheck, HeartHandshake, Search, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
 import { findFundraisingForSignal, useFundraisings } from '../../modules/fundraising/useFundraisings'
 import { formatFloodRiskLabel, formatSignalSource } from '../../modules/map/radarFilters'
 import { EcoBadge, MarkerTierLegend } from '../ui/atoms'
+import { BlamNatureIcon } from '../ui/bumpIcons'
+import { AtlasCoordinateHero, MapMarkerGlyph } from '../ui/MapMarkers'
 import type { ConservationEvent, HazardKind, SatelliteSignal, SignalVerificationState } from '../../types'
 
 export type ListTab = 'Utama' | 'Terbaru' | 'History' | 'Satelit' | 'Berjalan' | 'Verifikasi' | 'Selesai'
@@ -46,9 +48,9 @@ function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListT
 
 const SIGNAL_TEXT_COLOR: Record<HazardKind, string> = {
   wildfire: 'text-critical',
-  volcano: 'text-progress',
+  volcano: 'text-volcano',
   flood: 'text-leaf',
-  storm: 'text-leaf',
+  storm: 'text-storm',
   suspected: 'text-progress',
   other: 'text-ink-soft',
 }
@@ -68,38 +70,43 @@ function SignalRow({
   const riskLabel = formatFloodRiskLabel(signal)
   const isAction = linked || signal.verificationState === 'has_action'
   const isVerified = !isAction && signal.verificationState === 'verified'
+  const tier: SignalVerificationState = isAction ? 'has_action' : isVerified ? 'verified' : 'unverified'
   const meta = isAction
     ? `${sourceLabel} · Ada gerakan`
     : isVerified
       ? `${sourceLabel} · Terverifikasi`
-      : `${sourceLabel} · ${riskLabel ?? signal.categoryLabel}`
+      : `${sourceLabel} · ${signal.categoryLabel}`
   const kind = signal.kind ?? 'suspected'
-  const SignalIcon = kind === 'flood' ? Droplets : kind === 'volcano' ? Mountain : Flame
+  const rightLabel = isAction
+    ? 'Ada Aksi'
+    : isVerified
+      ? 'Terverifikasi'
+      : signal.pointCount && signal.pointCount > 1
+        ? `${signal.pointCount} titik`
+        : riskLabel ?? 'Baru'
 
   return (
     <li>
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left transition-colors hover:bg-canvas"
+        className="flex w-full items-center gap-3 rounded-[10px] px-2 py-2.5 text-left transition-colors hover:bg-canvas"
       >
-        <span className={`row-icon ${SIGNAL_TEXT_COLOR[kind]}`}>
-          <SignalIcon className="size-4" strokeWidth={1.75} />
-        </span>
+        <MapMarkerGlyph kind={kind} tier={tier} size="md" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px] font-medium text-ink">{signal.title}</span>
-          <span className="block truncate text-[12px] font-normal text-ink-soft">{meta}</span>
+          <span className="line-clamp-2 block text-[14px] leading-snug font-medium text-ink">{signal.title}</span>
+          <span className="mt-0.5 block truncate text-[12px] font-normal text-ink-soft">{meta}</span>
         </span>
-        <div className="flex shrink-0 items-center gap-2 text-[12px] font-medium">
+        <div className="flex shrink-0 flex-col items-end gap-0.5 text-[12px] font-medium">
+          <span className={`num whitespace-nowrap ${isAction ? 'text-resolved' : isVerified ? 'text-leaf' : SIGNAL_TEXT_COLOR[kind]}`}>
+            {rightLabel}
+          </span>
           {hasFundraising && (
             <span className="inline-flex items-center gap-1 text-critical" title="Penggalangan dana aktif">
               <HeartHandshake className="size-3.5" strokeWidth={1.75} />
               Donasi
             </span>
           )}
-          <span className={isAction ? 'text-resolved' : isVerified ? 'text-leaf' : SIGNAL_TEXT_COLOR[kind]}>
-            {isAction ? 'Gerakan' : isVerified ? 'Valid' : 'Sinyal'}
-          </span>
         </div>
       </button>
     </li>
@@ -130,9 +137,14 @@ function ActionFeedCard({ event, onOpen }: { event: ConservationEvent; onOpen: (
           {coverUrl ? (
             <img src={coverUrl} alt={event.title} className="size-full object-cover" />
           ) : (
-            <div className="flex size-full items-center justify-center">
-              <EcoBadge ecosystem={event.ecosystem} />
-            </div>
+            <AtlasCoordinateHero
+              lat={event.lat}
+              lng={event.lng}
+              kind="event"
+              tier="has_action"
+              compact
+              subtitle={loc || event.category}
+            />
           )}
         </div>
 
@@ -384,11 +396,11 @@ export default function EventListPanel({
   return (
     <div>
       {showTitle && (
-        <h2 className="mb-3 text-[20px] font-semibold text-ink">{title}</h2>
+        <h2 className="mb-2 text-[20px] font-semibold text-ink">{title}</h2>
       )}
 
       {showSearch && (
-        <label className="flex h-10 items-center gap-2 rounded-full border border-line bg-canvas px-4 transition-colors focus-within:border-leaf focus-within:bg-white">
+        <label className="flex h-9 items-center gap-2 rounded-full border border-line bg-canvas px-3.5 transition-colors focus-within:border-leaf focus-within:bg-white">
           <Search className="size-4 shrink-0 text-leaf" strokeWidth={1.75} />
           <input
             ref={searchRef}
@@ -413,7 +425,7 @@ export default function EventListPanel({
         </label>
       )}
 
-      <div role="tablist" className={`panel-tabs ${showSearch ? 'mt-3' : ''}`}>
+      <div role="tablist" className={`panel-tabs ${showSearch ? 'mt-2' : ''}`}>
         {tabs.map((t) => {
           const active = tab === t
           return (
@@ -470,9 +482,9 @@ export default function EventListPanel({
           )}
 
           {(shownSignals.length > 0 || (tab === 'Satelit' && Boolean(onOpenSignal))) && onOpenSignal && (
-            <div className={rows.length > 0 ? 'mt-4 border-t border-line pt-4' : 'mt-3'}>
+            <div className={rows.length > 0 ? 'mt-4 border-t border-line pt-4' : 'mt-2.5'}>
               {tab === 'Satelit' && (
-                <div className="card-quiet mb-3 px-3 py-2">
+                <div className="mb-2.5">
                   <MarkerTierLegend compact activeTiers={activeTiers} onToggleTier={onToggleTier} />
                 </div>
               )}
@@ -494,7 +506,10 @@ export default function EventListPanel({
                 )}
               </div>
               {shownSignals.length === 0 ? (
-                <p className="py-6 text-center text-[12px] text-ink-soft">Tidak ada sinyal dengan status terpilih</p>
+                <div className="flex flex-col items-center gap-2 py-8 text-center">
+                  <BlamNatureIcon className="size-12 opacity-85" />
+                  <p className="text-[12px] text-ink-soft">Tidak ada sinyal dengan status terpilih</p>
+                </div>
               ) : (
                 <ul className="divide-y divide-line">
                   {shownSignals.map((sig) => (
@@ -512,15 +527,18 @@ export default function EventListPanel({
           )}
 
           {rows.length === 0 && shownSignals.length === 0 && (
-            <p className="py-10 text-center text-[13px] font-normal text-ink-soft">
-              {tab === 'Satelit'
-                ? 'Belum ada sinyal'
-                : tab === 'Berjalan'
-                  ? 'Belum ada gerakan berjalan'
-                  : tab === 'Selesai'
-                    ? 'Belum ada gerakan selesai'
-                    : 'Belum ada gerakan'}
-            </p>
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <BlamNatureIcon className="size-12 opacity-85" />
+              <p className="text-[14px] font-normal text-ink-soft">
+                {tab === 'Satelit'
+                  ? 'Belum ada sinyal'
+                  : tab === 'Berjalan'
+                    ? 'Belum ada gerakan berjalan'
+                    : tab === 'Selesai'
+                      ? 'Belum ada gerakan selesai'
+                      : 'Belum ada gerakan'}
+              </p>
+            </div>
           )}
         </>
       )}

@@ -1,6 +1,7 @@
 import {
   Check,
   ChevronDown,
+  ChevronRight,
   Droplets,
   Flame,
   HeartHandshake,
@@ -10,8 +11,11 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import { BlamNatureIcon } from '../../components/ui/bumpIcons'
+import { MapMarkerGlyph } from '../../components/ui/MapMarkers'
 import { shortLocation } from '../../lib/constants'
-import type { ConservationEvent, FundraisingCampaign, SatelliteSignal } from '../../types'
+import type { ConservationEvent, FundraisingCampaign, HazardKind, SatelliteSignal } from '../../types'
 import DonateModal from '../fundraising/DonateModal'
 import { findSignalForFundraising, formatRupiah, useFundraisings } from '../fundraising/useFundraisings'
 
@@ -51,11 +55,11 @@ const STATUS_FILTERS: { id: HistoryStatusFilter; label: string }[] = [
 
 const CATEGORY_META: Record<
   Exclude<HistoryCategory, 'all'>,
-  { label: string; Icon: typeof Flame; tone: string }
+  { label: string; Icon: typeof Flame; tone: string; hazardKind?: HazardKind }
 > = {
-  karhutla: { label: 'Karhutla', Icon: Flame, tone: 'text-critical' },
-  banjir: { label: 'Banjir', Icon: Droplets, tone: 'text-cobalt' },
-  gunung: { label: 'Gunung', Icon: Mountain, tone: 'text-progress' },
+  karhutla: { label: 'Karhutla', Icon: Flame, tone: 'text-critical', hazardKind: 'wildfire' },
+  banjir: { label: 'Banjir', Icon: Droplets, tone: 'text-cobalt', hazardKind: 'flood' },
+  gunung: { label: 'Gunung', Icon: Mountain, tone: 'text-volcano', hazardKind: 'volcano' },
   donasi: { label: 'Donasi', Icon: HeartHandshake, tone: 'text-critical' },
 }
 
@@ -245,12 +249,14 @@ function fundraisingToHistoryItem(f: FundraisingCampaign): HistoryItem {
 export default function HistoryPanel({
   events,
   signals = [],
+  headerAction,
   onSelectEvent,
   onOpenSignal,
   onFocusLocation,
 }: {
   events: ConservationEvent[]
   signals?: SatelliteSignal[]
+  headerAction?: ReactNode
   onSelectEvent: (id: string) => void
   onOpenSignal?: (signal: SatelliteSignal) => void
   onFocusLocation: (lat: number, lng: number) => void
@@ -311,11 +317,14 @@ export default function HistoryPanel({
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <h2 className="text-[20px] font-semibold text-ink">History</h2>
-        <span className="num rounded-[8px] border border-line bg-white px-2 py-0.5 text-[12px] font-medium text-ink-soft">
-          {filtered.length}
-        </span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h2 className="text-[20px] font-semibold text-ink">History</h2>
+          <span className="num rounded-[8px] border border-line bg-white px-2 py-0.5 text-[12px] font-medium text-ink-soft">
+            {filtered.length}
+          </span>
+        </div>
+        {headerAction}
       </div>
 
       <label className="flex h-10 w-full min-w-0 items-center gap-2 rounded-full border border-line bg-white px-3.5 transition-colors focus-within:border-leaf">
@@ -409,8 +418,9 @@ export default function HistoryPanel({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card-quiet p-5 text-center">
-          <p className="text-xs font-medium text-ink-soft">Tidak ada riwayat cocok</p>
+        <div className="card-quiet flex flex-col items-center gap-2 p-6 text-center">
+          <BlamNatureIcon className="size-12 opacity-85" />
+          <p className="text-[12px] font-medium text-ink-soft">Tidak ada riwayat cocok</p>
         </div>
       ) : (
         <ul className="flex min-w-0 flex-col gap-2">
@@ -424,6 +434,12 @@ export default function HistoryPanel({
                 ? findSignalForFundraising(signals, item.fundraising)
                 : null
             const opensDirect = Boolean(item.eventId || matchedSignal)
+            const locClean = item.location.trim()
+            const showLoc =
+              Boolean(locClean) &&
+              !item.title.toLowerCase().includes(locClean.slice(0, 12).toLowerCase()) &&
+              locClean.toLowerCase() !== meta.label.toLowerCase()
+            const subtitle = [meta.label, ...(showLoc ? [locClean] : []), item.dateLabel].join(' · ')
 
             return (
               <li
@@ -445,22 +461,30 @@ export default function HistoryPanel({
                   className="flex w-full min-w-0 flex-col gap-2 px-3 py-2.5 text-left"
                 >
                   <div className="flex w-full min-w-0 items-center gap-2.5">
-                    <span className={`row-icon ${meta.tone}`}>
-                      <Icon className="size-4" strokeWidth={1.75} />
-                    </span>
+                    {meta.hazardKind ? (
+                      <MapMarkerGlyph
+                        kind={meta.hazardKind}
+                        tier={isDone ? 'has_action' : 'verified'}
+                        size="md"
+                      />
+                    ) : (
+                      <span className={`row-icon ${meta.tone}`}>
+                        <Icon className="size-4" strokeWidth={1.75} />
+                      </span>
+                    )}
 
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14px] font-medium text-ink">{item.title}</p>
-                      <p className="truncate text-[12px] text-ink-soft">
-                        {meta.label} · {item.location} · {item.dateLabel}
-                      </p>
+                      <p className="truncate text-[12px] text-ink-soft">{subtitle}</p>
                     </div>
 
                     <div className="flex shrink-0 items-center gap-1.5">
                       <span className={`text-[12px] font-medium ${isDone ? 'text-resolved' : 'text-progress'}`}>
                         {item.statusLabel}
                       </span>
-                      {!opensDirect && (
+                      {opensDirect ? (
+                        <ChevronRight className="size-4 text-ink-soft" strokeWidth={1.75} />
+                      ) : (
                         <ChevronDown
                           className={`size-4 text-ink-soft transition-transform ${
                             expanded ? 'rotate-180' : ''
