@@ -36,10 +36,10 @@ const CENTER = { x: 70, y: 62 }
 const EYE = { x: 80, y: 42 }
 const SLEEP_AFTER_MS = 40_000
 
-const PET_LINES = ['Hehe, geli! 💙', 'Makasih elusannya~', 'Aku suka dielus! 🌿'] as const
-const WAKE_LINES = ['Eh! Aku nggak tidur kok 😳', 'Hoaam… ada apa? 👀'] as const
-const TAP_WHILE_CHAT = ['Aku di sini kok! 👋', 'Tanya apa aja ya~', 'Aku dengerin! 👂'] as const
-const DRAG_LINES = ['Wiii~ 🎢', 'Pelan-pelan! 😆', 'Terbaaang~'] as const
+const PET_LINES = ['Terima kasih sudah menyapa', 'Siap membantu pantau peta', 'Ketuk untuk buka obrolan'] as const
+const WAKE_LINES = ['Siap kembali aktif', 'Ada yang perlu dicek?'] as const
+const TAP_WHILE_CHAT = ['Panel obrolan sedang aktif', 'Silakan tulis pertanyaanmu', 'Siap mendengarkan'] as const
+const DRAG_LINES = ['Memindahkan posisi', 'Posisi diperbarui', 'Meletakkan di sini'] as const
 
 const pick = <T,>(arr: readonly T[]) => arr[Math.floor(Math.random() * arr.length)]
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
@@ -685,7 +685,7 @@ export default function BlamCompanion({
             window.setTimeout(() => {
               void trunkCtl.start({ rotate: [0, -30, 0], transition: { duration: 0.35 } })
               spawn('spark', 5, { x: 126, y: 20 })
-              say('Hatchi! 🌿', 1600)
+              say('Siap aktif', 1600)
             }, 420)
           }
           loop()
@@ -854,8 +854,8 @@ export default function BlamCompanion({
         <motion.div animate={bounceCtl} style={{ originX: 0.45, originY: 0.78 }} className="absolute inset-0">
           <motion.button
             type="button"
-            aria-label="Gajah Blam — klik untuk ngobrol dengan Blam AI"
-            title="Klik untuk ngobrol • seret untuk pindah • elus aku!"
+            aria-label="Blam — klik untuk buka obrolan"
+            title="Klik untuk obrolan, seret untuk pindah"
             onClick={onElephantClick}
             onPointerDown={(e) => {
               if (landed) dragControls.start(e)
@@ -925,11 +925,11 @@ export default function BlamCompanion({
             style={{ originX: 0.1, originY: 1 }}
             onPointerEnter={enterHover}
             onPointerLeave={leaveHover}
-            className="pointer-events-auto absolute bottom-[calc(100%-12px)] left-[54px] w-max max-w-[240px] rounded-[18px] rounded-bl-[6px] border border-leaf/15 bg-white px-3.5 py-2.5 shadow-[0_14px_32px_-8px_rgba(19,36,26,0.32)]"
+            className="pointer-events-auto absolute bottom-[calc(100%-12px)] left-[54px] w-max max-w-[240px] rounded-[16px] rounded-bl-[6px] border border-line bg-white px-3.5 py-2.5 shadow-[0_14px_32px_-8px_rgba(15,29,50,0.2)]"
           >
             {showMenu ? (
               <div className="flex flex-col gap-2">
-                <p className="font-display text-[12.5px] font-semibold text-ink">Hai! Mau ngobrol? 🐘</p>
+                <p className="text-[14px] font-semibold text-ink">Mulai obrolan</p>
                 <div className="flex flex-col gap-1.5">
                   <button
                     type="button"
@@ -937,9 +937,9 @@ export default function BlamCompanion({
                       setHovered(false)
                       onElephantClick()
                     }}
-                    className="flex items-center gap-2 rounded-full bg-leaf px-3 py-1.5 text-[11.5px] font-medium text-white transition-colors hover:bg-forest"
+                    className="flex items-center gap-2 rounded-[10px] bg-leaf px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-forest"
                   >
-                    <MessageCircle className="size-3.5" /> Tanya Blam AI
+                    <MessageCircle className="size-4" strokeWidth={1.75} /> Tanya Blam
                   </button>
                   <div className="flex gap-1.5">
                     <button
@@ -947,26 +947,26 @@ export default function BlamCompanion({
                       onClick={() => {
                         onResetMap()
                         flashMood('happy', 900)
-                        say('Siap, balik ke Indonesia! 🇮🇩', 2200)
+                        say('Kembali ke Indonesia', 2200)
                         setHovered(false)
                       }}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-mint/70 px-2.5 py-1.5 text-[11px] text-forest transition-colors hover:bg-mint"
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-mint px-2.5 py-1.5 text-[12px] font-medium text-forest transition-colors hover:bg-mint/80"
                     >
-                      <Compass className="size-3.5" /> Reset peta
+                      <Compass className="size-4" strokeWidth={1.75} /> Reset peta
                     </button>
                     <button
                       type="button"
                       onClick={onDismiss}
-                      className="flex items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-2.5 py-1.5 text-[11px] text-ink-soft transition-colors hover:bg-[#eaecf0] hover:text-ink"
+                      className="btn-soft gap-1.5 !rounded-[10px] px-2.5 py-1.5 text-[12px] text-ink-soft hover:text-ink"
                     >
-                      <MoonStar className="size-3.5" /> Pulang
+                      <MoonStar className="size-4" strokeWidth={1.75} /> Pulang
                     </button>
                   </div>
                 </div>
-                <p className="text-[10px] leading-tight font-light text-ink-soft">Seret aku buat pindah • elus aku 💙</p>
+                <p className="text-[12px] leading-tight font-normal text-ink-soft">Seret pindah, ketuk sapa</p>
               </div>
             ) : (
-              <p className="font-display text-[12.5px] leading-snug font-medium text-ink">{bubbleText}</p>
+              <p className="text-[14px] leading-snug font-medium text-ink">{bubbleText}</p>
             )}
           </motion.div>
         )}
@@ -991,8 +991,8 @@ export default function BlamCompanion({
               className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2"
             >
               {p.kind === 'heart' && <HeartGlyph className="size-4" />}
-              {p.kind === 'spark' && <SparkGlyph className="size-3.5" />}
-              {p.kind === 'z' && <span className="font-display text-[15px] font-bold text-forest/70">z</span>}
+              {p.kind === 'spark' && <SparkGlyph className="size-4" />}
+              {p.kind === 'z' && <span className="text-[16px] font-semibold text-forest/70">z</span>}
             </motion.span>
           ))}
         </AnimatePresence>
@@ -1049,11 +1049,11 @@ export function MobilePeekElephant({
             transition={{ type: 'spring', stiffness: 420, damping: 24 }}
             className={`pointer-events-none fixed bottom-8 left-1/2 z-[515] grid size-12 -translate-x-1/2 place-items-center rounded-full border transition-colors duration-150 ${
               dismissArmed
-                ? 'border-critical bg-critical text-white shadow-[0_10px_28px_rgba(239,68,68,0.42)]'
-                : 'border-black/10 bg-white/92 text-ink-soft shadow-[0_8px_24px_rgba(19,36,26,0.18)]'
+                ? 'border-critical bg-critical text-white shadow-[0_8px_20px_rgba(15,29,50,0.2)]'
+                : 'border-line bg-white text-ink-soft shadow-[0_8px_20px_rgba(15,29,50,0.14)]'
             }`}
           >
-            <X className="size-5" strokeWidth={2.4} />
+            <X className="size-5" strokeWidth={1.75} />
           </motion.div>
         )}
       </AnimatePresence>

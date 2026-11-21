@@ -1,7 +1,8 @@
 import { Camera, ChevronRight, FileText, LogOut, ShieldCheck } from 'lucide-react'
 import { useRef, useState } from 'react'
-import type { ChangeEvent, MouseEvent } from 'react'
-import { DashedOutline, DashedRow, Pill } from '../../components/ui/atoms'
+import type { ChangeEvent, MouseEvent, ReactNode } from 'react'
+import { DashedRow, Pill } from '../../components/ui/atoms'
+import { BlamNatureIcon } from '../../components/ui/bumpIcons'
 import { updateMyProfile } from '../../lib/api'
 import { ROLE_LABEL } from '../../lib/constants'
 import { compressImage } from '../../lib/imageCompress'
@@ -9,7 +10,7 @@ import { navigateApp } from '../../lib/route'
 import { useAuth } from '../auth/AuthContext'
 import { AuthPanel } from '../auth/AuthModal'
 
-export default function ProfilePanel() {
+export default function ProfilePanel({ headerAction }: { headerAction?: ReactNode } = {}) {
   const { isDemo, profile, memberships, openAuthModal, logout, refreshMe } = useAuth()
   const fileRef = useRef<HTMLInputElement | null>(null)
   const [avatarBusy, setAvatarBusy] = useState(false)
@@ -44,11 +45,24 @@ export default function ProfilePanel() {
   if (!profile) {
     return (
       <div className="flex flex-col gap-4">
-        <h2 className="text-[20px] font-semibold tracking-tight text-ink">
-          {isDemo ? 'Peran Demo' : 'Masuk'}
-        </h2>
-        <div className="relative rounded-[14px] bg-[#f4f5f7] p-5">
-          <DashedOutline rx={13} />
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-[20px] font-semibold text-ink">
+            {isDemo ? 'Peran Demo' : 'Masuk'}
+          </h2>
+          {headerAction}
+        </div>
+        <div className="atlas-group flex flex-col gap-4 p-5">
+          <div className="flex items-center gap-3 border-b border-ink/6 pb-4">
+            <span className="grid size-12 shrink-0 place-items-center rounded-[12px] bg-canvas">
+              <BlamNatureIcon className="size-9" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-display text-[16px] leading-tight font-semibold text-ink">Blam</p>
+              <p className="mt-0.5 text-[12px] leading-snug text-ink-soft">
+                Pantau titik kritis, ikut aksi, dan dukung konservasi
+              </p>
+            </div>
+          </div>
           <AuthPanel />
         </div>
       </div>
@@ -59,12 +73,17 @@ export default function ProfilePanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="relative rounded-[14px] bg-[#f4f5f7] p-4 sm:p-5">
-        <DashedOutline rx={13} />
+      {headerAction && (
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-[20px] font-semibold text-ink">Profil</h2>
+          {headerAction}
+        </div>
+      )}
+      <section className="card-quiet p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative shrink-0">
-              <div className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-line bg-canvas text-base font-extrabold text-forest sm:size-14 sm:text-lg">
+              <div className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-line bg-canvas text-[16px] font-semibold text-forest sm:size-14">
                 {profile.avatar_url ? (
                   <img
                     src={profile.avatar_url}
@@ -82,9 +101,9 @@ export default function ProfilePanel() {
                 onClick={() => fileRef.current?.click()}
                 aria-label="Ubah foto profil"
                 title="Ubah foto profil"
-                className="absolute -right-1 -bottom-1 flex size-6 items-center justify-center rounded-full border border-white bg-forest text-white shadow-sm transition-transform hover:scale-105 disabled:opacity-60"
+                className="absolute -right-1 -bottom-1 flex size-6 items-center justify-center rounded-full border border-white bg-leaf text-white shadow-sm transition-colors hover:bg-forest disabled:opacity-60"
               >
-                <Camera className="size-3.5" />
+                <Camera className="size-3.5" strokeWidth={1.75} />
               </button>
               <input
                 ref={fileRef}
@@ -97,19 +116,18 @@ export default function ProfilePanel() {
 
             <div className="min-w-0">
               <Pill>{ROLE_LABEL[profile.role]}</Pill>
-              <h2 className="mt-1 truncate text-[18px] font-semibold text-ink sm:text-[20px]">{profile.full_name}</h2>
-              {profile.email && <p className="truncate text-[12px] font-light text-ink-soft">{profile.email}</p>}
+              <h2 className="mt-1 truncate text-[20px] font-semibold text-ink">{profile.full_name}</h2>
+              {profile.email && <p className="truncate text-[12px] font-normal text-ink-soft">{profile.email}</p>}
             </div>
           </div>
-          <div className="relative shrink-0 rounded-[10px] bg-white px-3 py-1.5 text-center">
-            <DashedOutline rx={9} />
-            <p className="num text-xl leading-none text-ink sm:text-2xl">{profile.points}</p>
-            <p className="mt-0.5 text-[10px] font-light tracking-wide text-ink-soft uppercase">Poin</p>
+          <div className="shrink-0 rounded-[12px] bg-canvas px-3 py-1.5 text-center">
+            <p className="num text-[20px] leading-none font-semibold text-ink">{profile.points}</p>
+            <p className="mt-0.5 text-[11px] font-medium text-ink-soft uppercase tracking-[0.04em]">Poin</p>
           </div>
         </div>
 
         {avatarError && (
-          <p role="alert" className="mt-3 rounded-xl border border-line bg-white px-3 py-2 text-xs font-semibold text-critical">
+          <p role="alert" className="mt-3 rounded-[10px] border border-line bg-canvas px-3 py-2 text-[12px] font-medium text-critical">
             {avatarError}
           </p>
         )}
@@ -119,15 +137,15 @@ export default function ProfilePanel() {
             type="button"
             disabled={avatarBusy}
             onClick={() => fileRef.current?.click()}
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-[12px] font-normal whitespace-nowrap text-ink shadow-[0_1px_2px_rgba(18,29,79,0.04)] transition hover:bg-[#eaecf0] disabled:opacity-60"
+            className="btn-soft h-10 px-3 text-[12px] whitespace-nowrap disabled:opacity-60"
           >
-            <Camera className="size-3.5 shrink-0" /> {avatarBusy ? 'Mengunggah…' : 'Edit Foto'}
+            <Camera className="size-4 shrink-0" strokeWidth={1.75} /> {avatarBusy ? 'Mengunggah…' : 'Edit Foto'}
           </button>
           {isDemo && (
             <button
               type="button"
               onClick={openAuthModal}
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-3 text-[12px] font-normal whitespace-nowrap text-ink shadow-[0_1px_2px_rgba(18,29,79,0.04)] transition hover:bg-[#eaecf0]"
+              className="btn-soft h-10 px-3 text-[12px] whitespace-nowrap"
             >
               Ganti Peran
             </button>
@@ -135,27 +153,26 @@ export default function ProfilePanel() {
           <button
             type="button"
             onClick={() => void logout()}
-            className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-white px-4 text-[12px] font-normal whitespace-nowrap text-ink-soft shadow-[0_1px_2px_rgba(18,29,79,0.04)] transition hover:bg-critical/8 hover:text-critical ${
+            className={`btn-soft h-10 gap-1.5 px-4 text-[12px] whitespace-nowrap text-ink-soft hover:text-critical ${
               isDemo ? 'col-span-2' : ''
             }`}
           >
-            <LogOut className="size-3.5 shrink-0" /> Keluar
+            <LogOut className="size-4 shrink-0" strokeWidth={1.75} /> Keluar
           </button>
         </div>
       </section>
 
-      <section className="relative rounded-[14px] bg-[#f4f5f7] p-4">
-        <DashedOutline rx={13} />
-        <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Organisasi ({memberships.length})</p>
+      <section className="card-quiet p-4">
+        <p className="text-[12px] font-medium text-ink-soft">Organisasi ({memberships.length})</p>
         {memberships.length === 0 ? (
-          <p className="mt-2 text-xs font-light text-ink-soft">Kosong</p>
+          <p className="mt-2 text-[12px] font-normal text-ink-soft">Belum tergabung organisasi</p>
         ) : (
           <div className="mt-1">
             {memberships.map((m) => (
               <DashedRow key={m.id} className="flex items-center justify-between gap-2 py-2.5">
                 <div className="min-w-0">
-                  <p className="truncate text-[13.5px] font-normal text-ink">{m.organization?.name ?? 'Organisasi'}</p>
-                  <p className="text-[11px] font-light text-ink-soft">
+                  <p className="truncate text-[14px] font-medium text-ink">{m.organization?.name ?? 'Organisasi'}</p>
+                  <p className="text-[12px] font-normal text-ink-soft">
                     {m.member_role === 'lead' ? 'Ketua' : 'Anggota'} · {m.status === 'active' ? 'Aktif' : 'Menunggu'} · {m.organization?.is_verified ? 'Terverifikasi' : 'Review'}
                   </p>
                 </div>
@@ -165,39 +182,38 @@ export default function ProfilePanel() {
         )}
       </section>
 
-      <section className="relative rounded-[14px] bg-[#f4f5f7] p-4">
-        <DashedOutline rx={13} />
-        <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Pengaturan, Privasi &amp; Kebijakan</p>
+      <section className="card-quiet p-4">
+        <p className="text-[12px] font-medium text-ink-soft">Pengaturan, Privasi &amp; Kebijakan</p>
         <div className="mt-1">
           <DashedRow className="py-2">
             <a
               href="/privacy"
               onClick={(e) => openLegal(e, '/privacy')}
-              className="flex items-center justify-between gap-2 rounded-lg py-1 text-[13px] font-normal text-ink transition-colors hover:text-forest"
+              className="flex items-center justify-between gap-2 rounded-[8px] py-1 text-[14px] font-medium text-ink transition-colors hover:text-leaf"
             >
               <span className="inline-flex items-center gap-2">
-                <ShieldCheck className="size-4 text-leaf" />
+                <ShieldCheck className="size-4 text-leaf" strokeWidth={1.75} />
                 Kebijakan Privasi
               </span>
-              <ChevronRight className="size-4 text-ink-soft" />
+              <ChevronRight className="size-4 text-ink-soft" strokeWidth={1.75} />
             </a>
           </DashedRow>
           <DashedRow className="py-2">
             <a
               href="/terms"
               onClick={(e) => openLegal(e, '/terms')}
-              className="flex items-center justify-between gap-2 rounded-lg py-1 text-[13px] font-normal text-ink transition-colors hover:text-forest"
+              className="flex items-center justify-between gap-2 rounded-[8px] py-1 text-[14px] font-medium text-ink transition-colors hover:text-leaf"
             >
               <span className="inline-flex items-center gap-2">
-                <FileText className="size-4 text-leaf" />
+                <FileText className="size-4 text-leaf" strokeWidth={1.75} />
                 Syarat &amp; Ketentuan
               </span>
-              <ChevronRight className="size-4 text-ink-soft" />
+              <ChevronRight className="size-4 text-ink-soft" strokeWidth={1.75} />
             </a>
           </DashedRow>
         </div>
-        <p className="mt-2.5 text-[11px] font-light text-ink-soft">
-          Peran aktif: <span className="font-normal text-ink">{ROLE_LABEL[profile.role]}</span> · {isDemo ? 'Mode Demo Lokal' : 'Akun Terhubung'}
+        <p className="mt-2.5 text-[12px] font-normal text-ink-soft">
+          Peran aktif: <span className="font-medium text-ink">{ROLE_LABEL[profile.role]}</span> · {isDemo ? 'Mode Demo Lokal' : 'Akun Terhubung'}
         </p>
       </section>
     </div>

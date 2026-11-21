@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { FileText, Mail, ShieldCheck, X } from 'lucide-react'
 import { useEffect } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
-import { DashedOutline, Pill } from '../../components/ui/atoms'
+import { Pill } from '../../components/ui/atoms'
 import { BlamNatureIcon } from '../../components/ui/bumpIcons'
 import type { AppPath } from '../../lib/route'
 
@@ -16,15 +16,14 @@ function LegalSection({
   children: ReactNode
 }) {
   return (
-    <section className="relative rounded-[14px] bg-[#f4f5f7] p-4 sm:p-5">
-      <DashedOutline rx={13} />
+    <section className="atlas-group p-4 sm:p-5">
       <div className="flex items-center gap-2.5">
-        <span className="num grid size-7 shrink-0 place-items-center rounded-full bg-white text-xs text-forest shadow-[0_1px_3px_rgba(19,36,26,0.12)]">
+        <span className="num grid size-7 shrink-0 place-items-center rounded-full bg-canvas text-[12px] text-forest">
           {number}
         </span>
-        <h2 className="font-display text-[15px] font-semibold text-ink sm:text-base">{title}</h2>
+        <h3 className="text-[16px] font-semibold text-ink">{title}</h3>
       </div>
-      <div className="mt-2.5 space-y-2.5 text-[13.5px] leading-relaxed text-ink-soft [&_strong]:text-ink">
+      <div className="mt-2.5 space-y-2.5 text-[14px] leading-relaxed text-ink-soft [&_strong]:text-ink">
         {children}
       </div>
     </section>
@@ -54,11 +53,10 @@ function LegalTab({
       href={href}
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`font-display relative flex h-10 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
-        active ? 'bg-ink text-white shadow-xs' : 'bg-[#f4f5f7] text-ink hover:bg-[#eaecf0]'
+      className={`relative flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] px-4 text-[12px] font-medium whitespace-nowrap transition-colors ${
+        active ? 'bg-ink text-white' : 'btn-soft'
       }`}
     >
-      {!active && <DashedOutline rx={11} />}
       {icon}
       {label}
     </a>
@@ -82,7 +80,7 @@ function LegalShell({
 }) {
   useEffect(() => {
     const prevTitle = document.title
-    document.title = active === 'privacy' ? 'Kebijakan Privasi — Blam' : 'Ketentuan Layanan — Blam'
+    document.title = active === 'privacy' ? 'Kebijakan Privasi - Blam' : 'Ketentuan Layanan - Blam'
     return () => {
       document.title = prevTitle
     }
@@ -106,7 +104,7 @@ function LegalShell({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       onClick={onClose}
-      className="fixed inset-0 z-[1100] flex items-end justify-center bg-[rgba(19,36,26,0.28)] backdrop-blur-md md:items-center md:p-6"
+      className="fixed inset-0 z-[1100] flex items-end justify-center bg-ink/30 backdrop-blur-[2px] md:items-center md:p-6"
     >
       <motion.div
         initial={{ opacity: 0, y: 28, scale: 0.98 }}
@@ -114,61 +112,61 @@ function LegalShell({
         exit={{ opacity: 0, y: 20, scale: 0.98 }}
         transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-white/80 bg-white/96 shadow-[0_24px_60px_-12px_rgba(19,36,26,0.35),0_4px_12px_rgba(19,36,26,0.08)] md:max-h-[88dvh] md:max-w-[640px] md:rounded-[28px]"
+        className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[16px] border border-line bg-white shadow-[0_24px_48px_-12px_rgba(15,29,50,0.22)] md:max-h-[88dvh] md:max-w-[640px] md:rounded-[16px]"
       >
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b-[1.5px] border-dashed border-dash px-4 py-3 sm:px-5">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#3fb473] to-[#1d5c3a] shadow-[0_3px_10px_rgba(29,92,58,0.22)]">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full border border-line bg-canvas">
               <BlamNatureIcon className="size-6" />
             </span>
             <span className="min-w-0">
-              <span className="font-display block text-base leading-tight font-bold tracking-tight text-ink">Blam</span>
-              <span className="block truncate text-[11px] font-medium text-ink-soft">Dokumen Legal</span>
+              <span className="block text-[16px] leading-tight font-semibold text-ink">Blam</span>
+              <span className="block truncate text-[12px] font-medium text-ink-soft">Dokumen Legal</span>
             </span>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Tutup"
-            className="grid size-10 shrink-0 place-items-center rounded-full border-[1.5px] border-dashed border-leaf/30 bg-canvas text-forest transition-colors hover:bg-mint/40"
+            className="btn-soft size-10 shrink-0 !rounded-[10px] p-0"
           >
-            <X className="size-4" />
+            <X className="size-4" strokeWidth={1.75} />
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-6 sm:px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-canvas px-4 pt-4 pb-6 sm:px-6">
           <nav aria-label="Dokumen legal Blam" className="flex gap-2">
             <LegalTab
               href="/privacy"
               active={active === 'privacy'}
-              icon={<ShieldCheck className="size-4 shrink-0" />}
+              icon={<ShieldCheck className="size-4 shrink-0" strokeWidth={1.75} />}
               label="Kebijakan Privasi"
               onNavigate={onNavigate}
             />
             <LegalTab
               href="/terms"
               active={active === 'terms'}
-              icon={<FileText className="size-4 shrink-0" />}
+              icon={<FileText className="size-4 shrink-0" strokeWidth={1.75} />}
               label="Ketentuan Layanan"
               onNavigate={onNavigate}
             />
           </nav>
 
-          <div className="mt-5 border-b-[1.5px] border-dashed border-dash pb-5">
+          <div className="mt-5 border-b border-line pb-5">
             <Pill>{active === 'privacy' ? 'Privasi & Data' : 'Aturan Penggunaan'}</Pill>
-            <h1 className="mt-3 text-[22px] leading-tight font-bold tracking-tight text-ink sm:text-[26px]">{title}</h1>
-            <p className="mt-1.5 text-xs font-medium text-ink-soft">{subtitle}</p>
+            <h1 className="mt-3 text-[24px] leading-tight font-semibold text-ink">{title}</h1>
+            <p className="mt-1.5 text-[12px] font-medium text-ink-soft">{subtitle}</p>
           </div>
 
           <div className="mt-5 flex flex-col gap-3">{children}</div>
 
-          <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t-[1.5px] border-dashed border-dash pt-4 text-xs font-medium text-ink-soft">
+          <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-[12px] font-medium text-ink-soft">
             <span>&copy; 2026 Blam</span>
             <a
               href="mailto:blam@gmail.com"
-              className="font-display inline-flex items-center gap-1.5 font-semibold text-forest hover:underline"
+              className="inline-flex items-center gap-1.5 font-semibold text-forest hover:underline"
             >
-              <Mail className="size-3.5" />
+              <Mail className="size-4" strokeWidth={1.75} />
               blam@gmail.com
             </a>
           </footer>
@@ -193,15 +191,14 @@ function PrivacyPage({ onNavigate, onClose }: LegalProps) {
       onNavigate={onNavigate}
       onClose={onClose}
     >
-      <p className="px-1 text-[13.5px] leading-relaxed text-ink-soft [&_strong]:text-ink">
+      <p className="px-1 text-[14px] leading-relaxed text-ink-soft [&_strong]:text-ink">
         <strong>Blam</strong> adalah platform radar konservasi untuk memantau, melaporkan, memverifikasi, dan
         menindaklanjuti ancaman terhadap hutan tropis, mangrove pesisir, serta daerah aliran sungai di Indonesia.
         Dokumen ini menjelaskan data yang kami kumpulkan, cara penggunaannya, serta hak Anda atas data tersebut.
       </p>
 
-      <div className="relative rounded-[20px] bg-mint/35 p-4 sm:p-5">
-        <DashedOutline rx={19} />
-        <p className="font-display text-xs font-bold tracking-wide text-forest uppercase">
+      <div className="card-quiet bg-mint/45 p-4 sm:p-5">
+        <p className="text-[12px] font-semibold text-forest">
           Kepatuhan Google API Services User Data Policy (Limited Use)
         </p>
         <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
@@ -325,7 +322,7 @@ function TermsPage({ onNavigate, onClose }: LegalProps) {
       onNavigate={onNavigate}
       onClose={onClose}
     >
-      <p className="px-1 text-[13.5px] leading-relaxed text-ink-soft [&_strong]:text-ink">
+      <p className="px-1 text-[14px] leading-relaxed text-ink-soft [&_strong]:text-ink">
         Dengan mengakses atau menggunakan layanan <strong>Blam</strong>, Anda menyetujui Ketentuan Layanan ini serta{' '}
         <a
           href="/privacy"

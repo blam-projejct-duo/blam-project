@@ -36,7 +36,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
   const activeOrgs = memberships.filter((m) => m.status === 'active' && m.organization)
 
   const kind = signal.kind ?? 'other'
-  const defaultTitle = `Bantuan Darurat ${KIND_LABEL[kind]} — ${signal.title}`
+  const defaultTitle = `Bantuan Darurat ${KIND_LABEL[kind]} - ${signal.title}`
   const defaultDesc = `Penggalangan dana darurat untuk membantu warga terdampak ${KIND_LABEL[kind].toLowerCase()} di sekitar ${signal.title}.`
 
   const [title, setTitle] = useState(defaultTitle)
@@ -124,17 +124,17 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[20px] border border-line bg-surface shadow-2xl sm:rounded-[20px]">
+      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[16px] border border-line bg-surface shadow-[0_24px_48px_-12px_rgba(15,29,50,0.22)] sm:rounded-[16px]">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-white px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-critical/12 text-critical">
-              <HeartHandshake className="size-5" />
+            <span className="row-icon text-critical">
+              <HeartHandshake className="size-5" strokeWidth={1.75} />
             </span>
             <div className="min-w-0">
-              <h2 className="truncate text-base font-bold text-ink">Buka Penggalangan Dana</h2>
-              <p className="flex items-center gap-1 truncate text-xs font-medium text-ink-soft">
-                <MapPin className="size-3 shrink-0 text-[#2563eb]" />
-                <span className="truncate">{signal.title} · Langsung tayang</span>
+              <h2 className="truncate text-[16px] font-semibold text-ink">Buka Galang Dana</h2>
+              <p className="flex items-center gap-1 truncate text-[12px] font-normal text-ink-soft">
+                <MapPin className="size-3.5 shrink-0 text-leaf" strokeWidth={1.75} />
+                <span className="truncate">{signal.title}</span>
               </p>
             </div>
           </div>
@@ -142,22 +142,22 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
             type="button"
             onClick={onClose}
             aria-label="Tutup"
-            className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#f4f5f7] text-ink-soft transition hover:bg-[#eaecf0] hover:text-ink"
+            className="btn-soft size-9 shrink-0 !rounded-[10px] p-0 text-ink-soft hover:text-ink"
           >
-            <X className="size-4" />
+            <X className="size-4" strokeWidth={1.75} />
           </button>
         </header>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-1 flex-col gap-4 overflow-y-auto p-5">
           {profile?.role !== 'admin' && profile?.role !== 'agency' && activeOrgs.length > 1 && (
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">
+              <span className="text-[12px] font-medium text-ink-soft">
                 Organisasi Penyelenggara
               </span>
               <select
                 value={organizationId}
                 onChange={(e) => setOrganizationId(e.target.value)}
-                className="h-11 w-full rounded-xl bg-[#f4f5f7] px-3.5 text-sm font-normal text-ink transition focus:bg-[#eaecf0] focus:outline-none"
+                className="h-11 w-full rounded-[10px] border border-line bg-canvas px-3.5 text-[14px] font-normal text-ink transition-colors focus:border-leaf focus:bg-white focus:outline-none"
               >
                 {activeOrgs.map((m) => (
                   <option key={m.organization_id} value={m.organization_id}>
@@ -169,7 +169,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
           )}
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">
+            <span className="text-[12px] font-medium text-ink-soft">
               Judul Galang Dana
             </span>
             <input
@@ -178,12 +178,12 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
               onChange={(e) => setTitle(e.target.value)}
               maxLength={140}
               required
-              className="h-11 w-full rounded-xl bg-[#f4f5f7] px-3.5 text-sm font-normal text-ink transition focus:bg-[#eaecf0] focus:outline-none"
+              className="h-11 w-full rounded-[10px] border border-line bg-canvas px-3.5 text-[14px] font-normal text-ink transition-colors focus:border-leaf focus:bg-white focus:outline-none"
             />
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">
+            <span className="text-[12px] font-medium text-ink-soft">
               Deskripsi
             </span>
             <textarea
@@ -191,30 +191,30 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               maxLength={1200}
-              className="w-full resize-none rounded-xl bg-[#f4f5f7] p-3.5 text-sm leading-relaxed font-light text-ink transition focus:bg-[#eaecf0] focus:outline-none"
+              className="w-full resize-none rounded-[10px] border border-line bg-canvas p-3.5 text-[14px] leading-relaxed font-normal text-ink transition-colors focus:border-leaf focus:bg-white focus:outline-none"
             />
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">
-              Foto Sampul (Opsional)
+            <span className="text-[12px] font-medium text-ink-soft">
+              Foto Sampul
             </span>
             {photo ? (
-              <div className="relative h-36 w-full overflow-hidden rounded-xl border border-line bg-[#f4f5f7]">
+              <div className="relative h-36 w-full overflow-hidden rounded-[12px] border border-line bg-canvas">
                 <img src={photo.previewUrl} alt="Pratinjau sampul" className="size-full object-cover" />
                 <button
                   type="button"
                   onClick={removePhoto}
                   aria-label="Hapus foto"
-                  className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-ink/70 text-white transition hover:bg-ink"
+                  className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-ink/70 text-white transition-colors hover:bg-ink"
                 >
-                  <Trash2 className="size-4" />
+                  <Trash2 className="size-4" strokeWidth={1.75} />
                 </button>
               </div>
             ) : (
-              <label className="flex h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line bg-[#f4f5f7] text-xs font-light text-ink-soft transition hover:bg-[#eaecf0]">
-                <ImagePlus className="size-5 text-leaf" />
-                <span>Pilih foto lokasi atau kondisi lapangan</span>
+              <label className="flex h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-[12px] border border-dashed border-dash bg-canvas text-[12px] font-normal text-ink-soft transition-colors hover:bg-muted">
+                <ImagePlus className="size-5 text-leaf" strokeWidth={1.75} />
+                <span>Pilih foto lokasi</span>
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -227,9 +227,9 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
 
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">Target Dana</span>
+              <span className="text-[12px] font-medium text-ink-soft">Target Dana</span>
               {targetAmount > 0 && (
-                <span className="num rounded-md bg-[#f4f5f7] px-2 py-0.5 text-xs text-ink">
+                <span className="num rounded-[8px] border border-line bg-canvas px-2 py-0.5 text-[12px] text-ink">
                   {formatRupiah(targetAmount)}
                 </span>
               )}
@@ -243,10 +243,10 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
                     key={preset.value}
                     type="button"
                     onClick={() => handleSelectPreset(preset.value)}
-                    className={`h-10 rounded-xl px-3 text-xs whitespace-nowrap transition ${
+                    className={`h-10 rounded-[10px] px-3 text-[12px] whitespace-nowrap transition-colors ${
                       active
                         ? 'bg-ink font-medium text-white'
-                        : 'bg-[#f4f5f7] font-normal text-ink hover:bg-[#eaecf0]'
+                        : 'btn-soft font-normal'
                     }`}
                   >
                     {preset.label}
@@ -256,7 +256,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
             </div>
 
             <div className="relative">
-              <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-xs font-normal text-ink-soft">
+              <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[12px] font-normal text-ink-soft">
                 Rp
               </span>
               <input
@@ -264,8 +264,8 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
                 inputMode="numeric"
                 value={customTarget}
                 onChange={(e) => handleCustomChange(e.target.value)}
-                placeholder="Atau ketik nominal target..."
-                className="num h-11 w-full rounded-xl bg-[#f4f5f7] pr-3.5 pl-10 text-sm text-ink placeholder:font-sans placeholder:font-light transition focus:bg-[#eaecf0] focus:outline-none"
+                placeholder="Target lain"
+                className="num h-11 w-full rounded-[10px] border border-line bg-canvas pr-3.5 pl-10 text-[14px] text-ink placeholder:font-sans transition-colors focus:border-leaf focus:bg-white focus:outline-none"
               />
             </div>
           </div>
@@ -273,7 +273,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
           {error && (
             <p
               role="alert"
-              className="rounded-xl bg-critical/8 px-3.5 py-2.5 text-xs font-normal text-critical"
+              className="card-quiet px-3.5 py-2.5 text-[12px] font-medium text-critical"
             >
               {error}
             </p>
@@ -283,7 +283,7 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
             <button
               type="button"
               onClick={onClose}
-              className="h-12 w-full rounded-[14px] bg-[#f4f5f7] px-5 text-sm font-normal text-ink-soft transition hover:bg-[#eaecf0] hover:text-ink sm:w-auto sm:min-w-28"
+              className="btn-soft h-12 w-full px-5 text-sm text-ink-soft hover:text-ink sm:w-auto sm:min-w-28"
             >
               Batal
             </button>

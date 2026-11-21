@@ -2,63 +2,22 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { ConservationEvent, HazardKind, Profile } from '../../types'
 
 const VERIFIED_HAZARD_COLORS: Record<HazardKind, string> = {
-  wildfire: '#F97316',
-  suspected: '#F97316',
-  volcano: '#7C3AED',
+  wildfire: '#EA580C',
+  suspected: '#EAB308',
+  volcano: '#6D28D9',
   flood: '#2563EB',
-  storm: '#0891B2',
-  other: '#F59E0B',
+  storm: '#0E7490',
+  other: '#D97706',
 }
 
-function drawDropletPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+function drawPinpointPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  const headY = cy - r * 0.22
+  const tipY = cy + r * 1.18
+  const headR = r * 0.92
   ctx.beginPath()
-  ctx.moveTo(cx, cy - r * 1.15)
-  ctx.bezierCurveTo(cx + r * 0.95, cy - r * 0.25, cx + r * 0.95, cy + r * 0.55, cx, cy + r * 0.98)
-  ctx.bezierCurveTo(cx - r * 0.95, cy + r * 0.55, cx - r * 0.95, cy - r * 0.25, cx, cy - r * 1.15)
-  ctx.closePath()
-}
-
-function drawFlamePath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
-  ctx.beginPath()
-  ctx.moveTo(cx, cy - r * 1.18)
-  ctx.bezierCurveTo(cx + r * 0.55, cy - r * 0.55, cx + r * 1.05, cy - r * 0.05, cx + r * 0.86, cy + r * 0.52)
-  ctx.bezierCurveTo(cx + r * 0.68, cy + r * 0.96, cx - r * 0.68, cy + r * 0.96, cx - r * 0.86, cy + r * 0.52)
-  ctx.bezierCurveTo(cx - r * 1.05, cy - r * 0.05, cx - r * 0.55, cy - r * 0.55, cx, cy - r * 1.18)
-  ctx.closePath()
-}
-
-function drawTrianglePeakPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
-  const topY = cy - r * 1.05
-  const botY = cy + r * 0.82
-  const halfW = r * 1.06
-  ctx.beginPath()
-  ctx.moveTo(cx, topY)
-  ctx.quadraticCurveTo(cx + halfW * 0.58, cy - r * 0.1, cx + halfW, botY - r * 0.18)
-  ctx.quadraticCurveTo(cx + halfW, botY, cx + halfW * 0.72, botY)
-  ctx.lineTo(cx - halfW * 0.72, botY)
-  ctx.quadraticCurveTo(cx - halfW, botY, cx - halfW, botY - r * 0.18)
-  ctx.quadraticCurveTo(cx - halfW * 0.58, cy - r * 0.1, cx, topY)
-  ctx.closePath()
-}
-
-function drawHexagonPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
-  ctx.beginPath()
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 3) * i - Math.PI / 2
-    const x = cx + Math.cos(a) * r
-    const y = cy + Math.sin(a) * r
-    if (i === 0) ctx.moveTo(x, y)
-    else ctx.lineTo(x, y)
-  }
-  ctx.closePath()
-}
-
-function drawShieldPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
-  ctx.beginPath()
-  ctx.moveTo(cx, cy - r)
-  ctx.lineTo(cx + r * 0.88, cy - r * 0.65)
-  ctx.quadraticCurveTo(cx + r * 0.92, cy + r * 0.45, cx, cy + r * 1.05)
-  ctx.quadraticCurveTo(cx - r * 0.92, cy + r * 0.45, cx - r * 0.88, cy - r * 0.65)
+  ctx.arc(cx, headY, headR, Math.PI * 0.85, Math.PI * 0.15, false)
+  ctx.quadraticCurveTo(cx + headR * 0.86, headY + headR * 0.95, cx, tipY)
+  ctx.quadraticCurveTo(cx - headR * 0.86, headY + headR * 0.95, cx - headR * Math.cos(Math.PI * 0.15), headY + headR * Math.sin(Math.PI * 0.15))
   ctx.closePath()
 }
 
@@ -114,60 +73,26 @@ function buildHazardCanvas(kind: HazardKind): ImageData {
   const ctx = canvas.getContext('2d')!
   const cx = size / 2
   const cy = size / 2
-  const r = 26
+  const r = 27
 
-  ctx.shadowColor = 'rgba(15, 23, 42, 0.22)'
-  ctx.shadowBlur = 6
+  ctx.shadowColor = 'rgba(15, 23, 42, 0.2)'
+  ctx.shadowBlur = 5
   ctx.shadowOffsetY = 2
 
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.fillStyle = 'rgba(255, 251, 235, 0.95)'
+  drawPinpointPath(ctx, cx, cy, r)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.96)'
   ctx.fill()
 
   ctx.shadowColor = 'transparent'
   ctx.save()
-  ctx.setLineDash([6.5, 4.5])
-  ctx.lineWidth = 3.6
-  ctx.strokeStyle = '#F59E0B'
+  ctx.setLineDash([6, 4])
+  ctx.lineWidth = 3.2
+  ctx.strokeStyle = '#94A3B8'
   ctx.stroke()
   ctx.restore()
 
-  drawHazardGlyph(ctx, kind, cx, kind === 'volcano' ? cy + 0.5 : cy - 0.5, '#D97706', 0.95)
+  drawHazardGlyph(ctx, kind, cx, cy - r * 0.22, '#475569', 0.88)
   return ctx.getImageData(0, 0, size, size)
-}
-
-function drawActionBoltBadge(
-  ctx: CanvasRenderingContext2D,
-  bx: number,
-  by: number,
-  br: number,
-  fill: string,
-) {
-  ctx.save()
-  ctx.shadowColor = 'rgba(15, 23, 42, 0.25)'
-  ctx.shadowBlur = 4
-  ctx.shadowOffsetY = 1.5
-  ctx.beginPath()
-  ctx.arc(bx, by, br, 0, Math.PI * 2)
-  ctx.fillStyle = fill
-  ctx.fill()
-  ctx.shadowColor = 'transparent'
-  ctx.lineWidth = 2.6
-  ctx.strokeStyle = '#FFFFFF'
-  ctx.stroke()
-
-  ctx.beginPath()
-  ctx.moveTo(bx + br * 0.08, by - br * 0.5)
-  ctx.lineTo(bx - br * 0.36, by + br * 0.06)
-  ctx.lineTo(bx + br * 0.02, by + br * 0.06)
-  ctx.lineTo(bx - br * 0.08, by + br * 0.5)
-  ctx.lineTo(bx + br * 0.38, by - br * 0.06)
-  ctx.lineTo(bx, by - br * 0.06)
-  ctx.closePath()
-  ctx.fillStyle = '#FFFFFF'
-  ctx.fill()
-  ctx.restore()
 }
 
 function buildVerifiedHazardCanvas(kind: HazardKind): ImageData {
@@ -177,19 +102,14 @@ function buildVerifiedHazardCanvas(kind: HazardKind): ImageData {
   canvas.height = size
   const ctx = canvas.getContext('2d')!
   const cx = size / 2
-  const cy = size / 2 + 2
+  const cy = size / 2
   const r = 28
 
   ctx.shadowColor = 'rgba(15, 23, 42, 0.28)'
   ctx.shadowBlur = 7
   ctx.shadowOffsetY = 3
 
-  if (kind === 'flood') drawDropletPath(ctx, cx, cy, r)
-  else if (kind === 'wildfire' || kind === 'suspected') drawFlamePath(ctx, cx, cy, r)
-  else if (kind === 'volcano') drawTrianglePeakPath(ctx, cx, cy + 1, r)
-  else if (kind === 'storm') drawHexagonPath(ctx, cx, cy - 2, r)
-  else drawShieldPath(ctx, cx, cy - 2, r)
-
+  drawPinpointPath(ctx, cx, cy, r)
   ctx.fillStyle = VERIFIED_HAZARD_COLORS[kind]
   ctx.fill()
 
@@ -198,7 +118,7 @@ function buildVerifiedHazardCanvas(kind: HazardKind): ImageData {
   ctx.strokeStyle = '#FFFFFF'
   ctx.stroke()
 
-  drawHazardGlyph(ctx, kind, cx, kind === 'volcano' ? cy + 3 : kind === 'flood' ? cy + 2 : cy + 1)
+  drawHazardGlyph(ctx, kind, cx, cy - r * 0.22, '#FFFFFF', 0.9)
   return ctx.getImageData(0, 0, size, size)
 }
 
@@ -209,14 +129,14 @@ function buildActionHazardCanvas(kind: HazardKind): ImageData {
   canvas.height = size
   const ctx = canvas.getContext('2d')!
   const cx = size / 2
-  const cy = size / 2 + 2
+  const cy = size / 2
   const r = 29
 
   ctx.shadowColor = 'rgba(15, 23, 42, 0.3)'
   ctx.shadowBlur = 8
   ctx.shadowOffsetY = 3
 
-  drawHexagonPath(ctx, cx, cy - 1, r)
+  drawPinpointPath(ctx, cx, cy, r)
   ctx.fillStyle = '#15803D'
   ctx.fill()
 
@@ -226,12 +146,11 @@ function buildActionHazardCanvas(kind: HazardKind): ImageData {
   ctx.stroke()
 
   ctx.beginPath()
-  ctx.arc(cx, cy - 1, 16.5, 0, Math.PI * 2)
+  ctx.arc(cx, cy - r * 0.22, 15.5, 0, Math.PI * 2)
   ctx.fillStyle = '#FFFFFF'
   ctx.fill()
 
-  drawHazardGlyph(ctx, kind, cx, cy - 1, '#15803D', 0.85)
-  drawActionBoltBadge(ctx, cx + 20, cy - 19, 11.2, '#2F8A57')
+  drawHazardGlyph(ctx, kind, cx, cy - r * 0.22, '#15803D', 0.82)
 
   return ctx.getImageData(0, 0, size, size)
 }

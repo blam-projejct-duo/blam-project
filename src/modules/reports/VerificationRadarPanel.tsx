@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Ban, CalendarPlus, Check, MapPin, Plus } from 'lucide-react'
+import { AlertTriangle, Ban, CalendarPlus, Check, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { DashedOutline, ReportStatusPill } from '../../components/ui/atoms'
+import { ReportStatusPill } from '../../components/ui/atoms'
 import { fetchReportsQueue, verifyCitizenReport } from '../../lib/api'
 import { ECOSYSTEM_LABEL } from '../../lib/constants'
 import type { CitizenReport, ReportStatus } from '../../types'
@@ -77,29 +77,25 @@ export default function VerificationRadarPanel({
     <div className="flex flex-col gap-4">
       {!embedded && (
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-[21px] font-semibold tracking-tight text-ink">Verifikasi</h2>
+          <h2 className="text-[20px] font-semibold text-ink">Verifikasi</h2>
           <button
             type="button"
             onClick={onCreateStandaloneEvent}
-            className="btn-primary h-9 px-3.5 text-xs"
+            className="btn-primary h-9 !rounded-[10px] px-3 text-[12px]"
           >
-            <Plus className="size-3.5" />
+            <Plus className="size-4" strokeWidth={1.75} />
             Event
           </button>
         </div>
       )}
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="panel-tabs">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setFilter(t.id)}
-            className={`h-8 rounded-lg px-3 text-[11.5px] transition-colors ${
-              filter === t.id
-                ? 'bg-ink font-medium text-white'
-                : 'bg-[#f4f5f7] font-light text-ink-soft hover:text-ink'
-            }`}
+            className={`panel-tab flex-1 whitespace-nowrap ${filter === t.id ? 'is-active' : ''}`}
           >
             {t.label}
           </button>
@@ -107,31 +103,29 @@ export default function VerificationRadarPanel({
       </div>
 
       {error && (
-        <p role="alert" className="rounded-card bg-[#f4f5f7] px-4 py-3 text-xs font-light text-ink">
+        <p role="alert" className="card-quiet px-4 py-3 text-[12px] font-medium text-critical">
           {error}
         </p>
       )}
 
       {queueQuery.isPending && !queueQuery.data ? (
-        <p className="py-8 text-center text-sm font-light text-ink-soft">Memuat antrean…</p>
+        <p className="py-8 text-center text-[14px] font-normal text-ink-soft">Memuat antrean</p>
       ) : queueQuery.isError && !queueQuery.data ? (
-        <div className="relative rounded-[14px] bg-[#f4f5f7] p-5 text-center">
-          <DashedOutline rx={13} />
-          <p className="text-xs font-light text-ink-soft">
+        <div className="card-quiet p-4 text-center">
+          <p className="text-[12px] font-normal text-ink-soft">
             {queueQuery.error instanceof Error ? queueQuery.error.message : 'Gagal memuat antrean'}
           </p>
           <button
             type="button"
             onClick={() => void queueQuery.refetch()}
-            className="mt-3 h-9 rounded-xl bg-white px-4 text-xs font-normal text-ink shadow-[0_1px_2px_rgba(18,29,79,0.04)]"
+            className="btn-soft mt-3 h-9 !rounded-[10px] px-4 text-[12px]"
           >
             Muat Ulang
           </button>
         </div>
       ) : reports.length === 0 ? (
-        <p className="relative rounded-[14px] bg-[#f4f5f7] p-6 text-center text-sm font-semibold text-ink-soft">
-          <DashedOutline rx={13} />
-          Kosong
+        <p className="card-quiet p-6 text-center text-[13px] font-normal text-ink-soft">
+          Belum ada laporan dalam antrean ini
         </p>
       ) : (
         <div className="flex flex-col gap-3">
@@ -139,79 +133,77 @@ export default function VerificationRadarPanel({
             const hasLinkedEvent = (r.linked_events?.length ?? 0) > 0
             const canCreateEvent = r.status === 'verified' || r.status === 'escalated'
             const isPending = r.status === 'pending_verification' || r.status === 'escalated'
+            const reporterName = r.is_anonymous ? 'Anonim' : (r.reporter?.full_name ?? 'Warga')
             return (
-              <article key={r.id} className="relative overflow-hidden rounded-[14px] bg-[#f4f5f7]">
-                <DashedOutline rx={13} />
+              <article key={r.id} className="card-quiet overflow-hidden rounded-[12px]">
                 {r.before_image_url && (
-                  <div className="relative aspect-[16/9] w-full bg-muted">
+                  <div className="aspect-[16/9] w-full overflow-hidden border-b border-line bg-canvas">
                     <img src={r.before_image_url} alt={r.title} className="size-full object-cover" />
-                    <span className="num absolute top-2.5 right-2.5 rounded-md bg-white/92 px-2 py-0.5 text-[11px] font-semibold text-ink">
-                      AI {r.ai_confidence}%
-                    </span>
                   </div>
                 )}
 
-                <div className="flex flex-col gap-2.5 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-col gap-3 p-4">
+                  <div className="flex items-center justify-between gap-2">
                     <ReportStatusPill status={r.status} />
-                    <span className="text-[11.5px] font-light text-ink-soft">{ECOSYSTEM_LABEL[r.ecosystem]}</span>
+                    <span className="num text-[12px] font-normal text-ink-soft">
+                      {ECOSYSTEM_LABEL[r.ecosystem]} · {r.ai_confidence}%
+                    </span>
                   </div>
 
                   <div>
-                    <h3 className="font-sans text-[14.5px] leading-snug font-medium text-ink">{r.title}</h3>
-                    <p className="mt-1 flex items-center gap-1 text-[12px] font-normal text-ink-soft">
-                      <MapPin className="size-3.5 shrink-0" />
-                      <span className="truncate">{r.location_name}</span>
-                    </p>
-                    <p className="mt-0.5 text-[11px] font-normal text-ink-soft">
-                      {r.is_anonymous ? 'Anonim' : r.reporter?.full_name ?? 'Warga'} · {r.threat_category}
+                    <h3 className="text-[14px] leading-snug font-medium text-ink">{r.title}</h3>
+                    <p className="mt-1 truncate text-[12px] font-normal text-ink-soft">
+                      {r.location_name} · {r.threat_category} · {reporterName}
                     </p>
                   </div>
 
                   {r.location_mismatch && (
-                    <p className="flex items-center gap-1 text-xs font-semibold text-ink-soft">
-                      <AlertTriangle className="size-3.5" /> Jarak GPS &gt;5 km
+                    <p className="flex items-center gap-2 text-[12px] font-medium text-progress">
+                      <AlertTriangle className="size-4 shrink-0" strokeWidth={1.75} />
+                      <span>Jarak GPS melebihi 5 km</span>
                     </p>
                   )}
 
                   {hasLinkedEvent && (
-                    <p className="rounded-[12px] bg-canvas px-3 py-2 text-xs font-bold text-ink">
+                    <p className="rounded-[8px] border border-line bg-canvas px-3 py-2 text-[12px] font-medium text-ink">
                       Event aktif: {r.linked_events?.[0]?.title}
                     </p>
                   )}
 
-                  <div className="mt-1 flex flex-wrap gap-2">
-                    {isPending && (
-                      <>
-                        <button
-                          type="button"
-                          disabled={busyId === r.id}
-                          onClick={() => void decide(r.id, 'verified')}
-                          className="btn-primary h-10 flex-1 px-3.5 text-xs disabled:opacity-50"
-                        >
-                          <Check className="size-3.5" /> Setujui
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busyId === r.id}
-                          onClick={() => void decide(r.id, 'rejected')}
-                          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-line bg-canvas px-3.5 text-xs font-bold text-ink-soft disabled:opacity-50"
-                        >
-                          <Ban className="size-3.5" /> Tolak
-                        </button>
-                      </>
-                    )}
+                  {(isPending || canCreateEvent) && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {isPending && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={busyId === r.id}
+                            onClick={() => void decide(r.id, 'verified')}
+                            className="btn-primary h-9 flex-1 !rounded-[10px] px-3 text-[12px] disabled:opacity-50"
+                          >
+                            <Check className="size-4" strokeWidth={1.75} /> Setujui
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyId === r.id}
+                            onClick={() => void decide(r.id, 'rejected')}
+                            className="btn-soft h-9 !rounded-[10px] px-3 text-[12px] text-ink-soft hover:text-ink disabled:opacity-50"
+                          >
+                            <Ban className="size-4" strokeWidth={1.75} /> Tolak
+                          </button>
+                        </>
+                      )}
 
-                    {canCreateEvent && (
-                      <button
-                        type="button"
-                        onClick={() => onCreateEvent(r)}
-                        className="btn-primary h-10 flex-1 px-4 text-xs"
-                      >
-                        <CalendarPlus className="size-3.5" /> Buat Event
-                      </button>
-                    )}
-                  </div>
+                      {canCreateEvent && (
+                        <button
+                          type="button"
+                          onClick={() => onCreateEvent(r)}
+                          className="btn-primary h-9 flex-1 !rounded-[10px] px-3 text-[12px]"
+                        >
+                          <CalendarPlus className="size-4" strokeWidth={1.75} /> Buat Event
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </article>
             )

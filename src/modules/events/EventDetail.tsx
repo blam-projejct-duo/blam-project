@@ -14,13 +14,16 @@ import {
   X,
 } from 'lucide-react'
 import { useState } from 'react'
-import { DashedOutline, StatusPill } from '../../components/ui/atoms'
+import { StatusPill } from '../../components/ui/atoms'
+import { AtlasCoordinateHero } from '../../components/ui/MapMarkers'
 import { updateEventVisibility } from '../../lib/api'
+import { shortLocation } from '../../lib/constants'
 import type { ConservationEvent } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import FundraisingSection from '../fundraising/FundraisingSection'
 import type { ActiveRoute, RouteMode } from '../map/directions'
 import { formatPulseTiles, usePulse } from '../map/usePulse'
+import type { PulseTileData } from '../map/usePulse'
 import { placeText, usePlaceName } from '../map/usePlaceName'
 import BeforeAfterSlider from './BeforeAfterSlider'
 import QrActionModal from './QrActionModal'
@@ -39,15 +42,24 @@ interface Props {
   onClearRoute?: () => void
 }
 
-function Tile({ value, unit, label }: { value: string; unit?: string; label: string }) {
+const STATUS_TONE = {
+  good: 'text-resolved',
+  warn: 'text-progress',
+  bad: 'text-critical',
+  neutral: 'text-ink-soft',
+} as const
+
+function StripMetric({ value, unit, label, status, tone = 'neutral' }: PulseTileData) {
   return (
-    <div className="relative rounded-tile bg-[#f4f5f7] p-3.5">
-      <DashedOutline rx={13} />
-      <p className="num flex flex-wrap items-baseline gap-x-1 text-[16px] leading-snug text-ink">
+    <div className="atlas-strip-cell min-w-0">
+      <div className="flex items-center justify-between gap-1 text-[11px] font-medium text-ink-soft">
+        <span className="truncate">{label}</span>
+        {status && <span className={`shrink-0 ${STATUS_TONE[tone]}`}>{status}</span>}
+      </div>
+      <p className="num mt-1 flex items-baseline gap-1 text-[17px] leading-none font-semibold text-ink">
         <span>{value}</span>
-        {unit && <span className="text-xs font-normal text-ink-soft">{unit}</span>}
+        {unit && <span className="text-[11px] font-normal text-ink-soft">{unit}</span>}
       </p>
-      <p className="mt-1.5 text-xs font-light text-ink-soft">{label}</p>
     </div>
   )
 }
@@ -88,12 +100,12 @@ export default function EventDetail({
     profile?.role !== 'admin' &&
     !isActiveMemberOf(event.organization_id)
   const scheduleLabel = event.start_at
-    ? new Intl.DateTimeFormat('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(new Date(event.start_at))
+    ? (() => {
+        const d = new Date(event.start_at)
+        const datePart = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+        const timePart = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+        return `${datePart} · ${timePart}`
+      })()
     : null
   const canResolve =
     profile &&
@@ -144,8 +156,8 @@ export default function EventDetail({
   const pulseTiles = formatPulseTiles(pulse)
   const score = latestAction?.ai_recovery_score ?? event.report?.ai_confidence ?? null
   const recommendations = event.report?.ai_recommendations ?? []
-  const photoClass = 'relative -mx-5 aspect-[4/3] overflow-hidden bg-muted'
-  const labelClass = 'absolute top-3 rounded-md bg-white/92 px-2.5 py-1 text-[11px] font-semibold text-ink'
+  const photoClass = 'relative aspect-[4/3] overflow-hidden rounded-[16px] bg-muted shadow-[0_1px_3px_rgba(15,23,42,0.06)]'
+  const labelClass = 'absolute top-3 rounded-[8px] bg-white/88 px-2.5 py-1 text-[12px] font-medium text-ink shadow-[0_1px_3px_rgba(15,23,42,0.08)] backdrop-blur-sm'
   const quotaText = event.max_participants ? `${participantsCount}/${event.max_participants}` : `${participantsCount}`
   const quotaPct = event.max_participants
     ? Math.min(100, Math.round((participantsCount / Math.max(1, event.max_participants)) * 100))
@@ -161,7 +173,7 @@ export default function EventDetail({
   return (
     <div className="@container flex flex-col gap-4">
       {resolved && latestAction && beforeImage ? (
-        <div className="-mx-5 overflow-hidden">
+        <div className="overflow-hidden rounded-[16px] shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
           <BeforeAfterSlider before={beforeImage} after={latestAction.after_image_url} />
         </div>
       ) : resolved && latestAction ? (
@@ -175,23 +187,29 @@ export default function EventDetail({
           <span className={`${labelClass} left-3`}>Sebelum</span>
         </div>
       ) : (
-        <div className={`${photoClass} flex flex-col items-center justify-center gap-1 bg-[#f4f5f7] px-6 text-center`}>
-          <p className="text-[15px] font-semibold text-ink">{event.category}</p>
-          <p className="text-[12.5px] font-light text-ink-soft">{placeText(place)}</p>
+        <div className="overflow-hidden rounded-[16px] shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
+          <AtlasCoordinateHero
+            lat={event.lat}
+            lng={event.lng}
+            kind="event"
+            tier="has_action"
+            badge={event.category}
+            subtitle={shortLocation(placeText(place))}
+          />
         </div>
       )}
 
       <header className="flex flex-col gap-1.5">
-        <div className="flex flex-wrap items-center gap-2 text-[11.5px] font-light text-ink-soft">
+        <div className="flex flex-wrap items-center gap-2 text-[12px] font-normal text-ink-soft">
           <StatusPill status={event.status} />
-          {score !== null && <span>AI {score}%</span>}
-          {event.visibility === 'members_only' && <Lock className="size-3" aria-label="Khusus anggota" />}
+          {score !== null && <span className="num">Skor {score}%</span>}
+          {event.visibility === 'members_only' && <Lock className="size-3.5" strokeWidth={1.75} aria-label="Khusus anggota" />}
         </div>
-        <h2 className="text-[20px] leading-snug font-semibold tracking-tight text-ink">
+        <h2 className="text-[20px] leading-snug font-semibold text-ink">
           {event.title}
         </h2>
-        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12.5px] font-light text-ink-soft">
-          {event.organization && <span className="font-normal text-ink">{event.organization.name}</span>}
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] font-normal text-ink-soft">
+          {event.organization && <span className="font-medium text-ink">{event.organization.name}</span>}
           {event.organization && <span aria-hidden="true">·</span>}
           <span>{event.category}</span>
           {event.ref_source && (
@@ -204,18 +222,18 @@ export default function EventDetail({
       </header>
 
       <div className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between gap-2 text-[12.5px]">
-          <p className="num font-semibold text-[#2563eb]">
+        <div className="flex items-baseline justify-between gap-2 text-[12px]">
+          <p className="num font-semibold text-leaf">
             {participantsCount} relawan
             {event.max_participants && (
-              <span className="font-light text-ink-soft"> dari {event.max_participants} kuota</span>
+              <span className="font-normal text-ink-soft"> dari {event.max_participants} kuota</span>
             )}
           </p>
-          {scheduleLabel && <span className="text-[12px] font-light text-ink-soft">{scheduleLabel}</span>}
+          {scheduleLabel && <span className="text-[12px] font-normal text-ink-soft">{scheduleLabel}</span>}
         </div>
         {quotaPct !== null && (
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#f4f5f7]">
-            <div className="h-full rounded-full bg-[#2563eb] transition-all duration-300" style={{ width: `${quotaPct}%` }} />
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-leaf transition-[width] duration-300" style={{ width: `${quotaPct}%` }} />
           </div>
         )}
       </div>
@@ -229,23 +247,32 @@ export default function EventDetail({
             aria-pressed={joined}
             className={`h-11 w-full text-[14px] ${joined ? 'btn-joined' : 'btn-primary'} disabled:opacity-80`}
           >
-            {joined && <Check className="size-4" strokeWidth={2.5} />}
-            {joined ? 'Tergabung' : membersOnlyLocked ? 'Khusus anggota' : 'Gabung Gerakan'} · {quotaText}
+            {joined && <Check className="size-4" strokeWidth={1.75} />}
+            {joined ? 'Tergabung' : membersOnlyLocked ? 'Khusus anggota' : 'Gabung Gerakan'}
+            {event.max_participants ? ` · ${quotaText}` : ''}
           </button>
         )}
 
-        <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none]">
+        <div
+          className={
+            canResolve
+              ? 'grid grid-cols-2 gap-2'
+              : 'flex items-center gap-2'
+          }
+        >
           {onStartRoute && (
             <button
               type="button"
               disabled={routeLoading}
               onClick={() => (routeForEvent ? onClearRoute?.() : void onStartRoute())}
               aria-pressed={Boolean(routeForEvent)}
-              className={`inline-flex h-9 shrink-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-[12.5px] font-normal transition-colors disabled:opacity-60 ${
-                routeForEvent ? 'bg-ink text-white' : 'bg-[#f4f5f7] text-ink hover:bg-[#eaecf0]'
+              className={`h-9 gap-1.5 whitespace-nowrap !rounded-[10px] px-3 text-[12px] disabled:opacity-60 ${
+                !canResolve ? 'flex-1' : ''
+              } ${
+                routeForEvent ? 'inline-flex items-center justify-center bg-ink font-medium text-white' : 'btn-soft'
               }`}
             >
-              <Navigation className="size-3.5" />
+              <Navigation className="size-4 shrink-0" strokeWidth={1.75} />
               {routeLoading ? 'Rute…' : 'Rute'}
             </button>
           )}
@@ -253,9 +280,9 @@ export default function EventDetail({
             <button
               type="button"
               onClick={() => setResolveOpen(true)}
-              className="inline-flex h-9 shrink-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[12.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
+              className="btn-soft h-9 gap-1.5 whitespace-nowrap !rounded-[10px] px-3 text-[12px]"
             >
-              <Camera className="size-3.5" />
+              <Camera className="size-4 shrink-0" strokeWidth={1.75} />
               Lapor Selesai
             </button>
           )}
@@ -264,9 +291,9 @@ export default function EventDetail({
               type="button"
               onClick={() => setQrOpen(true)}
               aria-label="QR Gerakan"
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[12.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
+              className="btn-soft h-9 gap-1.5 whitespace-nowrap !rounded-[10px] px-3 text-[12px]"
             >
-              <QrCode className="size-3.5" />
+              <QrCode className="size-4 shrink-0" strokeWidth={1.75} />
               QR
             </button>
           )}
@@ -274,22 +301,24 @@ export default function EventDetail({
             type="button"
             onClick={() => void copyLink()}
             aria-label="Salin tautan gerakan"
-            className="inline-flex h-9 shrink-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[12.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
+            className={`btn-soft h-9 gap-1.5 whitespace-nowrap !rounded-[10px] px-3 text-[12px] ${
+              !canResolve ? 'flex-1' : ''
+            }`}
           >
-            {copied ? <Check className="size-3.5 text-[#2563eb]" strokeWidth={2.5} /> : <Link2 className="size-3.5" />}
+            {copied ? <Check className="size-4 shrink-0 text-leaf" strokeWidth={1.75} /> : <Link2 className="size-4 shrink-0" strokeWidth={1.75} />}
             {copied ? 'Tersalin' : 'Bagikan'}
           </button>
         </div>
       </div>
 
       {actionError && (
-        <p role="alert" className="rounded-xl bg-critical/8 px-3.5 py-2.5 text-[12px] font-normal text-critical">
+        <p role="alert" className="card-quiet px-3.5 py-2.5 text-[12px] font-medium text-critical">
           {actionError}
         </p>
       )}
 
       {(routeLoading || routeError || routeForEvent) && (
-        <section className="rounded-[14px] bg-[#f4f5f7] p-4">
+        <section className="card-quiet p-4">
           {routeLoading && (
             <p className="text-[12px] font-medium text-ink-soft">Menghitung rute…</p>
           )}
@@ -313,7 +342,7 @@ export default function EventDetail({
                   href={googleMapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-[12px] font-medium text-ink hover:bg-muted"
+                  className="btn-soft h-9 !rounded-full px-3.5 text-[12px]"
                 >
                   <ExternalLink className="size-3.5" /> Google Maps
                 </a>
@@ -333,10 +362,10 @@ export default function EventDetail({
                     className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition-colors ${
                       routeForEvent.mode === 'land'
                         ? 'bg-leaf text-white'
-                        : 'border border-line bg-white text-ink hover:bg-muted'
+                        : 'border border-line bg-white text-ink hover:bg-canvas'
                     } disabled:opacity-45`}
                   >
-                    <Route className="size-3.5" /> Darat
+                    <Route className="size-4" strokeWidth={1.75} /> Darat
                   </button>
                   <button
                     type="button"
@@ -345,10 +374,10 @@ export default function EventDetail({
                     className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition-colors ${
                       routeForEvent.mode === 'air'
                         ? 'bg-leaf text-white'
-                        : 'border border-line bg-white text-ink hover:bg-muted'
+                        : 'border border-line bg-white text-ink hover:bg-canvas'
                     }`}
                   >
-                    <Plane className="size-3.5" /> Udara
+                    <Plane className="size-4" strokeWidth={1.75} /> Udara
                   </button>
                 </div>
                 {onClearRoute && (
@@ -356,16 +385,16 @@ export default function EventDetail({
                     type="button"
                     onClick={onClearRoute}
                     aria-label="Tutup rute"
-                    className="grid size-8 place-items-center rounded-full text-ink-soft hover:bg-white hover:text-ink"
+                    className="grid size-8 place-items-center rounded-full text-ink-soft hover:bg-canvas hover:text-ink"
                   >
-                    <X className="size-4" />
+                    <X className="size-4" strokeWidth={1.75} />
                   </button>
                 )}
               </div>
 
               <div className="flex items-baseline justify-between gap-2">
                 <div>
-                  <p className="num text-xl text-ink">{distanceLabel} km</p>
+                  <p className="num text-[20px] font-semibold text-ink">{distanceLabel} km</p>
                   <p className="text-[12px] font-normal text-ink-soft">
                     {routeForEvent.mode === 'land' ? 'Jalur darat tercepat' : 'Jalur udara'}
                   </p>
@@ -374,15 +403,15 @@ export default function EventDetail({
                   href={googleMapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-line bg-white px-3 text-[12px] font-medium text-ink hover:bg-muted"
+                  className="btn-soft h-8 shrink-0 !rounded-full px-3 text-[12px]"
                 >
-                  <ExternalLink className="size-3.5" /> Google Maps
+                  <ExternalLink className="size-4" strokeWidth={1.75} /> Google Maps
                 </a>
               </div>
 
               {!routeForEvent.landAvailable && (
-                <p className="text-[11px] font-medium text-ink-soft">
-                  {routeForEvent.landError ?? 'Jalur darat tidak terjangkau, menampilkan jalur udara.'}
+                <p className="text-[12px] font-normal text-ink-soft">
+                  {routeForEvent.landError ?? 'Jalur darat tidak terjangkau, menampilkan jalur udara'}
                 </p>
               )}
             </div>
@@ -390,36 +419,36 @@ export default function EventDetail({
         </section>
       )}
 
-      <div className={`grid grid-cols-2 gap-2.5 ${pulseStatus === 'loading' ? 'animate-pulse' : ''}`}>
+      <div className={`atlas-group grid grid-cols-2 divide-x divide-y divide-ink/6 overflow-hidden ${pulseStatus === 'loading' ? 'opacity-60' : ''}`}>
         {pulseTiles.map((tile) => (
-          <Tile key={tile.label} value={tile.value} unit={tile.unit} label={tile.label} />
+          <StripMetric key={tile.label} {...tile} />
         ))}
       </div>
 
-      <div className="divide-y divide-line border-t border-line">
-        <p className="py-3.5 text-[13.5px] leading-relaxed font-light text-ink">
+      <div className="atlas-group divide-y divide-ink/6 px-4">
+        <p className="py-3.5 text-[14px] leading-relaxed font-normal text-ink">
           {event.description || event.report?.ai_site_brief || event.category}
         </p>
 
         <div className="flex items-start gap-3 py-3.5">
-          <MapPin className="mt-0.5 size-4 shrink-0 text-[#2563eb]" />
-          <div className="min-w-0 text-[13px]">
-            <p className="font-normal text-ink">{event.location_name}</p>
+          <MapPin className="mt-0.5 size-4 shrink-0 text-leaf" strokeWidth={1.75} />
+          <div className="min-w-0 text-[14px]">
+            <p className="font-medium text-ink">{event.location_name}</p>
             {placeText(place) !== event.location_name && (
-              <p className="mt-0.5 text-[12px] font-light text-ink-soft">{placeText(place)}</p>
+              <p className="mt-0.5 text-[12px] font-normal text-ink-soft">{placeText(place)}</p>
             )}
           </div>
         </div>
 
         {scheduleLabel && (
-          <div className="flex items-center gap-3 py-3.5 text-[13px]">
-            <Calendar className="size-4 shrink-0 text-ink-soft" />
+          <div className="flex items-center gap-3 py-3.5 text-[14px]">
+            <Calendar className="size-4 shrink-0 text-ink-soft" strokeWidth={1.75} />
             <span className="font-normal text-ink">{scheduleLabel}</span>
           </div>
         )}
 
         {recommendations.length > 0 && (
-          <div className="py-3.5 text-[13px] font-light text-ink-soft">
+          <div className="py-3.5 text-[14px] font-normal text-ink-soft">
             {recommendations.slice(0, 2).map((rec) => (
               <p key={rec} className="leading-relaxed not-first:mt-1.5">
                 {rec}
@@ -429,14 +458,14 @@ export default function EventDetail({
         )}
 
         {latestAction && (
-          <div className="flex items-center justify-between gap-2 py-3.5 text-[13px]">
+          <div className="flex items-center justify-between gap-2 py-3.5 text-[14px]">
             <p className="text-ink-soft">
-              <span className="font-normal text-ink">{Number(latestAction.waste_kg)} kg</span> sampah ·{' '}
-              <span className="font-normal text-ink">{latestAction.trees_planted}</span> bibit
+              <span className="font-medium text-ink">{Number(latestAction.waste_kg)} kg</span> sampah ·{' '}
+              <span className="font-medium text-ink">{latestAction.trees_planted}</span> bibit
             </p>
             {latestAction.verified_by_agency && (
-              <span className="inline-flex items-center gap-1 text-[12px] font-normal text-emerald">
-                <ShieldCheck className="size-3.5" /> Sah
+              <span className="inline-flex items-center gap-1 text-[12px] font-medium text-resolved">
+                <ShieldCheck className="size-4" strokeWidth={1.75} /> Sah
               </span>
             )}
           </div>
@@ -450,7 +479,7 @@ export default function EventDetail({
           type="button"
           disabled={busyVis}
           onClick={() => void toggleVisibility()}
-          className="h-9 w-full text-[12px] font-light text-ink-soft hover:text-ink disabled:opacity-50"
+          className="h-9 w-full text-[12px] font-medium text-ink-soft hover:text-ink disabled:opacity-50"
         >
           {event.visibility === 'public' ? 'Ubah ke khusus anggota' : 'Buka untuk umum'}
         </button>

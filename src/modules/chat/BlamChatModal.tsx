@@ -1,14 +1,14 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUpRight, CornerDownRight, MapPin, RotateCcw, Send, X } from 'lucide-react'
+import { ArrowUpRight, Camera, Compass, CornerDownRight, Flame, MapPin, RotateCcw, Send, X } from 'lucide-react'
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { DashedOutline } from '../../components/ui/atoms'
-import { BlamAiAvatarIcon, SnapCameraDuotoneIcon } from '../../components/ui/bumpIcons'
+import { BlamAiAvatarIcon, BlamNatureIcon, SnapCameraDuotoneIcon } from '../../components/ui/bumpIcons'
 import { sendBlamChat } from '../../lib/api'
 import type { BlamChatAction, BlamChatContext, BlamChatTurn } from '../../lib/api'
 
 const STARTERS = [
-  'Gerakan apa yang lagi jalan?',
-  'Cara lapor lewat Blam Snap',
+  { label: 'Gerakan apa yang lagi jalan?', Icon: Compass },
+  { label: 'Cara lapor lewat Blam Snap', Icon: Camera },
+  { label: 'Ringkas sinyal karhutla & banjir aktif', Icon: Flame },
 ] as const
 
 const LOADING_PHASES = [
@@ -50,8 +50,7 @@ function BlamThinkingBubble() {
         </motion.span>
       </div>
 
-      <div className="relative flex items-center gap-2.5 overflow-hidden rounded-[14px] rounded-tl-md bg-[#f4f5f7] px-3.5 py-2.5">
-        <DashedOutline rx={13} />
+      <div className="card-quiet relative flex items-center gap-2.5 overflow-hidden rounded-tl-md bg-canvas px-3.5 py-2.5">
 
         <div className="flex items-center gap-1" aria-hidden="true">
           {[0, 1, 2].map((idx) => (
@@ -77,7 +76,7 @@ function BlamThinkingBubble() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -3 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="truncate text-[11.5px] font-medium text-ink-soft"
+              className="truncate text-[12px] font-medium text-ink-soft"
             >
               {LOADING_PHASES[phaseIdx]}
             </motion.p>
@@ -139,9 +138,9 @@ function FormattedText({ text }: { text: string }) {
       }
       if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
         return (
-          <em key={idx} className="italic text-ink/90">
+          <span key={idx} className="font-medium text-ink">
             {part.slice(1, -1)}
-          </em>
+          </span>
         )
       }
       return <Fragment key={idx}>{part}</Fragment>
@@ -149,7 +148,7 @@ function FormattedText({ text }: { text: string }) {
 
   const lines = text.split('\n')
   return (
-    <div className="flex flex-col gap-1 text-[12px] leading-[1.5] text-ink/85">
+    <div className="flex flex-col gap-1 text-[14px] leading-[1.5] text-ink/85">
       {lines.map((raw, i) => {
         const trimmed = raw.trim()
         if (!trimmed) return <span key={i} className="h-0.5" />
@@ -321,16 +320,16 @@ export default function BlamChatModal({
         style={isCompanion ? { transformOrigin: 'left center' } : undefined}
         className={
           isCompanion
-            ? 'pointer-events-auto absolute top-[70px] bottom-4 flex w-[392px] flex-col overflow-hidden rounded-[20px] border border-white/80 bg-white/97 shadow-[0_18px_46px_-8px_rgba(19,36,26,0.28)] backdrop-blur-md'
-            : 'flex h-[90dvh] w-full flex-col overflow-hidden rounded-t-[20px] border border-line bg-white md:h-[640px] md:max-w-[460px] md:rounded-[20px]'
+            ? 'atlas-sheet pointer-events-auto absolute top-[70px] bottom-4 flex w-[392px] flex-col overflow-hidden rounded-[22px]'
+            : 'atlas-sheet flex h-[90dvh] w-full flex-col overflow-hidden rounded-t-[24px] md:h-[640px] md:max-w-[460px] md:rounded-[22px]'
         }
       >
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-ink/8 px-4">
           <div className="flex items-center gap-2.5">
-            <span className="relative grid size-9 shrink-0 place-items-center rounded-full border border-line bg-white">
+            <span className="relative grid size-9 shrink-0 place-items-center rounded-full bg-white shadow-xs">
               <BlamAiAvatarIcon withBadge={false} className="size-7" />
             </span>
-            <h2 className="font-display text-[15px] font-semibold tracking-tight text-ink">Blam Chat</h2>
+            <h2 className="font-sans text-[16px] font-semibold text-ink">Blam Chat</h2>
           </div>
           <div className="flex items-center gap-1.5">
             {messages.length > 1 && (
@@ -339,23 +338,52 @@ export default function BlamChatModal({
                 onClick={resetChat}
                 aria-label="Chat baru"
                 title="Chat baru"
-                className="grid size-9 place-items-center rounded-xl bg-[#f4f5f7] text-ink transition-colors hover:bg-[#eaecf0]"
+                className="btn-soft size-9 !rounded-[10px] p-0"
               >
-                <RotateCcw className="size-3.5" />
+                <RotateCcw className="size-4" strokeWidth={1.75} />
               </button>
             )}
             <button
               type="button"
               onClick={onClose}
               aria-label="Tutup"
-              className="grid size-9 place-items-center rounded-xl bg-[#f4f5f7] text-ink transition-colors hover:bg-[#eaecf0]"
+              className="btn-soft size-9 !rounded-[10px] p-0"
             >
-              <X className="size-4" />
+              <X className="size-4" strokeWidth={1.75} />
             </button>
           </div>
         </header>
 
         <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3.5">
+          {messages.length === 1 && !busy && !activeSuggestion ? (
+            <div className="flex h-full flex-col items-center justify-center gap-5 px-2 py-6 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <span className="atlas-group grid size-20 place-items-center rounded-[20px]">
+                  <BlamNatureIcon className="size-16" />
+                </span>
+                <p className="font-display text-[20px] font-semibold text-ink">Blam</p>
+                <p className="max-w-[260px] text-[14px] leading-snug text-ink-soft">
+                  Tanya kondisi titik rawan, gerakan sekitar, atau panduan lapor lapangan
+                </p>
+              </div>
+              <div className="flex w-full flex-col gap-2">
+                {STARTERS.map(({ label, Icon }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => void submit(label)}
+                    className="atlas-group flex w-full items-center gap-3 px-3.5 py-3 text-left text-[14px] font-medium text-ink transition-colors hover:bg-canvas/70"
+                  >
+                    <span className="row-icon text-leaf">
+                      <Icon className="size-4" strokeWidth={1.75} />
+                    </span>
+                    <span className="min-w-0 flex-1">{label}</span>
+                    <ArrowUpRight className="size-4 shrink-0 text-ink-soft" strokeWidth={1.75} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
           <div className="flex flex-col gap-3">
             {messages.map((m, i) =>
               m.role === 'user' ? (
@@ -366,7 +394,7 @@ export default function BlamChatModal({
                   transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                   className="flex justify-end"
                 >
-                  <div className="max-w-[82%] rounded-[14px] rounded-br-md bg-[#2563eb] px-3.5 py-2 text-[12px] leading-[1.45] font-normal text-white shadow-[0_2px_8px_rgba(37,99,235,0.16)]">
+                  <div className="max-w-[82%] rounded-[12px] rounded-br-md bg-leaf px-3.5 py-2 text-[14px] leading-[1.45] font-normal text-white">
                     {m.text}
                   </div>
                 </motion.div>
@@ -382,8 +410,7 @@ export default function BlamChatModal({
                     <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full border border-line bg-white">
                       <BlamAiAvatarIcon withBadge={false} className="size-5.5" />
                     </span>
-                    <div className="relative max-w-[85%] rounded-[14px] rounded-tl-md bg-[#f4f5f7] px-4 py-3 text-ink">
-                      <DashedOutline rx={13} />
+                    <div className="card-quiet max-w-[85%] rounded-tl-md bg-canvas px-4 py-3 text-ink">
                       <FormattedText text={m.text} />
                     </div>
                   </div>
@@ -394,26 +421,26 @@ export default function BlamChatModal({
                           key={`${act.type}-${idx}`}
                           type="button"
                           onClick={() => onAction(act)}
-                          className="group flex items-center justify-between gap-3 rounded-[14px] bg-[#f4f5f7] px-3.5 py-2.5 text-left transition-colors hover:bg-[#eaecf0]"
+                          className="card-quiet group flex items-center justify-between gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-canvas"
                         >
                           <span className="flex min-w-0 items-center gap-2.5">
-                            <span className="blam-gradient grid size-9 shrink-0 place-items-center rounded-[10px] text-white">
+                            <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-leaf text-white">
                               {act.type === 'focus_map_point' ? (
-                                <MapPin className="size-4.5" />
+                                <MapPin className="size-4" strokeWidth={1.75} />
                               ) : (
-                                <SnapCameraDuotoneIcon light className="size-4.5" />
+                                <SnapCameraDuotoneIcon light className="size-4" />
                               )}
                             </span>
                             <span className="min-w-0">
-                              <span className="block truncate text-[12px] font-normal text-ink">
+                              <span className="block truncate text-[12px] font-medium text-ink">
                                 {act.label}
                               </span>
-                              <span className="block truncate text-[11px] font-light text-ink-soft">
+                              <span className="block truncate text-[12px] font-normal text-ink-soft">
                                 {act.type === 'focus_map_point' ? act.target.title : act.prefill.description}
                               </span>
                             </span>
                           </span>
-                          <ArrowUpRight className="size-4 shrink-0 text-ink-soft transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                          <ArrowUpRight className="size-4 shrink-0 text-ink-soft transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={1.75} />
                         </button>
                       ))}
                     </div>
@@ -427,27 +454,13 @@ export default function BlamChatModal({
             {error && (
               <p
                 role="alert"
-                className="rounded-[16px] border border-critical/25 bg-critical/8 px-3.5 py-2 text-[11.5px] font-semibold text-critical"
+                className="rounded-[12px] border border-critical/25 bg-critical/8 px-3.5 py-2 text-[12px] font-medium text-critical"
               >
                 {error}
               </p>
             )}
-
-            {messages.length === 1 && !busy && !activeSuggestion && (
-              <div className="mt-0.5 flex flex-wrap gap-1.5 pl-9">
-                {STARTERS.map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => void submit(q)}
-                    className="rounded-xl bg-[#f4f5f7] px-3 py-1.5 text-left text-[11.5px] leading-[1.4] font-light text-ink transition-colors hover:bg-[#eaecf0]"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
+          )}
         </div>
 
         <AnimatePresence>
@@ -458,7 +471,7 @@ export default function BlamChatModal({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 6 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="flex shrink-0 flex-wrap justify-end gap-1.5 border-t border-line/60 bg-white/95 px-4 py-2"
+              className="flex shrink-0 flex-wrap justify-end gap-1.5 border-t border-line bg-white px-4 py-2"
             >
               {activeSuggestion.prompts.map((prompt) => (
                 <button
@@ -468,9 +481,9 @@ export default function BlamChatModal({
                     setDismissedSuggestionKey(activeSuggestion.key)
                     void submit(prompt, { contextOverride: activeSuggestion.context })
                   }}
-                  className="inline-flex max-w-full items-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 py-1.5 text-left text-[11.5px] font-medium text-ink transition-colors hover:bg-[#eaecf0]"
+                  className="btn-soft max-w-full justify-start gap-1.5 !rounded-[10px] px-3 py-1.5 text-left text-[12px]"
                 >
-                  <CornerDownRight className="size-3.5 shrink-0 text-[#2563eb]" />
+                  <CornerDownRight className="size-4 shrink-0 text-leaf" strokeWidth={1.75} />
                   <span className="truncate">{prompt}</span>
                 </button>
               ))}
@@ -489,17 +502,17 @@ export default function BlamChatModal({
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Tanya kondisi sekitar atau Blam…"
+            placeholder="Tulis pesan"
             maxLength={1000}
-            className="h-10 min-w-0 flex-1 rounded-xl bg-[#f4f5f7] px-3.5 text-[12px] font-normal text-ink outline-none placeholder:font-light placeholder:text-ink-soft focus:bg-[#eaecf0]"
+            className="h-10 min-w-0 flex-1 rounded-[10px] border border-line bg-canvas px-3.5 text-[14px] font-normal text-ink outline-none placeholder:text-ink-soft focus:border-leaf focus:bg-white"
           />
           <button
             type="submit"
             disabled={busy || !input.trim()}
             aria-label="Kirim pesan"
-            className="btn-primary grid size-10 shrink-0 place-items-center rounded-xl disabled:opacity-45"
+            className="btn-primary grid size-10 shrink-0 place-items-center rounded-[10px] disabled:opacity-45"
           >
-            <Send className="size-4" />
+            <Send className="size-4" strokeWidth={1.75} />
           </button>
         </form>
       </motion.div>
