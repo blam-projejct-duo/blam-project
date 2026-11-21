@@ -211,11 +211,11 @@ function createHazardPopupNode(h: HazardPoint): HTMLDivElement {
   root.className = 'flex flex-col gap-0.5 text-left'
 
   const title = document.createElement('p')
-  title.className = 'text-[13px] font-extrabold text-ink'
+  title.className = 'text-[14px] font-semibold text-ink'
   title.textContent = h.title
 
   const meta = document.createElement('p')
-  meta.className = 'text-[11px] font-semibold text-ink-soft'
+  meta.className = 'text-[12px] font-normal text-ink-soft'
   const src = formatSignalSource(h.source)
   const riskLabel = formatFloodRiskLabel(h)
   const dateLabel = formatSignalDate(h)

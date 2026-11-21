@@ -23,7 +23,7 @@ const ECOS: { id: Ecosystem; label: string }[] = [
 const CATEGORIES = ['Pemulihan', 'Bersih Sampah', 'Tanam Bibit', 'Pantau Satelit']
 
 const field =
-  'h-11 w-full rounded-xl bg-[#f4f5f7] px-3.5 text-sm font-normal text-ink placeholder:font-light placeholder:text-ink-soft focus:bg-[#eaecf0] focus:outline-none'
+  'h-11 w-full rounded-xl border border-line bg-canvas px-3.5 text-sm font-normal text-ink placeholder:text-ink-soft focus:border-leaf focus:bg-white focus:outline-none'
 
 export default function CreateEventForm({ initialReport, initialSignal, onClose, onCreated }: Props) {
   const queryClient = useQueryClient()
@@ -173,27 +173,27 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
   return (
     <div className="flex h-full flex-col bg-white">
       <header className="flex h-16 shrink-0 items-center justify-between px-5 pt-[env(safe-area-inset-top)]">
-        <h2 className="text-xl font-semibold tracking-tight text-ink">Buat Event</h2>
+        <h2 className="text-[20px] font-semibold text-ink">Buat Event</h2>
         <button
           type="button"
           onClick={onClose}
           aria-label="Tutup"
-          className="grid size-10 place-items-center rounded-xl bg-[#f4f5f7] text-ink hover:bg-[#eaecf0]"
+          className="btn-soft size-10 !rounded-[10px] p-0"
         >
-          <X className="size-4" />
+          <X className="size-4" strokeWidth={1.75} />
         </button>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
         <div className="flex flex-col gap-3">
           {initialReport && (
-            <div className="rounded-[14px] bg-[#f4f5f7] px-4 py-2.5 text-xs font-normal text-ink">
+            <div className="card-quiet px-4 py-2.5 text-xs font-normal text-ink">
               Tautan laporan: {initialReport.threat_category}
             </div>
           )}
 
           {initialSignal && (
-            <div className="rounded-[14px] bg-[#f4f5f7] px-4 py-2.5 text-xs font-normal text-ink">
+            <div className="card-quiet px-4 py-2.5 text-xs font-normal text-ink">
               Rujukan satelit: {initialSignal.source === 'nasa_firms' ? 'NASA FIRMS' : 'NASA EONET'}
             </div>
           )}
@@ -220,10 +220,10 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
                 type="button"
                 aria-pressed={ecosystem === e.id}
                 onClick={() => setEcosystem(e.id)}
-                className={`h-10 flex-1 rounded-xl text-xs transition-colors ${
+                className={`h-10 flex-1 rounded-[10px] text-[12px] transition-colors ${
                   ecosystem === e.id
                     ? 'bg-ink font-medium text-white'
-                    : 'bg-[#f4f5f7] font-normal text-ink hover:bg-[#eaecf0]'
+                    : 'btn-soft font-normal'
                 }`}
               >
                 {e.label}
@@ -245,10 +245,10 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
                 key={c}
                 type="button"
                 onClick={() => setCategory(c)}
-                className={`h-8 rounded-lg px-3 text-xs transition-colors ${
+                className={`h-8 rounded-[8px] px-3 text-[12px] transition-colors ${
                   category === c
                     ? 'bg-ink font-medium text-white'
-                    : 'bg-[#f4f5f7] font-light text-ink-soft hover:text-ink'
+                    : 'btn-soft font-normal text-ink-soft hover:text-ink'
                 }`}
               >
                 {c}
@@ -284,15 +284,15 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
               onClick={useGps}
               disabled={gpsBusy}
               aria-label="GPS saya"
-              className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#f4f5f7] text-ink hover:bg-[#eaecf0] disabled:opacity-50"
+              className="btn-soft size-11 shrink-0 !rounded-[10px] p-0 disabled:opacity-50"
             >
-              <LocateFixed className="size-4" />
+              <LocateFixed className="size-4" strokeWidth={1.75} />
             </button>
           </div>
 
           <input
             className={field}
-            placeholder="Deskripsi gerakan"
+            placeholder="Deskripsi singkat"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={600}
@@ -311,7 +311,7 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
               type="number"
               min="1"
               className={field}
-              placeholder="Kuota (opsional)"
+              placeholder="Kuota"
               value={maxParticipants}
               onChange={(e) => setMaxParticipants(e.target.value)}
             />
@@ -331,19 +331,19 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="relative grid aspect-[16/9] w-full place-items-center overflow-hidden rounded-[14px] border-[1.5px] border-dashed border-ink-soft/30 bg-[#f4f5f7] text-ink-soft"
+            className="relative grid aspect-[16/9] w-full place-items-center overflow-hidden rounded-[12px] border-[1.5px] border-dashed border-dash bg-canvas text-ink-soft hover:bg-muted"
           >
             {previewUrl ? (
               <img src={previewUrl} alt="Sampul event" className="size-full object-cover" />
             ) : (
-              <span className="flex items-center gap-2 text-xs font-light">
-                <ImagePlus className="size-5 text-ink-soft" /> Foto sampul
+              <span className="flex items-center gap-2 text-[12px] font-normal">
+                <ImagePlus className="size-5 text-ink-soft" strokeWidth={1.75} /> Foto sampul
               </span>
             )}
           </button>
 
           {error && (
-            <p role="alert" className="rounded-[14px] bg-[#f4f5f7] px-4 py-3 text-xs font-light text-ink">
+            <p role="alert" className="card-quiet px-4 py-3 text-[12px] font-medium text-critical">
               {error}
             </p>
           )}
@@ -355,9 +355,9 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
           type="button"
           disabled={busy}
           onClick={() => void submit()}
-          className="btn-primary h-12 w-full text-sm disabled:opacity-50"
+          className="btn-primary h-12 w-full text-[14px] disabled:opacity-50"
         >
-          <CalendarPlus className="size-4" />
+          <CalendarPlus className="size-4" strokeWidth={1.75} />
           {busy ? 'Menyimpan…' : 'Terbitkan Event'}
         </button>
       </footer>

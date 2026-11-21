@@ -3,12 +3,12 @@ import type { HazardPoint } from './hotspotCluster'
 
 export type RadarLayer = 'wildfire' | 'suspected' | 'flood' | 'volcano' | 'event'
 
-export const LAYER_CHIPS: ReadonlyArray<{ layer: RadarLayer; label: string; dot: string }> = [
-  { layer: 'wildfire', label: 'Karhutla', dot: 'bg-critical' },
-  { layer: 'suspected', label: 'Titik Panas', dot: 'bg-progress' },
-  { layer: 'flood', label: 'Banjir', dot: 'bg-cobalt' },
-  { layer: 'volcano', label: 'Gunung Berapi', dot: 'bg-purple-600' },
-  { layer: 'event', label: 'Gerakan', dot: 'bg-resolved' },
+export const LAYER_CHIPS: ReadonlyArray<{ layer: RadarLayer; label: string; shortLabel: string; dot: string }> = [
+  { layer: 'wildfire', label: 'Karhutla', shortLabel: 'Api', dot: 'bg-critical' },
+  { layer: 'suspected', label: 'Titik Panas', shortLabel: 'Panas', dot: 'bg-progress' },
+  { layer: 'flood', label: 'Banjir', shortLabel: 'Banjir', dot: 'bg-cobalt' },
+  { layer: 'volcano', label: 'Gunung Berapi', shortLabel: 'Gunung', dot: 'bg-volcano' },
+  { layer: 'event', label: 'Gerakan', shortLabel: 'Aksi', dot: 'bg-resolved' },
 ]
 
 function matchesHazardLayer(layers: Set<RadarLayer>, kind?: HazardKind): boolean {
@@ -73,8 +73,19 @@ export function formatFloodRiskLabel(item: {
  */
 export function formatSignalDate(item: { source?: string; kind?: HazardKind; date?: string }): string {
   if (!item.date) return ''
-  if (item.source === 'nasa_eonet' && item.kind === 'volcano') {
-    return `Aktif sejak ${item.date}`
+  let formatted = item.date
+  if (/^\d{4}-\d{2}-\d{2}/.test(item.date)) {
+    const parsed = new Date(item.date)
+    if (!Number.isNaN(parsed.getTime())) {
+      formatted = parsed.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    }
   }
-  return item.date
+  if (item.source === 'nasa_eonet' && item.kind === 'volcano') {
+    return `Aktif sejak ${formatted}`
+  }
+  return formatted
 }

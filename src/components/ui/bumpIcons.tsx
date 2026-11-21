@@ -164,7 +164,7 @@ export function BlamNatureIcon({
             transformOrigin: '270px 230px',
             transition: elephantAway
               ? 'opacity 160ms ease, transform 220ms ease'
-              : 'opacity 260ms ease 480ms, transform 420ms cubic-bezier(0.34,1.56,0.64,1) 480ms',
+              : 'opacity 260ms ease 480ms, transform 420ms cubic-bezier(0.22,1,0.36,1) 480ms',
           }}
         >
         <g

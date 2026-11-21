@@ -1,16 +1,31 @@
-import { BadgeCheck, Droplets, Flame, HeartHandshake, Mountain, Search, Users, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { BadgeCheck, Check, CircleDashed, HeartHandshake, LocateFixed, Search, ShieldCheck, SlidersHorizontal, Sprout, Users, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
+import { ECOSYSTEM_FILTERS, EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
+import { haversineDistanceKm } from '../../lib/imageCompress'
 import { findFundraisingForSignal, useFundraisings } from '../../modules/fundraising/useFundraisings'
-import { formatFloodRiskLabel, formatSignalSource } from '../../modules/map/radarFilters'
-import { DashedOutline, EcoBadge, MarkerTierLegend } from '../ui/atoms'
-import type { ConservationEvent, Ecosystem, HazardKind, SatelliteSignal, SignalVerificationState } from '../../types'
+import { formatSignalSource } from '../../modules/map/radarFilters'
+import { EcoBadge, MarkerTierLegend } from '../ui/atoms'
+import { BlamNatureIcon } from '../ui/bumpIcons'
+import { AtlasCoordinateHero, MapMarkerGlyph } from '../ui/MapMarkers'
+import type { ConservationEvent, Ecosystem, SatelliteSignal, SignalVerificationState } from '../../types'
 
-export type ListTab = 'Utama' | 'Terbaru' | 'History' | 'Satelit' | 'Berjalan' | 'Verifikasi' | 'Selesai'
+export type ListTab = 'Ringkasan' | 'Terbaru' | 'History' | 'Satelit' | 'Terdekat' | 'Semua' | 'Verifikasi'
 
-const TABS: ListTab[] = ['Utama', 'Terbaru', 'History', 'Satelit']
-const DOT = { critical: 'bg-critical', progress: 'bg-progress', resolved: 'bg-resolved' } as const
+type EventStatusFilter = 'active' | 'all' | 'open' | 'in_progress' | 'resolved'
+
+const EVENT_STATUS_OPTIONS: { id: EventStatusFilter; label: string }[] = [
+  { id: 'active', label: 'Aktif' },
+  { id: 'open', label: 'Terbuka' },
+  { id: 'in_progress', label: 'Berjalan' },
+  { id: 'resolved', label: 'Selesai' },
+  { id: 'all', label: 'Semua status' },
+]
+
+const FALLBACK_COORDS = { lat: -2.5, lng: 118.0 }
+
+const TABS: ListTab[] = ['Ringkasan', 'Terbaru', 'History', 'Satelit']
+const TONE_TEXT = { critical: 'text-critical', progress: 'text-progress', resolved: 'text-resolved' } as const
 const RANK = { open: 0, in_progress: 1, resolved: 2, cancelled: 3 } as const
 
 function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListTab; onOpen: () => void }) {
@@ -29,38 +44,19 @@ function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListT
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-full items-center gap-3 rounded-xl px-1.5 py-3 text-left transition-colors hover:bg-[#f4f5f7]/80"
+        className="flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left transition-colors hover:bg-canvas"
       >
         <EcoBadge ecosystem={event.ecosystem} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px] font-normal text-ink">{event.title}</span>
-          <span className="block truncate text-[12px] font-light text-ink-soft">{meta}</span>
+          <span className="block truncate text-[14px] font-medium text-ink">{event.title}</span>
+          <span className="block truncate text-[12px] font-normal text-ink-soft">{meta}</span>
         </span>
-        <span
-          className={`size-2.5 shrink-0 rounded-full ${DOT[mapEventTone(event)]}`}
-          aria-label={EVENT_STATUS_LABEL[event.status]}
-        />
+        <span className={`shrink-0 text-[12px] font-medium ${TONE_TEXT[mapEventTone(event)]}`}>
+          {EVENT_STATUS_LABEL[event.status]}
+        </span>
       </button>
     </li>
   )
-}
-
-const SIGNAL_TEXT_COLOR: Record<HazardKind, string> = {
-  wildfire: 'text-critical',
-  volcano: 'text-purple-600',
-  flood: 'text-cobalt',
-  storm: 'text-cyan-600',
-  suspected: 'text-progress',
-  other: 'text-progress',
-}
-
-const SIGNAL_DOT_COLOR: Record<HazardKind, string> = {
-  wildfire: 'bg-critical',
-  volcano: 'bg-purple-600',
-  flood: 'bg-cobalt',
-  storm: 'bg-cyan-600',
-  suspected: 'bg-progress',
-  other: 'bg-progress',
 }
 
 function SignalRow({
@@ -75,63 +71,55 @@ function SignalRow({
   onOpen: () => void
 }) {
   const sourceLabel = formatSignalSource(signal.source)
-  const riskLabel = formatFloodRiskLabel(signal)
   const isAction = linked || signal.verificationState === 'has_action'
   const isVerified = !isAction && signal.verificationState === 'verified'
-  const meta = isAction
-    ? `${sourceLabel} · Ada Gerakan`
-    : isVerified
-      ? `${sourceLabel} · Terverifikasi`
-      : `${sourceLabel} · ${riskLabel ?? signal.categoryLabel}`
+  const tier: SignalVerificationState = isAction ? 'has_action' : isVerified ? 'verified' : 'unverified'
+  const hasCategoryInTitle = signal.title.toLowerCase().includes(signal.categoryLabel.toLowerCase())
+  const meta = hasCategoryInTitle ? sourceLabel : `${sourceLabel} · ${signal.categoryLabel}`
   const kind = signal.kind ?? 'suspected'
-  const SignalIcon = kind === 'flood' ? Droplets : kind === 'volcano' ? Mountain : Flame
+  const tierTitle = isAction ? 'Ada gerakan' : isVerified ? 'Terverifikasi' : 'Belum terverifikasi'
+  const pointCount = signal.pointCount && signal.pointCount > 1 ? signal.pointCount : null
 
   return (
     <li>
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-full items-center gap-3 rounded-xl px-1.5 py-3 text-left transition-colors hover:bg-[#f4f5f7]/80"
+        className="flex w-full items-center gap-3 rounded-[10px] px-2 py-2.5 text-left transition-colors hover:bg-canvas"
       >
-        <span
-          className={`grid size-10.5 shrink-0 place-items-center rounded-[10px] bg-[#f4f5f7] ${SIGNAL_TEXT_COLOR[kind]}`}
-        >
-          <SignalIcon className="size-5" strokeWidth={2} />
-        </span>
+        <MapMarkerGlyph kind={kind} tier={tier} size="md" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px] font-normal text-ink">{signal.title}</span>
-          <span className="block truncate text-[12px] font-light text-ink-soft">{meta}</span>
+          <span className="line-clamp-2 block text-[14px] leading-snug font-medium text-ink">{signal.title}</span>
+          <span className="mt-0.5 block truncate text-[12px] font-normal text-ink-soft">{meta}</span>
         </span>
-        {isAction ? (
-          <span className="shrink-0 rounded-md bg-mint/75 px-2 py-0.5 text-[10.5px] font-medium text-forest">
-            Gerakan
+        <span className="flex shrink-0 items-center gap-2">
+          {pointCount !== null && (
+            <span title={`${pointCount} titik`} className="num text-[12px] font-medium text-ink-soft">
+              {pointCount}
+            </span>
+          )}
+          {hasFundraising && (
+            <HeartHandshake className="size-3.5 text-ink-soft" strokeWidth={1.9} aria-label="Penggalangan dana aktif" />
+          )}
+          <span title={tierTitle} aria-label={tierTitle} className="inline-flex items-center">
+            {isAction ? (
+              <Sprout className="size-4 text-resolved" strokeWidth={2} aria-hidden="true" />
+            ) : isVerified ? (
+              <ShieldCheck className="size-4 text-leaf/80" strokeWidth={2} aria-hidden="true" />
+            ) : (
+              <CircleDashed className="size-4 text-ink-soft/45" strokeWidth={1.9} aria-hidden="true" />
+            )}
           </span>
-        ) : isVerified ? (
-          <span className="shrink-0 rounded-md bg-teal-50 px-2 py-0.5 text-[10.5px] font-medium text-teal-800">
-            ✓ Valid
-          </span>
-        ) : null}
-        {hasFundraising && (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-critical/10 px-2 py-0.5 text-[10.5px] font-normal text-critical">
-            <HeartHandshake className="size-3" />
-            Donasi
-          </span>
-        )}
-        <span
-          className={`size-2.5 shrink-0 rounded-full ${
-            isAction ? 'bg-resolved' : isVerified ? 'bg-teal-600' : SIGNAL_DOT_COLOR[kind]
-          }`}
-          aria-label="Sinyal Satelit"
-        />
+        </span>
       </button>
     </li>
   )
 }
 
-const ECO_BANNER_BG: Record<Ecosystem, string> = {
-  coastal_mangrove: 'bg-gradient-to-br from-emerald-100 via-teal-50 to-sky-100/90',
-  tropical_forest: 'bg-gradient-to-br from-emerald-100 via-mint/70 to-lime-100/80',
-  watershed: 'bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100/90',
+function formatDistanceKm(km: number): string {
+  if (km < 1) return `${Math.max(10, Math.round(km * 1000))} m`
+  if (km >= 100) return `${Math.round(km)} km`
+  return `${km.toFixed(1).replace('.', ',')} km`
 }
 
 function formatScheduleShort(iso: string | null): string | null {
@@ -141,74 +129,79 @@ function formatScheduleShort(iso: string | null): string | null {
   return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
 }
 
-function ActionFeedCard({ event, onOpen }: { event: ConservationEvent; onOpen: () => void }) {
+function ActionFeedCard({
+  event,
+  distanceKm,
+  onOpen,
+}: {
+  event: ConservationEvent
+  distanceKm?: number | null
+  onOpen: () => void
+}) {
   const coverUrl = event.cover_image_url || event.report?.before_image_url || null
   const participants = event.event_participants?.length ?? 0
   const maxPart = event.max_participants
   const quotaPct = maxPart ? Math.min(100, Math.round((participants / maxPart) * 100)) : null
   const schedule = formatScheduleShort(event.start_at)
+  const distanceLabel = distanceKm !== null && distanceKm !== undefined ? formatDistanceKm(distanceKm) : null
+  const topRightMeta = [distanceLabel, schedule].filter(Boolean).join(' · ')
   const tone = mapEventTone(event)
   const loc = shortLocation(event.location_name)
   const showLoc = Boolean(loc) && !event.title.toLowerCase().includes(loc.slice(0, 12).toLowerCase())
 
   return (
-    <li className="relative overflow-hidden rounded-[18px] bg-[#f5f7ff] transition-colors hover:bg-mint/25">
-      <DashedOutline rx={17} />
+    <li className="atlas-group overflow-hidden transition-shadow hover:shadow-[0_4px_14px_rgba(15,23,42,0.08)]">
       <button type="button" onClick={onOpen} className="flex w-full flex-col text-left">
-        <div
-          className={`relative h-34 w-full overflow-hidden sm:h-38 ${
-            coverUrl ? 'bg-[#e8edf6]' : ECO_BANNER_BG[event.ecosystem]
-          }`}
-        >
+        <div className="h-32 w-full overflow-hidden bg-canvas">
           {coverUrl ? (
             <img src={coverUrl} alt={event.title} className="size-full object-cover" />
           ) : (
-            <div className="flex size-full items-center justify-center">
-              <EcoBadge ecosystem={event.ecosystem} />
-            </div>
+            <AtlasCoordinateHero
+              lat={event.lat}
+              lng={event.lng}
+              kind="event"
+              tier="has_action"
+              compact
+              subtitle={showLoc ? loc : event.category}
+            />
           )}
-
-          <span className="pointer-events-none absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/92 px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-xs backdrop-blur-xs">
-            <span className={`size-1.5 rounded-full ${DOT[tone]}`} />
-            {EVENT_STATUS_LABEL[event.status]}
-          </span>
         </div>
 
-        <div className="flex flex-col gap-2 px-3.5 py-3">
-          <h3 className="line-clamp-2 text-[14.5px] leading-snug font-semibold text-ink">
-            {event.title}
-          </h3>
+        <div className="flex flex-col gap-2 p-4">
+          <div className="flex items-center justify-between gap-2 text-[12px]">
+            <span className={`font-medium ${TONE_TEXT[tone]}`}>{EVENT_STATUS_LABEL[event.status]}</span>
+            {topRightMeta && <span className="num text-ink-soft">{topRightMeta}</span>}
+          </div>
 
-          <div className="flex items-center justify-between gap-2 text-[11.5px] font-light text-ink-soft">
-            <p className="flex min-w-0 items-center gap-1">
-              {event.organization?.name && (
-                <span className="inline-flex min-w-0 items-center gap-1">
-                  <span className="truncate">{event.organization.name}</span>
-                  {event.organization.is_verified && <BadgeCheck className="size-3.5 shrink-0 text-[#2563EB]" />}
-                </span>
-              )}
-              {showLoc && (
-                <>
-                  {event.organization?.name && <span aria-hidden="true">·</span>}
-                  <span className="truncate">{loc}</span>
-                </>
-              )}
-            </p>
-            {schedule && <span className="shrink-0 text-ink-soft">{schedule}</span>}
+          <h3 className="line-clamp-2 text-[14px] leading-snug font-semibold text-ink">{event.title}</h3>
+
+          <div className="flex items-center gap-1 text-[12px] font-normal text-ink-soft">
+            {event.organization?.name && (
+              <span className="inline-flex min-w-0 items-center gap-1">
+                <span className="truncate">{event.organization.name}</span>
+                {event.organization.is_verified && <BadgeCheck className="size-3.5 shrink-0 text-leaf" />}
+              </span>
+            )}
+            {showLoc && (
+              <>
+                {event.organization?.name && <span aria-hidden="true">·</span>}
+                <span className="truncate">{loc}</span>
+              </>
+            )}
           </div>
 
           {(quotaPct !== null || participants > 0) && (
-            <div className="flex flex-col gap-1.5 pt-0.5">
+            <div className="flex flex-col gap-1.5 pt-1">
               {quotaPct !== null && (
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-canvas">
                   <div
-                    className="h-full rounded-full bg-leaf transition-all duration-300"
+                    className="h-full rounded-full bg-leaf transition-[width] duration-300"
                     style={{ width: `${Math.max(quotaPct, participants > 0 ? 6 : 0)}%` }}
                   />
                 </div>
               )}
-              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-light text-ink-soft">
-                <Users className="size-3.5 text-leaf" />
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-normal text-ink-soft">
+                <Users className="size-3.5 text-leaf" strokeWidth={1.75} />
                 <span className="num font-medium text-ink">
                   {maxPart ? `${participants}/${maxPart}` : participants}
                 </span>
@@ -234,7 +227,7 @@ function summarizeResolvedEvent(event: ConservationEvent) {
     latestAction?.ai_comparison_summary?.trim() ||
     latestAction?.notes?.trim() ||
     event.description?.trim() ||
-    'Event konservasi telah diselesaikan.'
+    'Event konservasi telah diselesaikan'
   const meta = event.organization?.name
     ? `${event.organization.name} · ${shortLocation(event.location_name)}`
     : shortLocation(event.location_name)
@@ -252,50 +245,44 @@ function summarizeResolvedEvent(event: ConservationEvent) {
 
 function ResolvedEventRow({ event, onOpen }: { event: ConservationEvent; onOpen: () => void }) {
   const { wasteKg, trees, recoveryScore, participantCount, summary, meta, photoUrl } = summarizeResolvedEvent(event)
+  const metrics = [
+    `${wasteKg} kg sampah`,
+    `${trees} bibit`,
+    ...(recoveryScore !== null ? [`${recoveryScore}% pulih`] : []),
+    ...(participantCount > 0 ? [`${participantCount} relawan`] : []),
+  ]
 
   return (
-    <li className="relative overflow-hidden rounded-[18px] bg-[#f5f7ff] transition-colors hover:bg-mint/25">
-      <DashedOutline rx={17} />
+    <li className="card-quiet overflow-hidden rounded-[12px] transition-colors hover:border-dash">
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-full flex-col gap-2.5 p-3.5 text-left"
+        className="flex w-full flex-col gap-3 p-4 text-left"
       >
         <div className="flex items-start gap-3">
           {photoUrl ? (
             <img
               src={photoUrl}
               alt={event.title}
-              className="h-16 w-20 shrink-0 rounded-[12px] border border-line/60 object-cover"
+              className="h-16 w-20 shrink-0 rounded-[8px] border border-line object-cover"
             />
           ) : (
             <EcoBadge ecosystem={event.ecosystem} />
           )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-[11.5px] font-light text-ink-soft">{meta}</span>
-              <span className="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-[10.5px] font-medium text-forest">
-                Selesai
-              </span>
+              <span className="truncate text-[12px] font-normal text-ink-soft">{meta}</span>
+              <span className="shrink-0 text-[12px] font-medium text-resolved">Selesai</span>
             </div>
-            <span className="mt-0.5 block line-clamp-2 text-[14px] leading-snug font-semibold text-ink">
+            <span className="mt-1 block line-clamp-2 text-[14px] leading-snug font-semibold text-ink">
               {event.title}
             </span>
           </div>
         </div>
 
-        <p className="line-clamp-2 text-[12px] leading-relaxed font-light text-ink-soft">{summary}</p>
+        <p className="line-clamp-2 text-[12px] leading-relaxed font-normal text-ink-soft">{summary}</p>
 
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-normal text-forest">
-          <span className="num rounded-full bg-white px-2.5 py-0.5 text-forest">{wasteKg} kg sampah</span>
-          <span className="num rounded-full bg-white px-2.5 py-0.5 text-forest">{trees} bibit</span>
-          {recoveryScore !== null && (
-            <span className="num rounded-full bg-mint/60 px-2.5 py-0.5 text-forest">{recoveryScore}% pulih</span>
-          )}
-          {participantCount > 0 && (
-            <span className="num rounded-full bg-white px-2.5 py-0.5 text-ink-soft">{participantCount} relawan</span>
-          )}
-        </div>
+        <p className="num text-[12px] font-medium text-forest">{metrics.join(' · ')}</p>
       </button>
     </li>
   )
@@ -338,11 +325,75 @@ export default function EventListPanel({
   onToggleTier?: (tier: SignalVerificationState) => void
   renderTabContent?: (tab: ListTab) => ReactNode
 }) {
-  const [tab, setTab] = useState<ListTab>(() =>
-    initialTab && tabs.includes(initialTab) ? initialTab : (tabs[0] ?? 'Utama'),
+  const [rawTab, setTab] = useState<ListTab>(() =>
+    initialTab && tabs.includes(initialTab) ? initialTab : (tabs[0] ?? 'Ringkasan'),
   )
+  const tab = tabs.includes(rawTab) ? rawTab : (tabs[0] ?? 'Ringkasan')
+  const [tierMenuOpen, setTierMenuOpen] = useState(false)
+  const [eventFilterOpen, setEventFilterOpen] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<EventStatusFilter>('active')
+  const [ecosystemFilter, setEcosystemFilter] = useState<Ecosystem | 'all'>('all')
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'ready' | 'denied' | 'unsupported'>('idle')
   const { fundraisings } = useFundraisings()
   const searchRef = useRef<HTMLInputElement>(null)
+  const tierMenuRef = useRef<HTMLDivElement>(null)
+  const eventFilterRef = useRef<HTMLDivElement>(null)
+  const locationRequestedRef = useRef(false)
+
+  const requestUserLocation = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocationStatus('unsupported')
+      return
+    }
+    setLocationStatus('loading')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setLocationStatus('ready')
+      },
+      () => {
+        setLocationStatus('denied')
+      },
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 120_000 },
+    )
+  }, [])
+
+  useEffect(() => {
+    if (tab !== 'Terdekat' || locationRequestedRef.current) return
+    locationRequestedRef.current = true
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setLocationStatus('ready')
+      },
+      () => {
+        setLocationStatus('denied')
+      },
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 120_000 },
+    )
+  }, [tab])
+
+  useEffect(() => {
+    if (!tierMenuOpen && !eventFilterOpen) return
+    const onPointerDown = (e: PointerEvent) => {
+      if (tierMenuOpen && !tierMenuRef.current?.contains(e.target as Node)) setTierMenuOpen(false)
+      if (eventFilterOpen && !eventFilterRef.current?.contains(e.target as Node)) setEventFilterOpen(false)
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setTierMenuOpen(false)
+        setEventFilterOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [tierMenuOpen, eventFilterOpen])
 
   useEffect(() => {
     if (!autoFocus) return
@@ -369,43 +420,54 @@ export default function EventListPanel({
     )
   }, [signals, query])
 
+  const isMovementTab = tab === 'Terdekat' || tab === 'Semua'
+  const activeFilterCount = (statusFilter !== 'active' ? 1 : 0) + (ecosystemFilter !== 'all' ? 1 : 0)
+  const refCoords = userCoords ?? FALLBACK_COORDS
+
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const matches = (ev: ConservationEvent) =>
+    const matchesQuery = (ev: ConservationEvent) =>
       !q || ev.title.toLowerCase().includes(q) || ev.location_name.toLowerCase().includes(q)
-    const base = events.filter(matches)
+    const matchesMovementFilter = (ev: ConservationEvent) => {
+      if (ecosystemFilter !== 'all' && ev.ecosystem !== ecosystemFilter) return false
+      if (statusFilter === 'active') return ev.status !== 'resolved' && ev.status !== 'cancelled'
+      if (statusFilter === 'open') return ev.status === 'open'
+      if (statusFilter === 'in_progress') return ev.status === 'in_progress'
+      if (statusFilter === 'resolved') return ev.status === 'resolved'
+      return ev.status !== 'cancelled'
+    }
+
     if (tab === 'Satelit' || tab === 'Verifikasi') return []
     if (tab === 'Terbaru') {
-      return [...base].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at))
+      return [...events.filter(matchesQuery)].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at))
     }
-    if (tab === 'Berjalan') {
-      return base
-        .filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled')
-        .sort((a, b) => RANK[a.status] - RANK[b.status] || +new Date(b.created_at) - +new Date(a.created_at))
-    }
-    if (tab === 'Selesai') {
-      const source = (impactEvents ?? events).filter(matches)
-      return source
-        .filter((ev) => ev.status === 'resolved')
-        .sort(
+    if (tab === 'Terdekat' || tab === 'Semua') {
+      const source = statusFilter === 'resolved' || statusFilter === 'all' ? (impactEvents ?? events) : events
+      const filtered = source.filter((ev) => matchesQuery(ev) && matchesMovementFilter(ev))
+      if (tab === 'Terdekat') {
+        return [...filtered].sort(
           (a, b) =>
-            +new Date(b.event_actions?.[0]?.completed_at ?? b.updated_at) -
-            +new Date(a.event_actions?.[0]?.completed_at ?? a.updated_at),
+            haversineDistanceKm(refCoords.lat, refCoords.lng, a.lat, a.lng) -
+            haversineDistanceKm(refCoords.lat, refCoords.lng, b.lat, b.lng),
         )
+      }
+      return [...filtered].sort(
+        (a, b) => RANK[a.status] - RANK[b.status] || +new Date(b.created_at) - +new Date(a.created_at),
+      )
     }
     if (tab === 'History') {
-      const source = (impactEvents ?? events).filter(matches)
+      const source = (impactEvents ?? events).filter(matchesQuery)
       return source
         .filter((ev) => ev.status === 'resolved' || ev.status === 'in_progress')
         .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at))
     }
-    return [...base].sort(
+    return [...events.filter(matchesQuery)].sort(
       (a, b) => RANK[a.status] - RANK[b.status] || +new Date(b.created_at) - +new Date(a.created_at),
     )
-  }, [events, impactEvents, tab, query])
+  }, [events, impactEvents, tab, query, statusFilter, ecosystemFilter, refCoords.lat, refCoords.lng])
 
   const resolvedTotals = useMemo(() => {
-    if (tab !== 'Selesai') return null
+    if (!isMovementTab || statusFilter !== 'resolved') return null
     let wasteKg = 0
     let trees = 0
     for (const ev of rows) {
@@ -415,28 +477,81 @@ export default function EventListPanel({
       }
     }
     return { count: rows.length, wasteKg, trees }
-  }, [rows, tab])
+  }, [rows, isMovementTab, statusFilter])
 
-  const shownSignals =
-    tab === 'Satelit' ? filteredSignals : tab === 'Utama' && onOpenSignal ? filteredSignals.slice(0, 4) : []
+  const summaryData = useMemo(() => {
+    if (tab !== 'Ringkasan') return null
+    let verifiedCount = 0
+    let highRiskCount = 0
+    const counts = { wildfire: 0, volcano: 0, flood: 0, storm: 0 }
+
+    for (const sig of filteredSignals) {
+      const isAction = linkedSet.has(sig.id) || sig.verificationState === 'has_action'
+      if (isAction || sig.verificationState === 'verified') verifiedCount += 1
+      if (sig.severity === 'high') highRiskCount += 1
+      const k = sig.kind ?? 'suspected'
+      if (k === 'wildfire' || k === 'suspected') counts.wildfire += 1
+      else if (k === 'volcano') counts.volcano += 1
+      else if (k === 'flood') counts.flood += 1
+      else if (k === 'storm') counts.storm += 1
+    }
+
+    const total = Math.max(1, filteredSignals.length)
+    const distribution = [
+      { key: 'wildfire', label: 'Karhutla', count: counts.wildfire, color: '#EA580C' },
+      { key: 'volcano', label: 'Gunung', count: counts.volcano, color: '#6D28D9' },
+      { key: 'flood', label: 'Banjir', count: counts.flood, color: '#2563EB' },
+      { key: 'storm', label: 'Badai', count: counts.storm, color: '#0E7490' },
+    ]
+      .filter((d) => d.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .map((d) => ({ ...d, pct: Math.max(6, Math.round((d.count / total) * 100)) }))
+
+    const activeEvents = events
+      .filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled')
+      .sort((a, b) => RANK[a.status] - RANK[b.status] || +new Date(b.created_at) - +new Date(a.created_at))
+
+    const prioritySignals = [...filteredSignals]
+      .sort((a, b) => {
+        const rank = (s: SatelliteSignal) => {
+          if (linkedSet.has(s.id) || s.verificationState === 'has_action') return 300
+          if (s.verificationState === 'verified') return 200
+          if (s.severity === 'high') return 100
+          return 0
+        }
+        return rank(b) - rank(a) || (b.pointCount ?? 0) - (a.pointCount ?? 0)
+      })
+      .slice(0, 3)
+
+    return {
+      verifiedCount,
+      highRiskCount,
+      activeActionCount: activeEvents.length,
+      distribution,
+      featuredEvent: activeEvents[0] ?? null,
+      prioritySignals,
+    }
+  }, [tab, filteredSignals, events, linkedSet])
+
+  const shownSignals = tab === 'Satelit' ? filteredSignals : []
   const customContent = renderTabContent?.(tab)
 
   return (
     <div>
       {showTitle && (
-        <h2 className="mb-2.5 text-[21px] font-semibold tracking-tight text-ink">{title}</h2>
+        <h2 className="mb-2 text-[20px] font-semibold text-ink">{title}</h2>
       )}
 
       {showSearch && (
-        <label className="flex h-10 items-center gap-2 rounded-full bg-[#f4f5f7] px-3.5 transition-colors focus-within:bg-[#eceef2]">
-          <Search className="size-4 shrink-0 text-[#0ea5e9]" />
+        <label className="flex h-9 items-center gap-2 rounded-full border border-line bg-canvas px-3.5 transition-colors focus-within:border-leaf focus-within:bg-white">
+          <Search className="size-4 shrink-0 text-leaf" strokeWidth={1.75} />
           <input
             ref={searchRef}
             value={query}
             onFocus={() => onExpand?.()}
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder="Cari"
-            className="min-w-0 flex-1 bg-transparent text-[13px] font-light text-ink outline-none focus:outline-none focus-visible:outline-none placeholder:font-light placeholder:text-ink-soft"
+            className="min-w-0 flex-1 bg-transparent text-[14px] font-normal text-ink outline-none focus:outline-none focus-visible:outline-none placeholder:text-ink-soft"
           />
           {query && (
             <button
@@ -453,60 +568,318 @@ export default function EventListPanel({
         </label>
       )}
 
-      <div role="tablist" className={`flex items-center gap-1 overflow-x-auto ${showSearch ? 'mt-2.5' : ''}`}>
-        {tabs.map((t) => {
-          const active = tab === t
-          return (
+      <div className={`relative flex items-center gap-2 ${showSearch ? 'mt-2' : ''}`}>
+        <div role="tablist" className="panel-tabs min-w-0 flex-1">
+          {tabs.map((t) => {
+            const active = tab === t
+            return (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => {
+                  onExpand?.()
+                  setTab(t)
+                }}
+                className={`panel-tab flex-1 whitespace-nowrap ${active ? 'is-active' : ''}`}
+              >
+                {t}
+              </button>
+            )
+          })}
+        </div>
+
+        {(tab === 'Satelit' || tab === 'Ringkasan') && onToggleTier && (
+          <div ref={tierMenuRef} className="relative shrink-0">
             <button
-              key={t}
               type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => {
-                onExpand?.()
-                setTab(t)
-              }}
-              className={`h-7.5 shrink-0 rounded-lg px-3 text-[12px] whitespace-nowrap transition-colors ${
-                active
-                  ? 'bg-[#f4f5f7] font-medium text-ink'
-                  : 'font-light text-ink-soft hover:text-ink'
+              onClick={() => setTierMenuOpen((v) => !v)}
+              aria-expanded={tierMenuOpen}
+              aria-label="Filter status sinyal"
+              title="Filter status sinyal"
+              className={`relative grid size-9 place-items-center rounded-[11px] transition-colors ${
+                (activeTiers?.size ?? 0) > 0 || tierMenuOpen
+                  ? 'bg-leaf text-white shadow-xs'
+                  : 'bg-white/85 text-ink-soft shadow-[0_1px_2px_rgba(15,23,42,0.05)] hover:text-ink'
               }`}
             >
-              {t}
+              <SlidersHorizontal className="size-4" strokeWidth={2} />
+              {(activeTiers?.size ?? 0) > 0 && (
+                <span className="num absolute -top-1 -right-1 grid size-4 place-items-center rounded-full border-2 border-white bg-forest text-[10px] font-semibold text-white">
+                  {activeTiers!.size}
+                </span>
+              )}
             </button>
-          )
-        })}
+
+            {tierMenuOpen && (
+              <div
+                role="dialog"
+                aria-label="Filter status titik"
+                className="atlas-sheet absolute top-11 right-0 z-30 w-48 rounded-[16px] p-1.5"
+              >
+                <MarkerTierLegend vertical activeTiers={activeTiers} onToggleTier={onToggleTier} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {isMovementTab && (
+          <div ref={eventFilterRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setEventFilterOpen((v) => !v)}
+              aria-expanded={eventFilterOpen}
+              aria-label="Filter gerakan"
+              title="Filter gerakan"
+              className={`relative grid size-9 place-items-center rounded-[11px] transition-colors ${
+                activeFilterCount > 0 || eventFilterOpen
+                  ? 'bg-leaf text-white shadow-xs'
+                  : 'bg-white/85 text-ink-soft shadow-[0_1px_2px_rgba(15,23,42,0.05)] hover:text-ink'
+              }`}
+            >
+              <SlidersHorizontal className="size-4" strokeWidth={2} />
+              {activeFilterCount > 0 && (
+                <span className="num absolute -top-1 -right-1 grid size-4 place-items-center rounded-full border-2 border-white bg-forest text-[10px] font-semibold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {eventFilterOpen && (
+              <div
+                role="dialog"
+                aria-label="Filter gerakan"
+                className="atlas-sheet absolute top-11 right-0 z-30 w-52 rounded-[16px] p-2"
+              >
+                <div className="flex items-center justify-between px-2 pb-1">
+                  <span className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Status</span>
+                  {activeFilterCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter('active')
+                        setEcosystemFilter('all')
+                      }}
+                      className="text-[11px] font-medium text-leaf hover:underline"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                {EVENT_STATUS_OPTIONS.map((opt) => {
+                  const active = statusFilter === opt.id
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={active}
+                      onClick={() => setStatusFilter(opt.id)}
+                      className={`flex w-full items-center justify-between gap-2 rounded-[10px] px-2.5 py-1.5 text-left text-[13px] transition-colors ${
+                        active ? 'bg-mint font-medium text-forest' : 'text-ink hover:bg-canvas/80'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {active && <Check className="size-3.5 shrink-0 text-forest" strokeWidth={2.2} />}
+                    </button>
+                  )
+                })}
+
+                <div className="my-1.5 border-t border-ink/8" />
+
+                <p className="px-2 pb-1 text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">
+                  Ekosistem
+                </p>
+                {ECOSYSTEM_FILTERS.map((opt) => {
+                  const active = ecosystemFilter === opt.id
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={active}
+                      onClick={() => setEcosystemFilter(opt.id)}
+                      className={`flex w-full items-center justify-between gap-2 rounded-[10px] px-2.5 py-1.5 text-left text-[13px] transition-colors ${
+                        active ? 'bg-mint font-medium text-forest' : 'text-ink hover:bg-canvas/80'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {active && <Check className="size-3.5 shrink-0 text-forest" strokeWidth={2.2} />}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {customContent ? (
         <div className="mt-3">{customContent}</div>
+      ) : tab === 'Ringkasan' && summaryData ? (
+        <div className="mt-3 flex flex-col gap-3">
+          <div className="atlas-group p-1">
+            <div className="atlas-strip grid-cols-3 divide-x divide-ink/8 border-y-0 text-center">
+              <div className="atlas-strip-cell">
+                <p className="num text-[17px] font-semibold text-leaf">{summaryData.verifiedCount}</p>
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Sudah Dicek</p>
+              </div>
+              <div className="atlas-strip-cell">
+                <p className="num text-[17px] font-semibold text-ink">{summaryData.highRiskCount}</p>
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Rawan</p>
+              </div>
+              <div className="atlas-strip-cell">
+                <p className="num text-[17px] font-semibold text-resolved">{summaryData.activeActionCount}</p>
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Gerakan</p>
+              </div>
+            </div>
+          </div>
+
+          {summaryData.distribution.length > 0 && (
+            <div className="atlas-group flex flex-col gap-2.5 p-3.5">
+              <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">
+                Kondisi Terkini
+              </p>
+              <div className="flex flex-col gap-2">
+                {summaryData.distribution.map((d) => (
+                  <div key={d.key} className="flex items-center gap-2.5 text-[12px]">
+                    <span className="w-16 shrink-0 font-medium text-ink">{d.label}</span>
+                    <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full" style={{ width: `${d.pct}%`, backgroundColor: d.color }} />
+                    </div>
+                    <span className="num w-8 shrink-0 text-right font-medium text-ink-soft">{d.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {summaryData.featuredEvent && (
+            <div className="atlas-group overflow-hidden p-1">
+              <button
+                type="button"
+                onClick={() => onOpen(summaryData.featuredEvent!.id)}
+                className="flex w-full items-center gap-3 rounded-[12px] p-2.5 text-left transition-colors hover:bg-canvas"
+              >
+                {summaryData.featuredEvent.cover_image_url || summaryData.featuredEvent.report?.before_image_url ? (
+                  <img
+                    src={
+                      summaryData.featuredEvent.cover_image_url ||
+                      summaryData.featuredEvent.report?.before_image_url ||
+                      ''
+                    }
+                    alt={summaryData.featuredEvent.title}
+                    className="size-12 shrink-0 rounded-[10px] object-cover"
+                  />
+                ) : (
+                  <EcoBadge ecosystem={summaryData.featuredEvent.ecosystem} />
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] font-semibold tracking-[0.04em] text-resolved uppercase">
+                    Butuh Relawan
+                  </span>
+                  <span className="mt-0.5 block truncate text-[14px] font-semibold text-ink">
+                    {summaryData.featuredEvent.title}
+                  </span>
+                  <span className="block truncate text-[12px] text-ink-soft">
+                    {summaryData.featuredEvent.event_participants?.length ?? 0} relawan ·{' '}
+                    {shortLocation(summaryData.featuredEvent.location_name)}
+                  </span>
+                </span>
+              </button>
+            </div>
+          )}
+
+          {summaryData.prioritySignals.length > 0 && onOpenSignal && (
+            <div className="atlas-group p-1">
+              <div className="flex items-center justify-between px-2.5 pt-2 pb-1">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">
+                  Perlu Perhatian
+                </p>
+                {filteredSignals.length > 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setTab('Satelit')}
+                    className="text-[12px] font-medium text-leaf hover:underline"
+                  >
+                    Lihat semua ({filteredSignals.length})
+                  </button>
+                )}
+              </div>
+              <ul className="divide-y divide-ink/6">
+                {summaryData.prioritySignals.map((sig) => (
+                  <SignalRow
+                    key={sig.id}
+                    signal={sig}
+                    linked={linkedSet.has(sig.id)}
+                    hasFundraising={Boolean(findFundraisingForSignal(fundraisings, sig))}
+                    onOpen={() => onOpenSignal(sig)}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       ) : (
         <>
+          {tab === 'Terdekat' && (locationStatus === 'denied' || locationStatus === 'unsupported') && (
+            <div className="atlas-group mt-2.5 flex items-center justify-between gap-2 px-3 py-2 text-[12px]">
+              <span className="inline-flex min-w-0 items-center gap-1.5 text-ink-soft">
+                <LocateFixed className="size-3.5 shrink-0 text-leaf" strokeWidth={2} />
+                <span className="truncate">
+                  {locationStatus === 'denied'
+                    ? 'Lokasi belum aktif · urut dari pusat Indonesia'
+                    : 'GPS tidak tersedia · urut dari pusat Indonesia'}
+                </span>
+              </span>
+              {locationStatus === 'denied' && (
+                <button
+                  type="button"
+                  onClick={requestUserLocation}
+                  className="shrink-0 font-medium text-leaf hover:underline"
+                >
+                  Aktifkan
+                </button>
+              )}
+            </div>
+          )}
+
           {resolvedTotals && rows.length > 0 && (
-            <div className="relative mt-3 grid grid-cols-3 gap-2 rounded-[14px] bg-[#f4f5f7] p-3 text-center">
-              <DashedOutline rx={13} />
-              <div>
-                <p className="num text-base font-semibold text-forest">{resolvedTotals.count}</p>
-                <p className="text-[11px] font-light text-ink-soft">Selesai</p>
-              </div>
-              <div>
-                <p className="num text-base font-semibold text-forest">{resolvedTotals.wasteKg} kg</p>
-                <p className="text-[11px] font-light text-ink-soft">Sampah</p>
-              </div>
-              <div>
-                <p className="num text-base font-semibold text-forest">{resolvedTotals.trees}</p>
-                <p className="text-[11px] font-light text-ink-soft">Bibit</p>
+            <div className="atlas-group mt-3 p-1">
+              <div className="atlas-strip grid-cols-3 divide-x divide-ink/8 border-y-0 text-center">
+                <div className="atlas-strip-cell">
+                  <p className="num text-[17px] font-semibold text-forest">{resolvedTotals.count}</p>
+                  <p className="text-[11px] font-medium text-ink-soft uppercase tracking-[0.04em]">Selesai</p>
+                </div>
+                <div className="atlas-strip-cell">
+                  <p className="num text-[17px] font-semibold text-forest">{resolvedTotals.wasteKg} kg</p>
+                  <p className="text-[11px] font-medium text-ink-soft uppercase tracking-[0.04em]">Sampah</p>
+                </div>
+                <div className="atlas-strip-cell">
+                  <p className="num text-[17px] font-semibold text-forest">{resolvedTotals.trees}</p>
+                  <p className="text-[11px] font-medium text-ink-soft uppercase tracking-[0.04em]">Bibit</p>
+                </div>
               </div>
             </div>
           )}
 
           {rows.length > 0 && (
-            <ul className={tab === 'Berjalan' || tab === 'Selesai' ? 'mt-3 flex flex-col gap-3' : 'mt-2 divide-y divide-line'}>
+            <ul className={isMovementTab ? 'mt-3 flex flex-col gap-3' : 'atlas-group mt-2.5 divide-y divide-ink/6 p-1'}>
               {rows.map((ev) =>
-                tab === 'Selesai' ? (
+                ev.status === 'resolved' && isMovementTab ? (
                   <ResolvedEventRow key={ev.id} event={ev} onOpen={() => onOpen(ev.id)} />
-                ) : tab === 'Berjalan' ? (
-                  <ActionFeedCard key={ev.id} event={ev} onOpen={() => onOpen(ev.id)} />
+                ) : isMovementTab ? (
+                  <ActionFeedCard
+                    key={ev.id}
+                    event={ev}
+                    distanceKm={
+                      tab === 'Terdekat' && userCoords
+                        ? haversineDistanceKm(userCoords.lat, userCoords.lng, ev.lat, ev.lng)
+                        : null
+                    }
+                    onOpen={() => onOpen(ev.id)}
+                  />
                 ) : (
                   <EventRow key={ev.id} event={ev} tab={tab} onOpen={() => onOpen(ev.id)} />
                 ),
@@ -515,33 +888,14 @@ export default function EventListPanel({
           )}
 
           {(shownSignals.length > 0 || (tab === 'Satelit' && Boolean(onOpenSignal))) && onOpenSignal && (
-            <div className={rows.length > 0 ? 'mt-4 border-t border-line pt-3.5' : 'mt-2'}>
-              {tab === 'Satelit' && (
-                <div className="mb-2.5 rounded-[14px] bg-[#f4f5f7] px-2.5 py-2">
-                  <MarkerTierLegend compact activeTiers={activeTiers} onToggleTier={onToggleTier} />
-                </div>
-              )}
-              <div className="mb-1 flex items-center justify-between">
-                <p className="text-[10.5px] font-normal tracking-wider text-ink-soft uppercase">
-                  {tab === 'Satelit' ? `Satelit (${filteredSignals.length})` : 'Satelit'}
-                </p>
-                {tab === 'Utama' && filteredSignals.length > shownSignals.length && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onExpand?.()
-                      setTab('Satelit')
-                    }}
-                    className="text-[11.5px] font-normal text-[#2563eb] hover:underline"
-                  >
-                    Lihat semua ({filteredSignals.length})
-                  </button>
-                )}
-              </div>
+            <div className={rows.length > 0 ? 'mt-4 border-t border-ink/8 pt-4' : 'mt-2.5'}>
               {shownSignals.length === 0 ? (
-                <p className="py-6 text-center text-xs text-ink-soft">Tidak ada sinyal dengan status terpilih.</p>
+                <div className="atlas-group flex flex-col items-center gap-2 py-8 text-center">
+                  <BlamNatureIcon className="size-12 opacity-85" />
+                  <p className="text-[12px] text-ink-soft">Tidak ada sinyal dengan status terpilih</p>
+                </div>
               ) : (
-                <ul className="divide-y divide-line">
+                <ul className="atlas-group divide-y divide-ink/6 p-1">
                   {shownSignals.map((sig) => (
                     <SignalRow
                       key={sig.id}
@@ -557,15 +911,16 @@ export default function EventListPanel({
           )}
 
           {rows.length === 0 && shownSignals.length === 0 && (
-            <p className="py-10 text-center text-[13px] font-light text-ink-soft">
-              {tab === 'Satelit'
-                ? 'Belum ada sinyal'
-                : tab === 'Berjalan'
-                  ? 'Belum ada gerakan berjalan'
-                  : tab === 'Selesai'
-                    ? 'Belum ada gerakan selesai'
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <BlamNatureIcon className="size-12 opacity-85" />
+              <p className="text-[14px] font-normal text-ink-soft">
+                {tab === 'Satelit'
+                  ? 'Belum ada sinyal'
+                  : isMovementTab && activeFilterCount > 0
+                    ? 'Tidak ada gerakan cocok dengan filter'
                     : 'Belum ada gerakan'}
-            </p>
+              </p>
+            </div>
           )}
         </>
       )}

@@ -281,17 +281,17 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
   }
 
   return (
-    <div className="relative flex h-full flex-col bg-white">
-      <header className="flex h-15 shrink-0 items-center justify-between px-4 pt-[env(safe-area-inset-top)]">
+    <div className="atlas-sheet relative flex h-full flex-col">
+      <header className="flex h-16 shrink-0 items-center justify-between px-4 pt-[env(safe-area-inset-top)]">
         <button
           type="button"
           onClick={onClose}
           aria-label="Tutup"
-          className="grid size-10 place-items-center rounded-full bg-[#f4f5f7] text-ink transition-colors hover:bg-[#e8eaee]"
+          className="btn-soft size-10 !rounded-[10px] p-0"
         >
-          <X className="size-5" />
+          <X className="size-4" strokeWidth={1.75} />
         </button>
-        <span className="text-[12px] font-light text-ink-soft">Blam Snap</span>
+        <span className="text-[12px] font-medium text-ink-soft">Blam Snap</span>
         <span className="size-10" />
       </header>
 
@@ -299,33 +299,33 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
         {phase === 'form' && (
           <section className="flex flex-col gap-4">
             <div className="flex flex-col items-start gap-2">
-              <h2 className="text-[21px] font-semibold tracking-tight text-ink">Lapor Kejadian</h2>
+              <h2 className="text-[20px] font-semibold text-ink">Lapor Kejadian</h2>
 
               {region ? (
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#f4f5f7] px-2.5 py-1 text-[12px] font-normal text-ink">
-                  <MapPin className="size-3.5 text-[#0ea5e9]" />
+                <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-line bg-canvas px-2.5 py-1 text-[12px] font-medium text-ink">
+                  <MapPin className="size-4 text-leaf" strokeWidth={1.75} />
                   <span>{region.name}</span>
-                  {region.detail && <span className="font-light text-ink-soft">· {region.detail}</span>}
+                  {region.detail && <span className="font-normal text-ink-soft">· {region.detail}</span>}
                 </span>
               ) : gpsFailed ? (
                 <button
                   type="button"
                   onClick={() => locateUser(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#f4f5f7] px-2.5 py-1 text-[12px] font-normal text-ink transition-colors hover:bg-[#e8eaee]"
+                  className="btn-soft h-8 gap-1.5 !rounded-[8px] px-2.5 text-[12px]"
                 >
-                  <MapPin className="size-3.5 text-[#0ea5e9]" />
+                  <MapPin className="size-4 text-leaf" strokeWidth={1.75} />
                   <span>Izinkan lokasi · Coba lagi</span>
                 </button>
               ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#f4f5f7] px-2.5 py-1 text-[12px] font-light text-ink-soft">
-                  <MapPin className="size-3.5 animate-pulse text-[#0ea5e9]" />
+                <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-line bg-canvas px-2.5 py-1 text-[12px] font-normal text-ink-soft">
+                  <MapPin className="size-4 text-leaf" strokeWidth={1.75} />
                   Mencari lokasi…
                 </span>
               )}
             </div>
 
             {initialPrefill && (
-              <div className="rounded-xl bg-[#f4f5f7] px-3.5 py-2 text-[12px] font-light text-ink">
+              <div className="card-quiet px-3.5 py-2 text-[12px] font-normal text-ink">
                 Dari Blam Chat
                 {initialPrefill.locationHint ? ` · ${initialPrefill.locationHint}` : ''}
               </div>
@@ -346,35 +346,35 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
               type="button"
               disabled={submitting}
               onClick={() => fileRef.current?.click()}
-              className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-[14px] border border-dashed border-[#d4d8df] bg-[#f7f7f8] text-ink-soft transition-colors hover:bg-[#f1f2f4] disabled:opacity-90"
+              className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-[12px] border border-dashed border-dash bg-canvas text-ink-soft transition-colors hover:bg-muted disabled:opacity-90"
             >
               {photo ? (
                 <>
                   <img src={photo.previewUrl} alt="Foto laporan" className="size-full object-cover" />
                   {submitting && (
                     <motion.div
-                      className="blam-gradient absolute inset-x-0 top-0 h-1 shadow-[0_0_12px_rgba(14,165,233,0.5)]"
+                      className="absolute inset-x-0 top-0 h-1 bg-leaf"
                       animate={{ y: [0, 240, 0] }}
                       transition={{ duration: 1.6, repeat: Infinity, ease: 'linear' }}
                     />
                   )}
                 </>
               ) : (
-                <span className="flex flex-col items-center gap-2 text-[13px] font-light">
-                  <ImagePlus className="size-7 text-leaf" /> Ambil atau pilih foto
+                <span className="flex flex-col items-center gap-2 text-[14px] font-normal">
+                  <ImagePlus className="size-6 text-leaf" strokeWidth={1.75} /> Ambil atau pilih foto
                 </span>
               )}
             </button>
 
             {result && !result.isValid && (
-              <div className="rounded-[14px] bg-critical/8 px-4 py-3 text-left">
-                <p className="text-[13px] font-medium text-critical">Foto belum sesuai</p>
-                <p className="mt-0.5 text-[12.5px] font-light text-ink/80">{result.reason}</p>
+              <div className="card-quiet px-4 py-3 text-left">
+                <p className="text-[14px] font-medium text-critical">Foto belum sesuai</p>
+                <p className="mt-0.5 text-[12px] font-normal text-ink-soft">{result.reason}</p>
               </div>
             )}
 
-            <div className="flex flex-col gap-1.5">
-              <p className="text-[11px] font-light tracking-wide text-ink-soft uppercase">Kejadian</p>
+            <div className="flex flex-col gap-2">
+              <p className="text-[12px] font-medium text-ink-soft">Kejadian</p>
               <div className="grid grid-cols-2 gap-2">
                 {INCIDENTS.map((item) => (
                   <button
@@ -383,10 +383,10 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
                     disabled={submitting}
                     aria-pressed={incident === item}
                     onClick={() => setIncident(item)}
-                    className={`h-10.5 rounded-xl text-[13px] transition-colors ${
+                    className={`h-10 rounded-[10px] text-[12px] transition-colors ${
                       incident === item
                         ? 'bg-ink font-medium text-white'
-                        : 'bg-[#f4f5f7] font-normal text-ink hover:bg-[#eaecf0]'
+                        : 'btn-soft font-normal'
                     }`}
                   >
                     {item}
@@ -395,42 +395,42 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[14px] bg-[#f4f5f7]">
+            <div className="card-quiet overflow-hidden">
               <textarea
                 rows={2}
                 value={note}
                 disabled={submitting}
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={300}
-                placeholder="Tambah catatan (opsional)…"
-                className="w-full resize-none bg-transparent px-4 pt-3.5 pb-2.5 text-[13.5px] font-normal text-ink placeholder:font-light placeholder:text-ink-soft focus:outline-none"
+                placeholder="Catatan lokasi atau kondisi"
+                className="w-full resize-none bg-transparent px-4 pt-3.5 pb-2.5 text-[14px] font-normal text-ink placeholder:text-ink-soft focus:outline-none"
               />
 
               {voice && (
-                <div className="flex items-center gap-2 border-t border-black/[0.05] px-3.5 py-2">
+                <div className="flex items-center gap-2 border-t border-line px-3.5 py-2">
                   <audio controls src={voice.previewUrl} className="h-8 min-w-0 flex-1" />
                   <button
                     type="button"
                     disabled={submitting}
                     onClick={removeVoice}
                     aria-label="Hapus rekaman suara"
-                    className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-ink-soft hover:text-critical"
+                    className="btn-soft size-8 shrink-0 !rounded-[8px] p-0 text-ink-soft hover:text-critical"
                   >
-                    <Trash2 className="size-3.5" />
+                    <Trash2 className="size-4" strokeWidth={1.75} />
                   </button>
                 </div>
               )}
 
-              <div className="flex items-center justify-between gap-2 border-t border-black/[0.05] px-3.5 py-2.5">
+              <div className="flex items-center justify-between gap-2 border-t border-line bg-canvas px-3.5 py-2.5">
                 {!voice ? (
                   <button
                     type="button"
                     disabled={submitting}
                     onClick={() => (recording ? stopVoice() : void startVoice())}
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] font-normal transition-colors ${
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-[8px] px-3 text-[12px] font-medium transition-colors ${
                       recording
                         ? 'bg-critical text-white'
-                        : 'bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:bg-[#fafafa]'
+                        : 'btn-soft'
                     }`}
                   >
                     {recording ? (
@@ -440,15 +440,15 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
                       </>
                     ) : (
                       <>
-                        <Mic className="size-3.5 text-leaf" /> Rekam suara
+                        <Mic className="size-4 text-leaf" strokeWidth={1.75} /> Rekam suara
                       </>
                     )}
                   </button>
                 ) : (
-                  <span className="text-[11.5px] font-light text-ink-soft">Suara terlampir</span>
+                  <span className="text-[12px] font-normal text-ink-soft">Suara terlampir</span>
                 )}
 
-                <label className="flex cursor-pointer items-center gap-2 text-[12.5px] font-light text-ink">
+                <label className="flex cursor-pointer items-center gap-2 text-[12px] font-normal text-ink">
                   <span>Anonim</span>
                   <input
                     type="checkbox"
@@ -465,25 +465,25 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
 
         {phase === 'done' && result && (
           <section className="relative flex flex-col items-center gap-4 pt-8 text-center">
-            <span className="blam-gradient grid size-16 place-items-center rounded-2xl text-white shadow-[0_6px_18px_rgba(14,165,233,0.25)]">
-              <Check className="size-8" strokeWidth={2.5} />
+            <span className="grid size-16 place-items-center rounded-[12px] bg-leaf text-white">
+              <Check className="size-8" strokeWidth={1.75} />
             </span>
-            <h2 className="text-[22px] font-semibold tracking-tight text-ink">
-              Laporan Terkirim!{result.pointsAwarded ? ` +${result.pointsAwarded}` : ''}
+            <h2 className="text-[20px] font-semibold text-ink">
+              Laporan Terkirim{result.pointsAwarded ? ` +${result.pointsAwarded}` : ''}
             </h2>
-            <div className="w-full rounded-[14px] bg-[#f4f5f7] p-4.5 text-left">
+            <div className="card-quiet w-full p-4 text-left">
               <div className="flex items-center justify-between gap-2">
                 <ReportStatusPill status={result.status ?? 'pending_verification'} />
-                <span className="flex items-center gap-1.5 text-[12.5px] font-light text-ink-soft">
-                  <ShieldCheck className="size-4 text-[#0ea5e9]" />
-                  <span className="num text-[15px] font-semibold text-ink">{result.confidence}%</span>
+                <span className="flex items-center gap-1.5 text-[12px] font-normal text-ink-soft">
+                  <ShieldCheck className="size-4 text-leaf" strokeWidth={1.75} />
+                  <span className="num text-[14px] font-semibold text-ink">{result.confidence}%</span>
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="text-[13.5px] font-normal text-ink">{result.threatCategory}</span>
+                <span className="text-[14px] font-medium text-ink">{result.threatCategory}</span>
               </div>
               {result.recommendations.length > 0 && (
-                <div className="mt-3 border-t border-black/[0.06] pt-2 text-[13px] font-light text-ink/80">
+                <div className="mt-3 border-t border-line pt-2 text-[14px] font-normal text-ink-soft">
                   {result.recommendations.slice(0, 2).map((r) => (
                     <p key={r} className="py-1">
                       {r}
@@ -496,7 +496,7 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
         )}
 
         {error && (
-          <p role="alert" className="mt-4 rounded-card bg-critical/8 px-4 py-3 text-[13px] font-light text-critical">
+          <p role="alert" className="card-quiet mt-4 px-4 py-3 text-[12px] font-medium text-critical">
             {error}
           </p>
         )}
@@ -512,13 +512,13 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
           >
             {submitting ? (
               <>
-                <Loader2 className="size-4.5 animate-spin" /> Mengirim laporan…
+                <Loader2 className="size-4 animate-spin" strokeWidth={1.75} /> Mengirim laporan…
               </>
             ) : !locationReady && gpsBusy ? (
               'Menunggu lokasi…'
             ) : (
               <>
-                <Camera className="size-4.5" /> Kirim Laporan
+                <Camera className="size-4" strokeWidth={1.75} /> Kirim Laporan
               </>
             )}
           </button>

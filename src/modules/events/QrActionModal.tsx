@@ -23,15 +23,15 @@ export default function QrActionModal({
   return (
     <ModalShell title="Bagikan Gerakan" onClose={onClose}>
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="rounded-[20px] border border-line bg-[#f4f5f7] p-4">
-          <img src={qrImgUrl} alt="QR Gerakan" className="size-48 rounded-[14px] bg-white p-2" />
+        <div className="card-quiet p-4">
+          <img src={qrImgUrl} alt="QR Gerakan" className="size-48 rounded-[12px] bg-white p-1" />
         </div>
         <div>
-          <p className="text-base font-extrabold text-ink">{event.title}</p>
-          <p className="mt-1 text-xs font-medium text-ink-soft">{event.location_name}</p>
+          <p className="text-[16px] font-semibold text-ink">{event.title}</p>
+          <p className="mt-1 text-[12px] font-normal text-ink-soft">{event.location_name}</p>
         </div>
-        <button type="button" onClick={() => void copy()} className="btn-primary h-12 w-full text-sm">
-          {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+        <button type="button" onClick={() => void copy()} className="btn-primary h-11 w-full text-[14px]">
+          {copied ? <Check className="size-4" strokeWidth={1.75} /> : <Copy className="size-4" strokeWidth={1.75} />}
           {copied ? 'Tersalin' : 'Salin Tautan'}
         </button>
       </div>

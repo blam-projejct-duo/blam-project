@@ -227,9 +227,9 @@ function buildFireArea(group: HotspotPoint[]): HazardPoint | null {
     const reason =
         kind === 'wildfire'
             ? ruleHuge || total >= 100
-                ? 'Satelit NASA mendeteksi titik api karhutla berskala besar di kawasan hutan yang berpotensi meluas.'
-                : `Satelit NASA mendeteksi kumpulan ${count} titik api aktif di kawasan hutan dalam radius ±${radiusKm} km.`
-            : 'Satelit menangkap suhu permukaan yang sangat panas di lokasi ini. Perlu pengecekan relawan di lapangan.'
+                ? 'Titik api karhutla skala besar terpantau satelit'
+                : `${count} titik api aktif dalam radius ±${radiusKm} km`
+            : 'Anomali panas permukaan, perlu cek relawan'
 
     const severity: HazardPoint['severity'] = kind === 'wildfire' ? 'high' : 'medium'
 
@@ -277,12 +277,12 @@ function kindFromCategory(category: string): HazardKind {
 }
 
 const EONET_REASON: Record<HazardKind, string> = {
-    volcano: 'Aktivitas vulkanik aktif terpantau oleh sistem satelit NASA EONET.',
-    flood: 'Kejadian banjir terpantau aktif oleh sistem satelit NASA EONET.',
-    wildfire: 'Kebakaran hutan berskala besar terpantau aktif oleh sistem satelit NASA EONET.',
-    suspected: 'Satelit menangkap suhu permukaan yang sangat panas di lokasi ini. Perlu pengecekan relawan di lapangan.',
-    storm: 'Sistem badai dan cuaca ekstrem terpantau aktif oleh sistem satelit NASA EONET.',
-    other: 'Peristiwa alam terpantau aktif oleh sistem satelit NASA EONET.',
+    volcano: 'Aktivitas vulkanik aktif (NASA EONET)',
+    flood: 'Kejadian banjir aktif (NASA EONET)',
+    wildfire: 'Karhutla skala besar (NASA EONET)',
+    suspected: 'Anomali panas permukaan, perlu cek relawan',
+    storm: 'Sistem badai dan cuaca ekstrem (NASA EONET)',
+    other: 'Peristiwa alam aktif (NASA EONET)',
 }
 
 const SEVERITY_RANK: Record<HazardPoint['severity'], number> = { high: 3, medium: 2, low: 1 }

@@ -31,40 +31,40 @@ export default function DemoPortalPage({
       <div className="flex w-full max-w-xl flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <span className="grid size-10 place-items-center rounded-full bg-white text-forest shadow-[0_1px_2px_rgba(18,29,79,0.06)]">
-              <Leaf className="size-5" strokeWidth={2.25} />
+            <span className="grid size-10 place-items-center rounded-full border border-line bg-white text-forest">
+              <Leaf className="size-5" strokeWidth={1.75} />
             </span>
-            <span className="font-display text-base font-semibold tracking-tight text-ink">Blam</span>
-            <span className="rounded-full bg-mint/60 px-3 py-1 text-xs font-normal text-forest">Demo</span>
+            <span className="text-[16px] font-semibold text-ink">Blam</span>
+            <span className="rounded-[8px] border border-line bg-mint px-2.5 py-1 text-[12px] font-medium text-forest">Demo</span>
           </div>
 
           <button
             type="button"
             onClick={onGoLive}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-xs font-normal text-ink shadow-[0_1px_2px_rgba(18,29,79,0.05)] transition-colors hover:bg-mint/40"
+            className="btn-soft h-10 gap-2 !rounded-full px-4 text-[12px]"
           >
-            <ArrowLeft className="size-4" /> Website Asli
+            <ArrowLeft className="size-4" strokeWidth={1.75} /> Website Asli
           </button>
         </div>
 
-        <section className="rounded-[20px] bg-white p-6 shadow-[0_2px_10px_rgba(18,29,79,0.05)] sm:p-7">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">Pilih Peran</h1>
+        <section className="rounded-[16px] border border-line bg-white p-6 sm:p-7">
+          <h1 className="text-[24px] font-semibold text-ink">Pilih Peran</h1>
 
           {loading ? (
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {[0, 1, 2, 3].map((k) => (
-                <div key={k} className="h-[104px] animate-pulse rounded-[14px] bg-[#f4f5f7]" />
+                <div key={k} className="h-[104px] rounded-[12px] border border-line bg-canvas" />
               ))}
             </div>
           ) : demoAccounts.length === 0 ? (
-            <div className="mt-5 flex flex-col items-center gap-3 rounded-[14px] bg-[#f4f5f7] p-6 text-center">
-              <p className="text-sm font-light text-ink-soft">{demoError ?? 'Akun demo kosong'}</p>
+            <div className="card-quiet mt-5 flex flex-col items-center gap-3 p-6 text-center">
+              <p className="text-[14px] font-normal text-ink-soft">{demoError ?? 'Akun demo kosong'}</p>
               <button
                 type="button"
                 onClick={() => void refreshDemoAccounts()}
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-xs font-normal text-ink"
+                className="btn-soft h-11 gap-2 px-5 text-[12px]"
               >
-                <RefreshCw className="size-4" /> Muat Ulang
+                <RefreshCw className="size-4" strokeWidth={1.75} /> Muat Ulang
               </button>
             </div>
           ) : (
@@ -77,16 +77,16 @@ export default function DemoPortalPage({
                     type="button"
                     disabled={busyId !== null}
                     onClick={() => void selectRole(acc.id)}
-                    className="flex min-h-[104px] flex-col items-start justify-between rounded-[14px] bg-[#f4f5f7] p-4 text-left transition-colors hover:bg-[#eaecf0] disabled:opacity-60"
+                    className="flex min-h-[104px] flex-col items-start justify-between rounded-[12px] border border-line bg-canvas p-4 text-left transition-colors hover:bg-muted disabled:opacity-60"
                   >
-                    <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-light text-ink-soft">
+                    <span className="rounded-[8px] border border-line bg-white px-2 py-0.5 text-[12px] font-medium text-ink-soft">
                       {ROLE_LABEL[acc.role]}
                     </span>
                     <div className="mt-2 w-full">
-                      <p className="truncate text-[15px] font-normal text-ink">
+                      <p className="truncate text-[16px] font-medium text-ink">
                         {isBusy ? 'Memuat…' : acc.full_name}
                       </p>
-                      <p className="num mt-0.5 text-xs font-normal text-ink-soft">{acc.points} poin</p>
+                      <p className="num mt-0.5 text-[12px] font-normal text-ink-soft">{acc.points} poin</p>
                     </div>
                   </button>
                 )
@@ -95,7 +95,7 @@ export default function DemoPortalPage({
           )}
 
           {error && (
-            <p role="alert" className="mt-4 rounded-[14px] bg-[#f4f5f7] px-4 py-3 text-xs font-light text-ink">
+            <p role="alert" className="card-quiet mt-4 px-4 py-3 text-xs font-medium text-critical">
               {error}
             </p>
           )}
