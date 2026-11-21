@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { DashedOutline, MarkerTierLegend, Orb } from '../../components/ui/atoms'
+import { MarkerTierLegend, Orb } from '../../components/ui/atoms'
 import {
   AksiActionIcon,
   BellSolidIcon,
@@ -81,29 +81,29 @@ const AKSI_TABS: readonly ListTab[] = ['Berjalan', 'Verifikasi', 'Selesai']
 
 const LAYER_CHIP_ICON: Record<RadarLayer, { icon: ReactNode; offCls: string; onCls: string }> = {
   wildfire: {
-    icon: <Flame className="size-4" strokeWidth={2.2} />,
+    icon: <Flame className="size-4" strokeWidth={1.75} />,
     offCls: 'bg-critical/8 text-critical hover:bg-critical/14',
-    onCls: 'bg-critical text-white shadow-xs',
+    onCls: 'bg-critical text-white',
   },
   suspected: {
-    icon: <Sun className="size-4" strokeWidth={2.2} />,
+    icon: <Sun className="size-4" strokeWidth={1.75} />,
     offCls: 'bg-progress/10 text-progress hover:bg-progress/18',
-    onCls: 'bg-progress text-white shadow-xs',
+    onCls: 'bg-progress text-white',
   },
   flood: {
-    icon: <Droplets className="size-4" strokeWidth={2.2} />,
+    icon: <Droplets className="size-4" strokeWidth={1.75} />,
     offCls: 'bg-cobalt/8 text-cobalt hover:bg-cobalt/14',
-    onCls: 'bg-cobalt text-white shadow-xs',
+    onCls: 'bg-cobalt text-white',
   },
   volcano: {
-    icon: <Mountain className="size-4" strokeWidth={2.2} />,
-    offCls: 'bg-purple-600/8 text-purple-600 hover:bg-purple-600/14',
-    onCls: 'bg-purple-600 text-white shadow-xs',
+    icon: <Mountain className="size-4" strokeWidth={1.75} />,
+    offCls: 'bg-progress/10 text-progress hover:bg-progress/18',
+    onCls: 'bg-progress text-white',
   },
   event: {
-    icon: <Sprout className="size-4" strokeWidth={2.2} />,
+    icon: <Sprout className="size-4" strokeWidth={1.75} />,
     offCls: 'bg-emerald/10 text-emerald hover:bg-emerald/16',
-    onCls: 'bg-emerald text-white shadow-xs',
+    onCls: 'bg-emerald text-white',
   },
 }
 
@@ -372,11 +372,10 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               style={{ transformOrigin: 'top center' }}
               className="font-sans absolute top-[calc(env(safe-area-inset-top)+60px)] left-1/2 z-[520] flex w-[min(296px,calc(100%-32px))] -translate-x-1/2 flex-col gap-2.5 rounded-[16px] bg-white/95 p-3 shadow-[0_10px_28px_rgba(18,29,79,0.16)] backdrop-blur-md"
             >
-              <DashedOutline rx={15} />
               <MapStyleSwitcher compact value={radar.style} onChange={radar.setStyle} className="w-full [&>button]:flex-1" />
 
               <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between px-0.5 text-[10px] font-light text-ink-soft">
+                <div className="flex items-center justify-between px-0.5 text-[12px] font-normal text-ink-soft">
                   <span className="truncate">
                     Layer:{' '}
                     {layers.size === 0
@@ -392,7 +391,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                         setLayers(new Set())
                         setTiers(new Set())
                       }}
-                      className="shrink-0 pl-2 font-normal text-leaf hover:underline"
+                      className="shrink-0 pl-2 font-medium text-leaf hover:underline"
                     >
                       Reset
                     </button>
@@ -410,7 +409,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                         aria-pressed={on}
                         aria-label={c.label}
                         title={c.label}
-                        className={`grid h-9 place-items-center rounded-full transition-all active:scale-95 ${
+                        className={`grid h-9 place-items-center rounded-[10px] transition-colors ${
                           on ? ui.onCls : ui.offCls
                         }`}
                       >
@@ -428,32 +427,32 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                 <button
                   type="button"
                   onClick={() => openSheet('history', true)}
-                  className="flex h-8.5 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[11.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
+                  className="btn-soft h-9 !rounded-[10px] px-3 text-[12px]"
                 >
-                  <History className="size-3.5 shrink-0" /> History
+                  <History className="size-4 shrink-0" strokeWidth={1.75} /> History
                 </button>
                 <button
                   type="button"
                   onClick={() => openSheet('orgs', true)}
-                  className="flex h-8.5 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[11.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
+                  className="btn-soft h-9 !rounded-[10px] px-3 text-[12px]"
                 >
-                  <Building2 className="size-3.5 shrink-0" /> Organisasi
+                  <Building2 className="size-4 shrink-0" strokeWidth={1.75} /> Organisasi
                 </button>
                 {canOrganize && (
                   <>
                     <button
                       type="button"
                       onClick={() => openSheet('verify', true)}
-                      className="flex h-8.5 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[11.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
+                      className="btn-soft h-9 !rounded-[10px] px-3 text-[12px]"
                     >
-                      <CheckSquare className="size-3.5 shrink-0" /> Verifikasi
+                      <CheckSquare className="size-4 shrink-0" strokeWidth={1.75} /> Verifikasi
                     </button>
                     <button
                       type="button"
                       onClick={() => startCreateEvent(null)}
-                      className="btn-primary !font-sans h-8.5 !rounded-xl px-3 text-[11.5px] font-medium"
+                      className="btn-primary !font-sans h-9 !rounded-[10px] px-3 text-[12px]"
                     >
-                      <CalendarPlus className="size-3.5 shrink-0" /> Buat Event
+                      <CalendarPlus className="size-4 shrink-0" strokeWidth={1.75} /> Buat Event
                     </button>
                   </>
                 )}
@@ -461,18 +460,18 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                   <button
                     type="button"
                     onClick={() => openSheet('agency', true)}
-                    className="flex h-8.5 items-center justify-center gap-1.5 rounded-xl bg-[#f4f5f7] px-3 text-[11.5px] font-normal text-ink transition-colors hover:bg-[#eaecf0]"
+                    className="btn-soft h-9 !rounded-[10px] px-3 text-[12px]"
                   >
-                    <Shield className="size-3.5 shrink-0" /> Eskalasi
+                    <Shield className="size-4 shrink-0" strokeWidth={1.75} /> Eskalasi
                   </button>
                 )}
                 {profile?.role === 'admin' && (
                   <button
                     type="button"
                     onClick={() => openSheet('admin', true)}
-                    className="flex h-8.5 items-center justify-center gap-1.5 rounded-xl bg-ink px-3 text-[11.5px] font-normal text-white"
+                    className="flex h-9 items-center justify-center gap-1.5 rounded-[10px] bg-ink px-3 text-[12px] font-medium text-white"
                   >
-                    <Shield className="size-3.5 shrink-0" /> Admin
+                    <Shield className="size-4 shrink-0" strokeWidth={1.75} /> Admin
                   </button>
                 )}
               </div>
@@ -486,7 +485,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           size={38}
           label={profile ? 'Profil' : 'Masuk'}
           onClick={() => openSheet('profile', true)}
-          className="orb-avatar overflow-hidden text-xs font-extrabold"
+          className="orb-avatar overflow-hidden text-[12px] font-semibold"
         >
           {profile?.avatar_url ? (
             <img
@@ -744,7 +743,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           aria-hidden={!sheetOpen}
           role="dialog"
           aria-label="Panel informasi"
-          className={`absolute inset-x-0 bottom-0 z-[600] flex flex-col rounded-t-sheet border-t border-line/80 bg-white ${sheetOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          className={`absolute inset-x-0 bottom-0 z-[600] flex flex-col rounded-t-sheet border-t border-line bg-white shadow-[0_-10px_28px_-6px_rgba(15,29,50,0.14)] ${sheetOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
           style={{ height: sheetH }}
         >
           <div
@@ -752,13 +751,13 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             onClick={cycleSnap}
             className="flex h-9 shrink-0 cursor-grab touch-none items-center justify-center"
           >
-            <span className="h-1.5 w-10 rounded-full bg-line" />
+            <span className="h-1 w-9 rounded-full bg-line" />
           </div>
 
           <div
             className={`min-h-0 flex-1 px-5 pb-8 ${snap === 'full' ? 'overflow-y-auto' : 'overflow-hidden'}`}
           >
-            <Suspense fallback={<div className="py-6 text-xs font-bold text-ink-soft">Memuat…</div>}>
+            <Suspense fallback={<div className="py-6 text-xs font-medium text-ink-soft">Memuat…</div>}>
               {mode === 'detail' && selected && (
                 <EventDetail
                   key={selected.id}
@@ -826,14 +825,14 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               {mode === 'list' && (
                 <div>
                   <div className="mb-2.5 flex items-center justify-between gap-2">
-                    <h2 className="text-[21px] font-semibold tracking-tight text-ink">Gerakan</h2>
+                    <h2 className="text-[20px] font-semibold text-ink">Gerakan</h2>
                     {canOrganize && (
                       <button
                         type="button"
                         onClick={() => startCreateEvent(null)}
-                        className="btn-primary h-8 px-3 text-xs"
+                        className="btn-primary h-8 !rounded-[10px] px-3 text-[12px]"
                       >
-                        <Plus className="size-3.5" /> Buat
+                        <Plus className="size-4" strokeWidth={1.75} /> Buat
                       </button>
                     )}
                   </div>
@@ -855,12 +854,12 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                       if (subTab !== 'Verifikasi') return null
                       if (!canOrganize) {
                         return (
-                          <div className="rounded-[14px] bg-[#f4f5f7] p-5 text-center">
-                            <p className="font-display text-sm font-semibold text-ink">Khusus Relawan &amp; Instansi</p>
-                            <p className="mt-1 text-xs leading-relaxed font-light text-ink-soft">
+                          <div className="card-quiet p-5 text-center">
+                            <p className="text-[14px] font-semibold text-ink">Khusus Verifikator</p>
+                            <p className="mt-1 text-[12px] leading-relaxed font-normal text-ink-soft">
                               {!profile
-                                ? 'Masuk untuk memverifikasi laporan lapangan.'
-                                : 'Hanya relawan, instansi, atau admin terverifikasi yang dapat memverifikasi.'}
+                                ? 'Masuk untuk memverifikasi laporan lapangan'
+                                : 'Hanya relawan, instansi, atau admin terverifikasi'}
                             </p>
                             {!profile && (
                               <button
@@ -946,7 +945,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 z-[800] bg-canvas"
           >
-            <Suspense fallback={<div className="grid h-full place-items-center text-xs font-bold text-ink-soft">Memuat…</div>}>
+            <Suspense fallback={<div className="grid h-full place-items-center text-[12px] font-medium text-ink-soft">Memuat…</div>}>
               <QuickReportFlow
                 initialPrefill={reportPrefill}
                 onClose={() => {
@@ -972,7 +971,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 z-[800] bg-canvas"
           >
-            <Suspense fallback={<div className="grid h-full place-items-center text-xs font-bold text-ink-soft">Memuat…</div>}>
+            <Suspense fallback={<div className="grid h-full place-items-center text-[12px] font-medium text-ink-soft">Memuat…</div>}>
               <CreateEventForm
                 key={draftReport?.id ?? draftSignal?.id ?? 'standalone'}
                 initialReport={draftReport}

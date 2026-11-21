@@ -19,7 +19,7 @@ function BlamRoot({ isDemo, onNavigate }: { isDemo: boolean; onNavigate: (path: 
   const [demoGuestEntered, setDemoGuestEntered] = useState(false)
 
   useEffect(() => {
-    document.title = isDemo ? 'Blam — Mode Demo' : 'Blam — Radar Konservasi'
+    document.title = isDemo ? 'Blam - Mode Demo' : 'Blam - Radar Konservasi'
   }, [isDemo])
 
   if (isDemo && loading && Boolean(getDemoSessionId())) {

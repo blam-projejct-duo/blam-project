@@ -10,7 +10,6 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { DashedOutline } from '../../components/ui/atoms'
 import { shortLocation } from '../../lib/constants'
 import type { ConservationEvent, FundraisingCampaign, SatelliteSignal } from '../../types'
 import DonateModal from '../fundraising/DonateModal'
@@ -56,7 +55,7 @@ const CATEGORY_META: Record<
 > = {
   karhutla: { label: 'Karhutla', Icon: Flame, tone: 'text-critical' },
   banjir: { label: 'Banjir', Icon: Droplets, tone: 'text-cobalt' },
-  gunung: { label: 'Gunung', Icon: Mountain, tone: 'text-purple-600' },
+  gunung: { label: 'Gunung', Icon: Mountain, tone: 'text-progress' },
   donasi: { label: 'Donasi', Icon: HeartHandshake, tone: 'text-critical' },
 }
 
@@ -313,32 +312,32 @@ export default function HistoryPanel({
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center gap-2">
-        <h2 className="font-display text-xl font-bold tracking-tight text-ink">History</h2>
-        <span className="num rounded-full bg-mint/55 px-2 py-0.5 text-[11px] text-forest">
+        <h2 className="text-[20px] font-semibold text-ink">History</h2>
+        <span className="num rounded-[8px] border border-line bg-white px-2 py-0.5 text-[12px] font-medium text-ink-soft">
           {filtered.length}
         </span>
       </div>
 
-      <label className="flex h-9 w-full min-w-0 items-center gap-2 rounded-full bg-[#f3f6f2] px-3.5 transition-colors focus-within:bg-mint/35">
-        <Search className="size-3.5 shrink-0 text-leaf" />
+      <label className="flex h-10 w-full min-w-0 items-center gap-2 rounded-full border border-line bg-white px-3.5 transition-colors focus-within:border-leaf">
+        <Search className="size-4 shrink-0 text-leaf" strokeWidth={1.75} />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cari riwayat…"
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-soft"
+          placeholder="Cari"
+          className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-soft"
         />
         {query && (
           <button type="button" aria-label="Hapus" onClick={() => setQuery('')}>
-            <X className="size-3.5 text-ink-soft" />
+            <X className="size-4 text-ink-soft" strokeWidth={1.75} />
           </button>
         )}
       </label>
 
-      <div className="flex min-w-0 items-center justify-between gap-1.5">
+      <div className="flex min-w-0 items-center justify-between gap-2">
         <div
           role="tablist"
           aria-label="Filter status riwayat"
-          className="flex min-w-0 items-center gap-0.5 rounded-full border border-line/80 bg-[#f3f6f2] p-0.5"
+          className="panel-tabs p-0.5"
         >
           {STATUS_FILTERS.map((sf) => {
             const active = statusFilter === sf.id
@@ -349,11 +348,7 @@ export default function HistoryPanel({
                 role="tab"
                 aria-selected={active}
                 onClick={() => setStatusFilter(sf.id)}
-                className={`font-display inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap transition-all ${
-                  active
-                    ? 'bg-leaf text-white shadow-[0_2px_8px_rgba(29,92,58,0.22)]'
-                    : 'text-ink-soft hover:bg-white/70 hover:text-ink'
-                }`}
+                className={`panel-tab whitespace-nowrap px-2.5 py-1 text-[12px] ${active ? 'is-active' : ''}`}
               >
                 {sf.label}
               </button>
@@ -367,17 +362,17 @@ export default function HistoryPanel({
             aria-expanded={filterOpen}
             aria-haspopup="menu"
             onClick={() => setFilterOpen((v) => !v)}
-            className={`font-display relative inline-flex h-7.5 items-center gap-1 rounded-lg px-2.5 text-[11px] font-medium whitespace-nowrap transition-colors ${
+            className={`inline-flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[12px] font-medium whitespace-nowrap transition-colors ${
               category !== 'all'
                 ? 'bg-ink text-white'
-                : 'bg-[#f4f5f7] text-ink hover:bg-[#eaecf0]'
+                : 'btn-soft'
             }`}
           >
-            {category === 'all' && <DashedOutline rx={7} />}
-            <SlidersHorizontal className="size-3.5 shrink-0" />
+            <SlidersHorizontal className="size-4 shrink-0" strokeWidth={1.75} />
             <span>{activeCategoryLabel}</span>
             <ChevronDown
-              className={`size-3.5 shrink-0 transition-transform ${filterOpen ? 'rotate-180' : ''}`}
+              className={`size-4 shrink-0 transition-transform ${filterOpen ? 'rotate-180' : ''}`}
+              strokeWidth={1.75}
             />
           </button>
 
@@ -385,7 +380,7 @@ export default function HistoryPanel({
             <div
               role="menu"
               aria-label="Filter kategori riwayat"
-              className="absolute top-10 right-0 z-30 min-w-[168px] rounded-[14px] border border-line bg-white p-1.5 shadow-[0_12px_28px_rgba(19,36,26,0.14)]"
+              className="absolute top-10 right-0 z-30 min-w-[168px] rounded-[12px] border border-line bg-white p-1.5 shadow-[0_12px_28px_rgba(15,29,50,0.14)]"
             >
               {CATEGORY_OPTIONS.map((opt) => {
                 const active = category === opt.id
@@ -399,12 +394,12 @@ export default function HistoryPanel({
                       setCategory(opt.id)
                       setFilterOpen(false)
                     }}
-                    className={`font-display flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors ${
-                      active ? 'bg-[#f4f5f7] text-ink' : 'text-ink-soft hover:bg-[#f4f5f7] hover:text-ink'
+                    className={`flex w-full items-center justify-between gap-2 rounded-[8px] px-3 py-2 text-left text-[12px] font-medium transition-colors ${
+                      active ? 'bg-mint text-forest' : 'text-ink-soft hover:bg-canvas hover:text-ink'
                     }`}
                   >
                     <span>{opt.label}</span>
-                    {active && <Check className="size-3.5 shrink-0 text-ink" />}
+                    {active && <Check className="size-4 shrink-0 text-leaf" strokeWidth={1.75} />}
                   </button>
                 )
               })}
@@ -414,9 +409,8 @@ export default function HistoryPanel({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="relative rounded-[14px] bg-[#f4f5f7] p-5 text-center">
-          <DashedOutline rx={13} />
-          <p className="font-display text-xs font-semibold text-ink-soft">Tidak ada riwayat cocok</p>
+        <div className="card-quiet p-5 text-center">
+          <p className="text-xs font-medium text-ink-soft">Tidak ada riwayat cocok</p>
         </div>
       ) : (
         <ul className="flex min-w-0 flex-col gap-2">
@@ -434,9 +428,8 @@ export default function HistoryPanel({
             return (
               <li
                 key={item.id}
-                className="relative min-w-0 rounded-[14px] bg-[#f4f5f7] transition-colors hover:bg-[#eceef2]"
+                className="card-quiet min-w-0 transition-colors hover:border-dash"
               >
-                <DashedOutline rx={13} />
                 <button
                   type="button"
                   onClick={() => {
@@ -452,40 +445,36 @@ export default function HistoryPanel({
                   className="flex w-full min-w-0 flex-col gap-2 px-3 py-2.5 text-left"
                 >
                   <div className="flex w-full min-w-0 items-center gap-2.5">
-                    <span
-                      className={`grid size-9 shrink-0 place-items-center rounded-[12px] border border-leaf/20 bg-white ${meta.tone}`}
-                    >
-                      <Icon className="size-4" strokeWidth={2} />
+                    <span className={`row-icon ${meta.tone}`}>
+                      <Icon className="size-4" strokeWidth={1.75} />
                     </span>
 
                     <div className="min-w-0 flex-1">
-                      <p className="font-display truncate text-[13.5px] font-semibold text-ink">{item.title}</p>
-                      <p className="truncate text-[11.5px] text-ink-soft">
+                      <p className="truncate text-[14px] font-medium text-ink">{item.title}</p>
+                      <p className="truncate text-[12px] text-ink-soft">
                         {meta.label} · {item.location} · {item.dateLabel}
                       </p>
                     </div>
 
-                    <div className="flex w-[84px] shrink-0 items-center justify-between gap-1">
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-ink-soft">
-                        <span className={`size-2 shrink-0 rounded-full ${isDone ? 'bg-resolved' : 'bg-progress'}`} />
-                        <span>{item.statusLabel}</span>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span className={`text-[12px] font-medium ${isDone ? 'text-resolved' : 'text-progress'}`}>
+                        {item.statusLabel}
                       </span>
-                      <span className="grid size-3.5 shrink-0 place-items-center">
-                        {!opensDirect && (
-                          <ChevronDown
-                            className={`size-3.5 text-ink-soft transition-transform ${
-                              expanded ? 'rotate-180' : ''
-                            }`}
-                          />
-                        )}
-                      </span>
+                      {!opensDirect && (
+                        <ChevronDown
+                          className={`size-4 text-ink-soft transition-transform ${
+                            expanded ? 'rotate-180' : ''
+                          }`}
+                          strokeWidth={1.75}
+                        />
+                      )}
                     </div>
                   </div>
 
                   {expanded && (
-                    <div className="w-full min-w-0 border-t border-dashed border-dash pt-2 text-[12px] leading-relaxed break-words text-ink-soft">
+                    <div className="w-full min-w-0 border-t border-line pt-2 text-[12px] leading-relaxed break-words text-ink-soft">
                       <p>{item.summary}</p>
-                      <p className="mt-1 font-semibold text-forest">{item.metaLine}</p>
+                      <p className="mt-1 font-medium text-forest">{item.metaLine}</p>
                       {item.fundraising && item.fundraising.status === 'active' && (
                         <span
                           role="button"
@@ -501,9 +490,9 @@ export default function HistoryPanel({
                               setDonateCampaign(item.fundraising ?? null)
                             }
                           }}
-                          className="btn-primary mt-2 inline-flex h-8 px-3.5 text-[11.5px]"
+                          className="btn-primary mt-2 inline-flex h-8 px-3.5 text-[12px]"
                         >
-                          <HeartHandshake className="size-3.5" />
+                          <HeartHandshake className="size-4" strokeWidth={1.75} />
                           Donasi Sekarang
                         </span>
                       )}

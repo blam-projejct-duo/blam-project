@@ -7,7 +7,7 @@ export const LAYER_CHIPS: ReadonlyArray<{ layer: RadarLayer; label: string; dot:
   { layer: 'wildfire', label: 'Karhutla', dot: 'bg-critical' },
   { layer: 'suspected', label: 'Titik Panas', dot: 'bg-progress' },
   { layer: 'flood', label: 'Banjir', dot: 'bg-cobalt' },
-  { layer: 'volcano', label: 'Gunung Berapi', dot: 'bg-purple-600' },
+  { layer: 'volcano', label: 'Gunung Berapi', dot: 'bg-progress' },
   { layer: 'event', label: 'Gerakan', dot: 'bg-resolved' },
 ]
 

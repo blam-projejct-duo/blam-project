@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Ban, Check } from 'lucide-react'
 import { useState } from 'react'
-import { DashedOutline, ReportStatusPill, StatusPill } from '../../components/ui/atoms'
+import { ReportStatusPill, StatusPill } from '../../components/ui/atoms'
 import {
   fetchOrgs,
   fetchReportsQueue,
@@ -36,6 +36,12 @@ export default function AdminPanel({
 
   const orgs = orgsQuery.data ?? []
   const reports = reportsQuery.data ?? []
+  const activeCount = events.filter((e) => e.status !== 'resolved' && e.status !== 'cancelled').length
+  const resolvedCount = events.filter((e) => e.status === 'resolved').length
+  const totalEvents = Math.max(1, events.length)
+  const activePct = Math.round((activeCount / totalEvents) * 100)
+  const resolvedPct = Math.round((resolvedCount / totalEvents) * 100)
+
   const error =
     actionError ??
     (orgsQuery.isError
@@ -92,102 +98,124 @@ export default function AdminPanel({
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-xl font-semibold tracking-tight text-ink">Admin</h2>
+      <h2 className="text-[20px] font-semibold text-ink">Admin</h2>
 
       {error && (
-        <p role="alert" className="relative rounded-[14px] bg-[#f4f5f7] px-4 py-3 text-xs font-light text-ink">
-          <DashedOutline rx={13} />
+        <p role="alert" className="card-quiet px-4 py-3 text-[12px] font-medium text-critical">
           {error}
         </p>
       )}
 
-      <section className="flex flex-col gap-2.5">
-        <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Organisasi ({orgs.length})</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="card-quiet p-3.5">
+          <p className="text-[12px] font-medium text-ink-soft">Antrean Verifikasi</p>
+          <p className="num mt-1 text-[20px] font-semibold text-ink">{orgs.length + reports.length}</p>
+        </div>
+        <div className="card-quiet p-3.5">
+          <p className="text-[12px] font-medium text-ink-soft">Gerakan Aktif</p>
+          <p className="num mt-1 text-[20px] font-semibold text-leaf">{activeCount}</p>
+        </div>
+      </div>
+
+      {events.length > 0 && (
+        <div className="card-quiet p-3.5">
+          <div className="flex items-center justify-between text-[12px]">
+            <span className="font-medium text-ink">Progres Penanganan</span>
+            <span className="num text-ink-soft">
+              {resolvedCount} selesai · {activeCount} aktif
+            </span>
+          </div>
+          <div className="mt-2.5 flex h-2 w-full overflow-hidden rounded-full bg-canvas">
+            <div className="h-full bg-leaf" style={{ width: `${activePct}%` }} />
+            <div className="h-full bg-resolved" style={{ width: `${resolvedPct}%` }} />
+          </div>
+        </div>
+      )}
+
+      <section className="flex flex-col gap-2">
+        <p className="text-[12px] font-medium text-ink-soft">Organisasi ({orgs.length})</p>
         {orgs.length === 0 ? (
-          <p className="relative rounded-[14px] bg-[#f4f5f7] p-4 text-sm font-light text-ink-soft">
-            <DashedOutline rx={13} />
-            Kosong
-          </p>
+          <p className="card-quiet p-4 text-[14px] font-normal text-ink-soft">Belum ada antrean organisasi</p>
         ) : (
-          orgs.map((o) => (
-            <div key={o.id} className="relative flex items-center justify-between gap-3 rounded-[14px] bg-[#f4f5f7] p-4">
-              <DashedOutline rx={13} />
-              <div className="min-w-0">
-                <p className="text-[11px] font-light text-ink-soft">
-                  {o.type === 'agency' ? 'Instansi' : 'Komunitas'} · {o.region}
-                </p>
-                <p className="mt-1 truncate text-[13.5px] font-normal text-ink">{o.name}</p>
+          <div className="list-group">
+            {orgs.map((o) => (
+              <div key={o.id} className="list-row justify-between">
+                <div className="min-w-0">
+                  <p className="text-[12px] font-normal text-ink-soft">
+                    {o.type === 'agency' ? 'Instansi' : 'Komunitas'} · {o.region}
+                  </p>
+                  <p className="mt-0.5 truncate text-[14px] font-medium text-ink">{o.name}</p>
+                </div>
+                <div className="flex shrink-0 gap-1.5">
+                  <button
+                    type="button"
+                    disabled={busyId === o.id}
+                    onClick={() => void handleOrg(o.id, true)}
+                    className="btn-primary h-8 !rounded-[8px] px-2.5 text-[12px]"
+                  >
+                    <Check className="size-4" strokeWidth={1.75} /> Setujui
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busyId === o.id}
+                    onClick={() => void handleOrg(o.id, false)}
+                    className="btn-soft h-8 !rounded-[8px] px-2.5 text-[12px] text-ink-soft"
+                  >
+                    <Ban className="size-4" strokeWidth={1.75} /> Tolak
+                  </button>
+                </div>
               </div>
-              <div className="flex shrink-0 gap-1.5">
-                <button
-                  type="button"
-                  disabled={busyId === o.id}
-                  onClick={() => void handleOrg(o.id, true)}
-                  className="btn-primary h-9 px-3 text-xs"
-                >
-                  <Check className="size-3.5" /> Setujui
-                </button>
-                <button
-                  type="button"
-                  disabled={busyId === o.id}
-                  onClick={() => void handleOrg(o.id, false)}
-                  className="inline-flex h-9 items-center gap-1 rounded-xl bg-white px-3 text-xs font-normal text-ink-soft"
-                >
-                  <Ban className="size-3.5" /> Tolak
-                </button>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </section>
 
-      <section className="flex flex-col gap-2.5">
-        <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Laporan Warga ({reports.length})</p>
+      <section className="flex flex-col gap-2">
+        <p className="text-[12px] font-medium text-ink-soft">Laporan Warga ({reports.length})</p>
         {reports.length === 0 ? (
-          <p className="relative rounded-[14px] bg-[#f4f5f7] p-4 text-sm font-light text-ink-soft">
-            <DashedOutline rx={13} />
-            Kosong
-          </p>
+          <p className="card-quiet p-4 text-[14px] font-normal text-ink-soft">Belum ada antrean laporan</p>
         ) : (
-          reports.slice(0, 8).map((r) => (
-            <div key={r.id} className="relative flex items-center justify-between gap-3 rounded-[14px] bg-[#f4f5f7] p-3.5">
-              <DashedOutline rx={13} />
+          <div className="list-group">
+            {reports.slice(0, 8).map((r) => (
+              <div key={r.id} className="list-row justify-between">
+                <div className="min-w-0">
+                  <ReportStatusPill status={r.status} />
+                  <p className="mt-0.5 truncate text-[14px] font-medium text-ink">{r.title}</p>
+                </div>
+                <button
+                  type="button"
+                  disabled={busyId === r.id}
+                  onClick={() => void rejectReport(r.id)}
+                  className="btn-soft h-8 shrink-0 !rounded-[8px] px-2.5 text-[12px] text-ink-soft"
+                >
+                  Tolak
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <p className="text-[12px] font-medium text-ink-soft">Event Radar ({events.length})</p>
+        <div className="list-group">
+          {events.slice(0, 8).map((ev) => (
+            <div key={ev.id} className="list-row justify-between">
               <div className="min-w-0">
-                <ReportStatusPill status={r.status} />
-                <p className="mt-1 truncate text-[13.5px] font-normal text-ink">{r.title}</p>
+                <StatusPill status={ev.status} />
+                <p className="mt-0.5 truncate text-[14px] font-medium text-ink">{ev.title}</p>
               </div>
               <button
                 type="button"
-                disabled={busyId === r.id}
-                onClick={() => void rejectReport(r.id)}
-                className="h-8 shrink-0 rounded-xl bg-white px-3 text-xs font-normal text-ink-soft"
+                disabled={busyId === ev.id}
+                onClick={() => void cancelEvent(ev.id)}
+                className="btn-soft h-8 shrink-0 !rounded-[8px] px-2.5 text-[12px] text-ink-soft"
               >
-                Tolak
+                Batalkan
               </button>
             </div>
-          ))
-        )}
-      </section>
-
-      <section className="flex flex-col gap-2.5">
-        <p className="font-sans text-[11px] font-light tracking-wider text-ink-soft uppercase">Event Radar ({events.length})</p>
-        {events.slice(0, 8).map((ev) => (
-          <div key={ev.id} className="relative flex items-center justify-between gap-3 rounded-[14px] bg-[#f4f5f7] p-3.5">
-            <DashedOutline rx={13} />
-            <div className="min-w-0">
-              <StatusPill status={ev.status} />
-              <p className="mt-1 truncate text-[13.5px] font-normal text-ink">{ev.title}</p>
-            </div>
-            <button
-              type="button"
-              disabled={busyId === ev.id}
-              onClick={() => void cancelEvent(ev.id)}
-              className="h-8 shrink-0 rounded-xl bg-white px-3 text-xs font-normal text-ink-soft"
-            >
-              Batalkan
-            </button>
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
     </div>
   )

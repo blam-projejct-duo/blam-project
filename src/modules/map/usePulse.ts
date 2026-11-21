@@ -12,14 +12,14 @@ export interface PulseTileData {
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
 function formatRainTile(rainMm: unknown): PulseTileData {
-  if (!isNum(rainMm)) return { label: 'Curah Hujan', value: '—' }
+  if (!isNum(rainMm)) return { label: 'Curah Hujan', value: '-' }
   if (rainMm === 0) return { label: 'Curah Hujan', value: 'Kering · 0', unit: 'mm' }
   const status = rainMm <= 10 ? 'Hujan' : 'Deras'
   return { label: 'Curah Hujan', value: `${status} · ${rainMm.toFixed(1)}`, unit: 'mm' }
 }
 
 function formatWindTile(windKmh: unknown): PulseTileData {
-  if (!isNum(windKmh)) return { label: 'Tiupan Angin', value: '—' }
+  if (!isNum(windKmh)) return { label: 'Tiupan Angin', value: '-' }
   const w = Math.round(windKmh)
   const status = w < 15 ? 'Tenang' : w <= 30 ? 'Sedang' : 'Kencang'
   return { label: 'Tiupan Angin', value: `${status} · ${w}`, unit: 'km/j' }
@@ -38,7 +38,7 @@ export function formatPulseTiles(pulse: EnvPulse | null): PulseTileData[] {
         const status = aqi <= 50 ? 'Bersih' : aqi <= 100 ? 'Sedang' : aqi <= 150 ? 'Tercemar' : 'Bahaya'
         return { label: 'Kualitas Udara', value: `${status} · ${aqi}`, unit: 'AQI' }
       })()
-    : { label: 'Kualitas Udara', value: '—' }
+    : { label: 'Kualitas Udara', value: '-' }
 
   const smokeTile: PulseTileData = isNum(pulse?.pm25)
     ? (() => {
@@ -46,7 +46,7 @@ export function formatPulseTiles(pulse: EnvPulse | null): PulseTileData[] {
         const status = pm < 15 ? 'Normal' : pm <= 35 ? 'Sedang' : pm <= 55 ? 'Pekat' : 'Bahaya'
         return { label: 'Kepekatan Asap', value: `${status} · ${pm}`, unit: 'µg/m³' }
       })()
-    : { label: 'Kepekatan Asap', value: '—' }
+    : { label: 'Kepekatan Asap', value: '-' }
 
   const surfaceTile = formatWaveTile(pulse?.waveM) ?? formatRainTile(pulse?.rainMm)
   const windTile = formatWindTile(pulse?.windKmh)

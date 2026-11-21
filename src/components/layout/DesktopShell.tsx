@@ -2,6 +2,8 @@ import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
 import {
   ChevronLeft,
   ChevronRight,
+  Maximize2,
+  Minimize2,
   Minus,
   Plus,
   X,
@@ -13,7 +15,7 @@ import type { BlamChatAction, BlamChatContext, BlamSelectedPointContext, BlamSna
 import BlamChatModal from '../../modules/chat/BlamChatModal'
 import type { BlamPointPromptSuggestion } from '../../modules/chat/BlamChatModal'
 import BlamCompanion from '../../modules/chat/BlamCompanion'
-import { DashedOutline, MarkerTierLegend, Orb } from '../ui/atoms'
+import { MarkerTierLegend, Orb } from '../ui/atoms'
 import {
   AdminDuotoneIcon,
   AksiActionIcon,
@@ -147,26 +149,26 @@ function RailItem({
       aria-current={active ? 'page' : undefined}
       className="group relative flex w-full flex-col items-center gap-0.5 rounded-2xl py-1.5"
     >
-      {active && (
+        {active && (
         <motion.span
           layoutId="desktop-nav-pill"
           transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-          className="absolute inset-x-1 inset-y-0.5 rounded-2xl bg-[#f4f5f7]"
+          className="absolute inset-x-1 inset-y-0.5 rounded-[12px] border border-leaf/15 bg-mint"
         />
       )}
       <span
-        className={`relative z-10 grid h-9 w-11 place-items-center rounded-xl transition-colors ${
-          active ? 'text-ink' : 'text-ink-soft group-hover:text-ink'
+        className={`relative z-10 grid h-9 w-11 place-items-center rounded-[10px] transition-colors ${
+          active ? 'text-forest' : 'text-ink-soft group-hover:text-ink'
         }`}
       >
         {children}
         {badge !== undefined && badge > 0 && (
-          <span className="num absolute -top-0.5 -right-0.5 grid min-w-4.5 place-items-center rounded-full border-2 border-white bg-[#2563eb] px-1 text-[9.5px] leading-4 text-white">
+          <span className="num absolute -top-0.5 -right-0.5 grid min-w-5 place-items-center rounded-full border-2 border-white bg-leaf px-1 text-[12px] leading-4 font-semibold text-white">
             {badge}
           </span>
         )}
       </span>
-      <span className={`relative z-10 text-[10.5px] ${active ? 'font-medium text-ink' : 'font-light text-ink-soft group-hover:text-ink'}`}>
+      <span className={`relative z-10 text-[12px] ${active ? 'font-medium text-forest' : 'font-normal text-ink-soft group-hover:text-ink'}`}>
         {label}
       </span>
     </button>
@@ -179,13 +181,12 @@ function LayerChip({ active, onClick, children }: { active: boolean; onClick: ()
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`font-display relative flex h-9 items-center gap-2 rounded-xl px-3.5 text-[12px] font-semibold whitespace-nowrap transition-colors ${
+      className={`font-sans relative flex h-9 items-center gap-2 rounded-xl px-3.5 text-[12px] font-medium whitespace-nowrap transition-colors ${
         active
-          ? 'bg-ink text-white shadow-xs'
-          : 'bg-[#f4f5f7] text-ink hover:bg-[#eaecf0]'
+          ? 'bg-ink text-white'
+          : 'border border-line bg-white text-ink hover:bg-canvas'
       }`}
     >
-      {!active && <DashedOutline rx={11} />}
       {children}
     </button>
   )
@@ -196,6 +197,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const [tab, setTab] = useState<Tab>('Gerakan')
   const [view, setView] = useState<'list' | 'detail'>(() => (radar.deepLinkedId ? 'detail' : 'list'))
   const [drawerOpen, setDrawerOpen] = useState(() => Boolean(radar.deepLinkedId))
+  const [drawerExpanded, setDrawerExpanded] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -276,9 +278,12 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const unreadCount = notifications.filter((n) => !n.is_read).length
   const initials = profile?.full_name ? profile.full_name.slice(0, 1).toUpperCase() : null
   const selected = radar.selected
-  const edge = RAIL_GAP + RAIL_W + (drawerOpen ? FLOAT_GAP + DRAWER_W : 0)
+  const drawerWidth = drawerExpanded
+    ? Math.min(920, Math.max(DRAWER_W, viewportW - (RAIL_GAP + RAIL_W + FLOAT_GAP + 84)))
+    : DRAWER_W
+  const edge = RAIL_GAP + RAIL_W + (drawerOpen ? FLOAT_GAP + drawerWidth : 0)
   const chatLeft = drawerOpen
-    ? RAIL_GAP + RAIL_W + FLOAT_GAP + DRAWER_W + FLOAT_GAP
+    ? RAIL_GAP + RAIL_W + FLOAT_GAP + drawerWidth + FLOAT_GAP
     : RAIL_GAP + RAIL_W + FLOAT_GAP
   const rawCompanionLeft = (chatOpen ? chatLeft + DRAWER_W : edge) - 4
   const companionLeft = Math.min(rawCompanionLeft, Math.max(RAIL_GAP + RAIL_W - 4, viewportW - 152))
@@ -359,11 +364,11 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     const firstName = profile?.full_name?.split(' ')[0]
     const hour = greetHour
     const greet = hour < 11 ? 'Selamat pagi' : hour < 15 ? 'Selamat siang' : hour < 19 ? 'Selamat sore' : 'Selamat malam'
-    const tips = [`${greet}${firstName ? `, ${firstName}` : ''}! Aku Gajah Blam 🐘`]
-    if (openCount > 0) tips.push(`Ada ${openCount} aksi berjalan. Mau aku rangkumin? 🌱`)
-    if (radar.satelliteSignals.length > 0) tips.push(`${radar.satelliteSignals.length} sinyal satelit terpantau. Tanya aku detailnya!`)
-    tips.push('Klik aku buat ngobrol, seret aku buat pindah! ✨')
-    tips.push('Nemu sampah atau kerusakan alam? Bilang aku, nanti kubantu lapor 📸')
+    const tips = [`${greet}${firstName ? `, ${firstName}` : ''}. Aku Blam`]
+    if (openCount > 0) tips.push(`Ada ${openCount} aksi berjalan. Perlu ringkasan?`)
+    if (radar.satelliteSignals.length > 0) tips.push(`${radar.satelliteSignals.length} sinyal satelit aktif. Tanya detailnya`)
+    tips.push('Klik untuk obrolan, seret untuk pindah posisi')
+    tips.push('Temukan kerusakan alam? Laporkan lewat Blam Snap')
     return tips
   }, [profile?.full_name, openCount, radar.satelliteSignals.length, greetHour])
 
@@ -566,9 +571,9 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
       return (
         <div className="grid h-full place-items-center px-5 text-center">
           <div>
-            <p className="font-display text-base font-bold text-ink-soft">Gagal memuat data</p>
-            <p className="mt-1 text-xs text-ink-soft">{radar.errorMessage}</p>
-            <button type="button" onClick={() => void radar.refresh()} className="btn-primary mt-4 h-10 px-5 text-xs">
+            <p className="text-[16px] font-semibold text-ink">Gagal memuat data</p>
+            <p className="mt-1 text-[12px] text-ink-soft">{radar.errorMessage}</p>
+            <button type="button" onClick={() => void radar.refresh()} className="btn-primary mt-4 h-10 px-5 text-[12px]">
               Muat Ulang
             </button>
           </div>
@@ -590,20 +595,31 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         ) ?? null
       return (
         <>
-          <header className="flex h-16 shrink-0 items-center gap-3 px-5">
+          <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-5">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  radar.setSelectedSignal(null)
+                  setView('list')
+                  if (mode === 'Jelajah') radar.fitIndonesia()
+                }}
+                aria-label="Kembali ke daftar"
+                className="btn-soft size-9 !rounded-[10px] p-0"
+              >
+                <ChevronLeft className="size-4" strokeWidth={1.75} />
+              </button>
+              <span className="text-[14px] font-medium text-ink-soft">{mode}</span>
+            </div>
             <button
               type="button"
-              onClick={() => {
-                radar.setSelectedSignal(null)
-                setView('list')
-                if (mode === 'Jelajah') radar.fitIndonesia()
-              }}
-              aria-label="Kembali ke daftar"
-              className="grid size-10 place-items-center rounded-full border border-leaf/15 bg-canvas text-forest transition-colors hover:bg-mint/40"
+              onClick={() => setDrawerExpanded((v) => !v)}
+              aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
+              className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
             >
-              <ChevronLeft className="size-5" />
+              {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
+              {drawerExpanded ? 'Perkecil' : 'Perluas'}
             </button>
-            <span className="font-display text-sm font-semibold text-ink-soft">Kembali ke {mode}</span>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
             <SatelliteSignalDetail
@@ -627,20 +643,31 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     if (view === 'detail' && selected) {
       return (
         <>
-          <header className="flex h-16 shrink-0 items-center gap-3 px-5">
+          <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-5">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  radar.setSelectedId(null)
+                  setView('list')
+                  if (mode === 'Jelajah') radar.fitIndonesia()
+                }}
+                aria-label="Kembali ke daftar"
+                className="btn-soft size-9 !rounded-[10px] p-0"
+              >
+                <ChevronLeft className="size-4" strokeWidth={1.75} />
+              </button>
+              <span className="text-[14px] font-medium text-ink-soft">{mode}</span>
+            </div>
             <button
               type="button"
-              onClick={() => {
-                radar.setSelectedId(null)
-                setView('list')
-                if (mode === 'Jelajah') radar.fitIndonesia()
-              }}
-              aria-label="Kembali ke daftar"
-              className="grid size-10 place-items-center rounded-full border border-leaf/15 bg-canvas text-forest transition-colors hover:bg-mint/40"
+              onClick={() => setDrawerExpanded((v) => !v)}
+              aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
+              className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
             >
-              <ChevronLeft className="size-5" />
+              {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
+              {drawerExpanded ? 'Perkecil' : 'Perluas'}
             </button>
-            <span className="font-display text-sm font-semibold text-ink-soft">Kembali ke {mode}</span>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
             <EventDetail
@@ -675,18 +702,27 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     return (
       <>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-5">
-          <h2 className="font-display text-xl font-semibold tracking-tight text-ink">{mode}</h2>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-mint/55 px-2.5 py-1 text-xs font-normal text-forest">
-              {countText}
-            </span>
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-[20px] font-semibold text-ink">{mode}</h2>
+            <span className="num text-[12px] font-normal text-ink-soft">{countText}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setDrawerExpanded((v) => !v)}
+              aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
+              className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
+            >
+              {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
+              <span className="hidden sm:inline">{drawerExpanded ? 'Perkecil' : 'Perluas'}</span>
+            </button>
             {canOrganize && (
               <button
                 type="button"
                 onClick={() => startCreateEvent(null)}
-                className="btn-primary h-8 px-3 text-xs"
+                className="btn-primary h-8 !rounded-[10px] px-2.5 text-[12px]"
               >
-                <Plus className="size-3.5" /> Event
+                <Plus className="size-4" strokeWidth={1.75} /> Event
               </button>
             )}
           </div>
@@ -714,13 +750,12 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                     if (subTab !== 'Verifikasi') return null
                     if (!canOrganize) {
                       return (
-                        <div className="relative rounded-[14px] bg-[#f4f5f7] p-5 text-center">
-                          <DashedOutline rx={13} />
-                          <p className="font-display text-sm font-bold text-ink">Khusus Verifikator Terdaftar</p>
-                          <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                        <div className="card-quiet p-5 text-center">
+                          <p className="text-[14px] font-semibold text-ink">Khusus Verifikator</p>
+                          <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
                             {!profile
-                              ? 'Masuk sebagai relawan, instansi, atau admin terverifikasi untuk mengecek dan memverifikasi status titik laporan.'
-                              : 'Status titik laporan hanya dapat diverifikasi oleh relawan, instansi, atau admin terverifikasi.'}
+                              ? 'Masuk sebagai relawan, instansi, atau admin terverifikasi untuk memverifikasi titik laporan'
+                              : 'Hanya relawan, instansi, atau admin terverifikasi yang dapat memverifikasi laporan'}
                           </p>
                           {!profile && (
                             <button
@@ -854,7 +889,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                     className="size-6 rounded-full object-cover"
                   />
                 ) : initials ? (
-                  <span className="font-display text-sm font-bold text-forest">{initials}</span>
+                  <span className="text-[14px] font-semibold text-forest">{initials}</span>
                 ) : (
                   <GuestAvatarIcon />
                 )}
@@ -878,9 +913,9 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           }
           style={{
             left: RAIL_GAP - 6,
-            width: RAIL_W + FLOAT_GAP + DRAWER_W + 12,
+            width: RAIL_W + FLOAT_GAP + drawerWidth + 12,
           }}
-          className={`pointer-events-none absolute top-[10px] bottom-[10px] z-[590] rounded-[26px] backdrop-blur-xl ${
+          className={`pointer-events-none absolute top-[10px] bottom-[10px] z-[590] rounded-[26px] backdrop-blur-xl transition-[width] duration-200 ${
             isDarkMap
               ? 'border border-white/40 bg-gradient-to-br from-[#dff6e6]/34 via-[#c9ead3]/24 to-[#b4dec1]/20 shadow-[0_22px_50px_-10px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.48)]'
               : 'border border-leaf/25 bg-gradient-to-br from-[#e2f5e7]/84 via-[#d4eedb]/76 to-[#c4e6ce]/70 shadow-[0_22px_50px_-10px_rgba(19,36,26,0.18),inset_0_1px_1px_rgba(255,255,255,0.9)]'
@@ -902,11 +937,25 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               ? { delay: 0.04, duration: 0.36, ease: [0.22, 1, 0.36, 1] }
               : { duration: 0.22, ease: [0.4, 0, 0.2, 1] }
           }
-          style={{ left: RAIL_GAP + RAIL_W + FLOAT_GAP, width: DRAWER_W, transformOrigin: 'left center' }}
-          className={`absolute top-[70px] bottom-4 z-[600] flex flex-col overflow-hidden rounded-[20px] border border-white/80 shadow-[0_14px_38px_-6px_rgba(19,36,26,0.22),0_4px_12px_rgba(19,36,26,0.08)] backdrop-blur-md transition-colors duration-200 ${
-            !createOpen && (tab === 'Jelajah' || tab === 'Gerakan') ? 'bg-white/96' : 'bg-canvas/96'
+          style={{ left: RAIL_GAP + RAIL_W + FLOAT_GAP, width: drawerWidth, transformOrigin: 'left center' }}
+          className={`absolute top-[70px] bottom-4 z-[600] flex flex-col overflow-hidden rounded-[16px] border border-line shadow-[0_14px_38px_-8px_rgba(15,29,50,0.16)] transition-[width,background-color] duration-200 ${
+            !createOpen && (tab === 'Jelajah' || tab === 'Gerakan') ? 'bg-white' : 'bg-canvas'
           } ${drawerOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
         >
+          {!createOpen && tab !== 'Jelajah' && tab !== 'Gerakan' && (
+            <div className="flex shrink-0 items-center justify-between border-b border-line bg-white px-5 py-2.5">
+              <span className="text-[12px] font-medium text-ink-soft">{tab === 'Org' ? 'Organisasi' : tab}</span>
+              <button
+                type="button"
+                onClick={() => setDrawerExpanded((v) => !v)}
+                aria-label={drawerExpanded ? 'Perkecil panel' : 'Perluas panel'}
+                className="btn-soft h-8 gap-1.5 !rounded-[10px] px-2.5 text-[12px]"
+              >
+                {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.75} /> : <Maximize2 className="size-4" strokeWidth={1.75} />}
+                {drawerExpanded ? 'Perkecil' : 'Perluas'}
+              </button>
+            </div>
+          )}
           <div className="flex min-h-0 flex-1 flex-col">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
@@ -994,6 +1043,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           clearSwitchTimer()
           const next = !drawerOpen
           setDrawerOpen(next)
+          if (!next) setDrawerExpanded(false)
           if (next && tab === 'Jelajah' && view === 'list') {
             radar.fitIndonesia()
           }
@@ -1015,11 +1065,11 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             value={query}
             onChange={(e) => onSearch(e.target.value)}
             placeholder="Cari lokasi"
-            className="font-display min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-soft"
+            className="min-w-0 flex-1 bg-transparent text-[14px] font-normal text-ink outline-none placeholder:text-ink-soft"
           />
           {query && (
             <button type="button" aria-label="Hapus" onClick={() => setQuery('')}>
-              <X className="size-4 text-ink-soft hover:text-forest" />
+              <X className="size-4 text-ink-soft hover:text-ink" />
             </button>
           )}
         </label>
@@ -1034,7 +1084,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             setFilterOpen(false)
             openTab('Profil')
           }}
-          className="orb-avatar overflow-hidden text-xs font-extrabold"
+          className="orb-avatar overflow-hidden text-xs font-semibold"
         >
           {profile?.avatar_url ? (
             <img
@@ -1072,7 +1122,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         >
           <FilterDuotoneIcon light={layers.size + tiers.size > 0} />
           {layers.size + tiers.size > 0 && (
-            <span className="num absolute -top-1 -right-1 grid size-4.5 place-items-center rounded-full border-2 border-white bg-forest text-[10px] font-bold text-white">
+            <span className="num absolute -top-1 -right-1 grid size-5 place-items-center rounded-full border-2 border-white bg-forest text-[12px] font-semibold text-white">
               {layers.size + tiers.size}
             </span>
           )}
@@ -1089,9 +1139,8 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               exit={{ opacity: 0, x: 8, y: -4, scale: 0.97 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               style={{ transformOrigin: 'top right' }}
-              className="absolute top-0 right-14 flex w-[340px] flex-col rounded-[20px] bg-white p-5 shadow-[0_18px_42px_-6px_rgba(19,36,26,0.26)]"
+              className="absolute top-0 right-14 flex w-[340px] flex-col rounded-[16px] border border-line bg-white p-5 shadow-[0_16px_38px_-8px_rgba(15,29,50,0.18)]"
             >
-              <DashedOutline rx={19} />
               <NotificationsPanel
                 compact
                 onOpenEvent={openDetail}
@@ -1110,11 +1159,10 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               exit={{ opacity: 0, x: 8, y: -4, scale: 0.97 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               style={{ transformOrigin: 'top right' }}
-              className="absolute top-0 right-14 flex w-[356px] flex-col gap-3 rounded-[20px] bg-white p-5 shadow-[0_18px_42px_-6px_rgba(19,36,26,0.26)]"
+              className="absolute top-0 right-14 flex w-[356px] flex-col gap-3 rounded-[16px] border border-line bg-white p-5 shadow-[0_16px_38px_-8px_rgba(15,29,50,0.18)]"
             >
-              <DashedOutline rx={19} />
               <div>
-                <p className="mb-2 text-[11px] font-light tracking-wider text-ink-soft uppercase">
+                <p className="mb-2 text-[12px] font-medium text-ink-soft">
                   Gaya Peta
                 </p>
                 <MapStyleSwitcher value={radar.style} onChange={radar.setStyle} className="w-full [&>button]:flex-1" />
@@ -1122,7 +1170,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
 
               <div className="pt-1">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[11px] font-light tracking-wider text-ink-soft uppercase">
+                  <span className="text-[12px] font-medium text-ink-soft">
                     Lapisan
                   </span>
                   {(layers.size > 0 || tiers.size > 0) && (
@@ -1132,7 +1180,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                         setLayers(new Set())
                         setTiers(new Set())
                       }}
-                      className="text-xs font-normal text-leaf hover:underline"
+                      className="text-xs font-medium text-leaf hover:underline"
                     >
                       Reset
                     </button>
@@ -1149,7 +1197,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                     )
                   })}
                 </div>
-                <div className="mt-3 border-t border-dashed border-dash pt-2.5">
+                <div className="mt-3 border-t border-line pt-2.5">
                   <MarkerTierLegend compact activeTiers={tiers} onToggleTier={toggleTier} />
                 </div>
               </div>
@@ -1245,9 +1293,9 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                 animate={{ y: 0, scale: 1, opacity: 1 }}
                 exit={{ y: 24, scale: 0.97, opacity: 0 }}
                 transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                className="relative h-[min(780px,calc(100dvh-48px))] w-[440px] overflow-hidden rounded-[28px] border border-line bg-canvas shadow-[0_24px_60px_-12px_rgba(19,36,26,0.35)]"
+                className="relative h-[min(780px,calc(100dvh-48px))] w-[440px] overflow-hidden rounded-[16px] border border-line bg-canvas shadow-[0_24px_48px_-12px_rgba(15,29,50,0.22)]"
               >
-                <Suspense fallback={<div className="grid h-full place-items-center text-xs font-bold text-ink-soft">Memuat…</div>}>
+                <Suspense fallback={<div className="grid h-full place-items-center text-[12px] font-medium text-ink-soft">Memuat…</div>}>
                   <QuickReportFlow
                     initialPrefill={reportPrefill}
                     onClose={() => {

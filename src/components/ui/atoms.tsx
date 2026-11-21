@@ -11,16 +11,15 @@ import {
 } from '../../lib/constants'
 import type { Ecosystem, EventStatus, ReportStatus, SignalVerificationState } from '../../types'
 
-const DOT = {
-  critical: 'bg-critical',
-  progress: 'bg-progress',
-  resolved: 'bg-resolved',
+const TONE_TEXT = {
+  critical: 'text-critical',
+  progress: 'text-progress',
+  resolved: 'text-resolved',
 } as const
 
 export function StatusPill({ status }: { status: EventStatus }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-normal text-ink">
-      <span className={`size-2 rounded-full ${DOT[eventPinTone(status)]}`} />
+    <span className={`inline-flex items-center text-[12px] font-medium ${TONE_TEXT[eventPinTone(status)]}`}>
       {EVENT_STATUS_LABEL[status]}
     </span>
   )
@@ -28,8 +27,7 @@ export function StatusPill({ status }: { status: EventStatus }) {
 
 export function ReportStatusPill({ status }: { status: ReportStatus }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-normal text-ink">
-      <span className={`size-2 rounded-full ${DOT[reportPinTone(status)]}`} />
+    <span className={`inline-flex items-center text-[12px] font-medium ${TONE_TEXT[reportPinTone(status)]}`}>
       {REPORT_STATUS_LABEL[status]}
     </span>
   )
@@ -49,7 +47,7 @@ export function EcoIcon({
   className?: string
 }) {
   const Icon = ECO_ICON[ecosystem]
-  return <Icon className={className} strokeWidth={2} aria-label={ECOSYSTEM_LABEL[ecosystem]} />
+  return <Icon className={className} strokeWidth={1.75} aria-label={ECOSYSTEM_LABEL[ecosystem]} />
 }
 
 export function DashedOutline(_props: { rx?: number }) {
@@ -58,7 +56,7 @@ export function DashedOutline(_props: { rx?: number }) {
 
 export function EcoBadge({ ecosystem }: { ecosystem: Ecosystem }) {
   return (
-    <span className="grid size-10.5 shrink-0 place-items-center rounded-[10px] bg-white text-forest shadow-[0_1px_2px_rgba(18,29,79,0.04)]">
+    <span className="row-icon text-leaf">
       <EcoIcon ecosystem={ecosystem} />
     </span>
   )
@@ -125,7 +123,7 @@ export function Pill({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-md bg-[#f4f5f7] px-2 py-0.5 text-[11px] font-normal text-ink-soft ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-[8px] border border-line bg-canvas px-2 py-0.5 text-[12px] font-medium text-ink-soft ${className}`}
     >
       {children}
     </span>
@@ -171,17 +169,17 @@ export function ModalShell({
         animate={{ y: 0, opacity: 1, scale: 1 }}
         exit={{ y: 28, opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className={`flex w-full flex-col overflow-hidden rounded-t-[20px] border border-line bg-white md:rounded-[20px] ${panelClassName}`}
+        className={`flex w-full flex-col overflow-hidden rounded-t-[16px] border border-line bg-white md:rounded-[16px] ${panelClassName}`}
       >
-        <header className="flex h-15 shrink-0 items-center justify-between border-b border-line px-4 sm:px-5">
-          <h2 className="text-lg font-semibold tracking-tight text-ink">{title}</h2>
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-line px-4 sm:px-5">
+          <h2 className="text-[16px] font-semibold text-ink">{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Tutup"
-            className="grid size-10 place-items-center rounded-full bg-canvas text-forest hover:bg-mint/40"
+            className="btn-soft grid size-9 place-items-center !rounded-[10px] text-ink-soft hover:text-ink"
           >
-            <X className="size-4" />
+            <X className="size-4" strokeWidth={1.75} />
           </button>
         </header>
         <div className={`min-h-0 flex-1 overflow-y-auto ${bodyClassName}`}>{children}</div>
@@ -197,7 +195,7 @@ const TIER_ITEMS: ReadonlyArray<{ id: SignalVerificationState; label: string }> 
 ]
 
 export function MarkerTierLegend({
-  compact = false,
+  compact: _compact = false,
   activeTiers,
   onToggleTier,
 }: {
@@ -207,36 +205,21 @@ export function MarkerTierLegend({
 }) {
   const renderGlyph = (id: SignalVerificationState) => {
     if (id === 'unverified') {
-      return <span className="size-3 shrink-0 rounded-full border-[1.6px] border-dashed border-progress bg-amber-50" />
+      return <span className="size-2.5 shrink-0 rounded-full border border-dashed border-progress bg-progress/15" />
     }
     if (id === 'verified') {
-      return <span className="size-3 shrink-0 rounded-full border-[1.5px] border-white bg-[#F97316] shadow-xs" />
+      return <span className="size-2.5 shrink-0 rounded-full bg-leaf" />
     }
-    return (
-      <svg viewBox="0 0 16 18" className="h-4 w-3.5 shrink-0" aria-hidden="true">
-        <path
-          d="M7.5 1C4.2 1 1.5 3.7 1.5 7C1.5 11.1 6.1 15.6 7.1 16.5C7.3 16.7 7.7 16.7 7.9 16.5C8.9 15.6 13.5 11.1 13.5 7C13.5 3.7 10.8 1 7.5 1Z"
-          fill="#15803D"
-          stroke="#FFFFFF"
-          strokeWidth="1.3"
-        />
-        <circle cx="7.5" cy="6.8" r="3.4" fill="#FFFFFF" />
-        <circle cx="12.5" cy="3.5" r="2.7" fill="#22C55E" stroke="#FFFFFF" strokeWidth="0.9" />
-      </svg>
-    )
+    return <span className="size-2.5 shrink-0 rounded-full bg-resolved" />
   }
 
   return (
-    <div
-      className={`flex flex-wrap items-center gap-x-1.5 gap-y-1 ${
-        compact ? 'text-[10.5px]' : 'text-[11px]'
-      } font-normal text-ink-soft`}
-    >
+    <div className="flex flex-wrap items-center gap-1.5 text-[12px] font-normal text-ink-soft">
       {TIER_ITEMS.map((item) => {
         const active = Boolean(activeTiers?.has(item.id))
         if (!onToggleTier) {
           return (
-            <span key={item.id} className="inline-flex items-center gap-1.5 px-1 py-0.5">
+            <span key={item.id} className="inline-flex items-center gap-1.5 px-1.5 py-0.5">
               {renderGlyph(item.id)}
               {item.label}
             </span>
@@ -248,10 +231,10 @@ export function MarkerTierLegend({
             type="button"
             aria-pressed={active}
             onClick={() => onToggleTier(item.id)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 transition-colors ${
               active
-                ? 'bg-mint text-forest ring-1 ring-leaf/35 font-medium'
-                : 'hover:bg-white hover:text-ink'
+                ? 'bg-mint font-medium text-forest ring-1 ring-leaf/30'
+                : 'hover:bg-canvas hover:text-ink'
             }`}
           >
             {renderGlyph(item.id)}

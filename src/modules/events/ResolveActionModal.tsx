@@ -71,7 +71,7 @@ export default function ResolveActionModal({
   return (
     <ModalShell title="Foto After" onClose={onClose}>
       <div className="flex flex-col gap-4">
-        <p className="text-sm font-bold text-ink">{event.title}</p>
+        <p className="text-[14px] font-semibold text-ink">{event.title}</p>
 
         {activeOrgs.length > 0 && (
           <select
@@ -92,12 +92,12 @@ export default function ResolveActionModal({
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="relative grid aspect-[16/10] w-full place-items-center overflow-hidden rounded-[14px] border-[1.5px] border-dashed border-ink-soft/30 bg-[#f4f5f7] text-ink-soft"
+          className="relative grid aspect-[16/10] w-full place-items-center overflow-hidden rounded-[12px] border-[1.5px] border-dashed border-dash bg-canvas text-ink-soft hover:bg-muted"
         >
           {photo ? (
             <img src={photo.previewUrl} alt="Foto After" className="size-full object-cover" />
           ) : (
-            <span className="flex flex-col items-center gap-2 text-sm font-light">
+            <span className="flex flex-col items-center gap-2 text-sm font-normal">
               <ImagePlus className="size-7 text-ink-soft" /> Foto sesudah
             </span>
           )}
@@ -105,11 +105,11 @@ export default function ResolveActionModal({
 
         <div className="grid grid-cols-2 gap-2.5">
           <div>
-            <label className="mb-1 block text-xs font-light text-ink-soft">Sampah (kg)</label>
+            <label className="mb-1 block text-xs font-medium text-ink-soft">Sampah (kg)</label>
             <input type="number" min="0" step="0.5" className={field} value={wasteKg} onChange={(e) => setWasteKg(e.target.value)} />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-light text-ink-soft">Bibit</label>
+            <label className="mb-1 block text-xs font-medium text-ink-soft">Bibit</label>
             <input type="number" min="0" step="1" className={field} value={treesPlanted} onChange={(e) => setTreesPlanted(e.target.value)} />
           </div>
         </div>
@@ -123,7 +123,7 @@ export default function ResolveActionModal({
         />
 
         {error && (
-          <p role="alert" className="rounded-[14px] bg-[#f4f5f7] px-4 py-3 text-sm font-light text-ink">
+          <p role="alert" className="card-quiet px-4 py-3 text-sm font-medium text-critical">
             {error}
           </p>
         )}
