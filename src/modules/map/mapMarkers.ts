@@ -173,6 +173,115 @@ export function registerHazardIcons(map: MapLibreMap): void {
   }
 }
 
+export function buildUserPinImage(profile: Profile | null): Promise<ImageData> {
+  const size = 104 // @2x untuk 52x52 logical px (termasuk halo)
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const cx = size / 2
+  const cy = size / 2
+
+  const drawFallbackAvatar = () => {
+    ctx.clearRect(0, 0, size, size)
+    // Halo luar
+    ctx.beginPath()
+    ctx.arc(cx, cy, 48, 0, Math.PI * 2)
+    ctx.fillStyle = profile ? 'rgba(47, 138, 87, 0.24)' : 'rgba(37, 99, 235, 0.22)'
+    ctx.fill()
+
+    if (!profile) {
+      // Guest dot biru
+      ctx.save()
+      ctx.shadowColor = 'rgba(15, 23, 42, 0.28)'
+      ctx.shadowBlur = 8
+      ctx.shadowOffsetY = 3
+      ctx.beginPath()
+      ctx.arc(cx, cy, 17, 0, Math.PI * 2)
+      ctx.fillStyle = '#2563EB'
+      ctx.fill()
+      ctx.restore()
+
+      ctx.lineWidth = 6
+      ctx.strokeStyle = '#FFFFFF'
+      ctx.stroke()
+      return ctx.getImageData(0, 0, size, size)
+    }
+
+    // Lingkaran avatar hijau + inisial
+    ctx.save()
+    ctx.shadowColor = 'rgba(19, 36, 26, 0.3)'
+    ctx.shadowBlur = 10
+    ctx.shadowOffsetY = 4
+    ctx.beginPath()
+    ctx.arc(cx, cy, 35, 0, Math.PI * 2)
+    ctx.fillStyle = '#2F8A57'
+    ctx.fill()
+    ctx.restore()
+
+    ctx.lineWidth = 6
+    ctx.strokeStyle = '#FFFFFF'
+    ctx.stroke()
+
+    const initial = profile.full_name?.slice(0, 1).toUpperCase() || 'W'
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = '800 28px "Plus Jakarta Sans", system-ui, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(initial, cx, cy + 1)
+    return ctx.getImageData(0, 0, size, size)
+  }
+
+  const avatarUrl = profile?.avatar_url
+  if (!avatarUrl) {
+    return Promise.resolve(drawFallbackAvatar())
+  }
+
+  return new Promise<ImageData>((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.referrerPolicy = 'no-referrer'
+    img.onload = () => {
+      try {
+        ctx.clearRect(0, 0, size, size)
+        ctx.beginPath()
+        ctx.arc(cx, cy, 48, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(47, 138, 87, 0.24)'
+        ctx.fill()
+
+        ctx.save()
+        ctx.shadowColor = 'rgba(19, 36, 26, 0.3)'
+        ctx.shadowBlur = 10
+        ctx.shadowOffsetY = 4
+        ctx.beginPath()
+        ctx.arc(cx, cy, 35, 0, Math.PI * 2)
+        ctx.fillStyle = '#2F8A57'
+        ctx.fill()
+        ctx.restore()
+
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(cx, cy, 32, 0, Math.PI * 2)
+        ctx.clip()
+        ctx.drawImage(img, cx - 32, cy - 32, 64, 64)
+        ctx.restore()
+
+        ctx.beginPath()
+        ctx.arc(cx, cy, 35, 0, Math.PI * 2)
+        ctx.lineWidth = 6
+        ctx.strokeStyle = '#FFFFFF'
+        ctx.stroke()
+
+        resolve(ctx.getImageData(0, 0, size, size))
+      } catch {
+        resolve(drawFallbackAvatar())
+      }
+    }
+    img.onerror = () => resolve(drawFallbackAvatar())
+    img.src = avatarUrl
+  })
+}
+
 export function syncUserMarkerElement(el: HTMLDivElement, profile: Profile | null): void {
   el.replaceChildren()
   if (!profile) {

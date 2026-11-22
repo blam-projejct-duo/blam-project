@@ -1,12 +1,14 @@
 import {
+  FcApproval,
   FcClock,
+  FcComboChart,
   FcDepartment,
   FcDonate,
   FcGlobe,
   FcHighPriority,
   FcLandscape,
   FcPortraitMode,
-  FcSettings,
+  FcTodoList,
 } from 'react-icons/fc'
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
 import {
@@ -54,7 +56,17 @@ import type { CitizenReport, ConservationEvent, SatelliteSignal, SignalVerificat
 import EventListPanel from './EventListPanel'
 import type { ListTab } from './EventListPanel'
 
-type NavTab = 'Jelajah' | 'Gerakan' | 'Care' | 'History' | 'Org' | 'Eskalasi' | 'Admin'
+type NavTab =
+  | 'Jelajah'
+  | 'Gerakan'
+  | 'Care'
+  | 'History'
+  | 'Org'
+  | 'Eskalasi'
+  | 'Monitor'
+  | 'Persetujuan'
+  | 'Pantau Org'
+  | 'Moderasi'
 type Tab = NavTab | 'Profil'
 
 const RAIL_GAP = 16
@@ -337,9 +349,11 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   }, [filterOpen, notifOpen])
 
   const navTabs = useMemo<NavTab[]>(() => {
+    if (profile?.role === 'admin') {
+      return ['Jelajah', 'Monitor', 'Persetujuan', 'Pantau Org', 'Moderasi']
+    }
     const base: NavTab[] = ['Jelajah', 'Gerakan', 'Care', 'History', 'Org']
     if (profile?.role === 'agency') base.push('Eskalasi')
-    if (profile?.role === 'admin') base.push('Admin')
     return base
   }, [profile?.role])
 
@@ -578,8 +592,14 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         return <FcDepartment size={24} />
       case 'Eskalasi':
         return <FcHighPriority size={24} />
-      case 'Admin':
-        return <FcSettings size={24} />
+      case 'Monitor':
+        return <FcComboChart size={24} />
+      case 'Persetujuan':
+        return <FcApproval size={24} />
+      case 'Pantau Org':
+        return <FcDepartment size={24} />
+      case 'Moderasi':
+        return <FcTodoList size={24} />
     }
   }
 
@@ -1009,12 +1029,25 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                     </div>
                   )}
 
-                  {tab === 'Admin' && (
+                  {(tab === 'Monitor' || tab === 'Persetujuan' || tab === 'Pantau Org' || tab === 'Moderasi') && (
                     <div className="min-h-0 flex-1 overflow-y-auto p-5">
                       <AdminPanel
+                        section={
+                          tab === 'Monitor'
+                            ? 'monitor'
+                            : tab === 'Persetujuan'
+                              ? 'approvals'
+                              : tab === 'Pantau Org'
+                                ? 'orgs'
+                                : 'moderation'
+                        }
                         events={radar.allEvents}
+                        signals={radar.satelliteSignals}
+                        signalsCount={radar.satelliteSignals.length}
                         headerAction={expandBtn}
+                        onFocusLocation={(lat, lng) => radar.focusLocation(lat, lng, 13)}
                         onRefreshEvents={radar.refresh}
+                        onRefreshLayers={radar.refreshLayers}
                       />
                     </div>
                   )}

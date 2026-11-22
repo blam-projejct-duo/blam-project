@@ -930,7 +930,14 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                 />
               )}
               {mode === 'admin' && (
-                <AdminPanel events={radar.allEvents} onRefreshEvents={radar.refresh} />
+                <AdminPanel
+                  events={radar.allEvents}
+                  signals={radar.satelliteSignals}
+                  signalsCount={radar.satelliteSignals.length}
+                  onFocusLocation={(lat, lng) => radar.focusLocation(lat, lng, 13)}
+                  onRefreshEvents={radar.refresh}
+                  onRefreshLayers={radar.refreshLayers}
+                />
               )}
             </Suspense>
           </div>

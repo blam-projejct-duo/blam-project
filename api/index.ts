@@ -2820,6 +2820,89 @@ app.post('/admin/moderate-event', async (c) => {
   return c.json({ ok: true, event: data })
 })
 
+app.post('/admin/revoke-org', async (c) => {
+  const { supa, error } = requireDb('ADMIN_REVOKE_ORG')
+  if (!supa) return c.json({ error }, 503)
+
+  const auth = await resolveAuth(c, supa)
+  if (!auth.profile) return c.json({ error: auth.error }, auth.status ?? 401)
+
+  const roleErr = requireRole(auth.profile, ['admin'], 'ADMIN_REVOKE_ORG')
+  if (roleErr) return c.json({ error: roleErr }, 403)
+
+  const body = await c.req.json().catch(() => null)
+  const organizationId = body?.organizationId as string | undefined
+  if (!organizationId) return c.json({ error: 'organizationId wajib diisi' }, 400)
+
+  const { data: org, error: updErr } = await supa
+    .from('organizations')
+    .update({ is_verified: false })
+    .eq('id', organizationId)
+    .select('id, name, created_by')
+    .single()
+
+  if (updErr || !org) {
+    return c.json({ error: 'Organisasi tidak ditemukan' }, 404)
+  }
+
+  const { data: activeMembers } = await supa
+    .from('organization_members')
+    .select('user_id')
+    .eq('organization_id', organizationId)
+    .eq('status', 'active')
+
+  const memberIds = new Set<string>(
+    (activeMembers ?? []).map((m) => m.user_id).filter((id): id is string => Boolean(id)),
+  )
+  if (org.created_by) memberIds.add(org.created_by)
+
+  await Promise.all(
+    [...memberIds].map((userId) => supa.rpc('sync_profile_role', { p_user_id: userId })),
+  )
+
+  if (org.created_by) {
+    await supa.from('notifications').insert({
+      user_id: org.created_by,
+      title: `Verifikasi Organisasi Dibekukan: ${org.name}`,
+      detail: 'Status verifikasi organisasi ditangguhkan sementara oleh Admin.',
+      is_read: false,
+    })
+  }
+
+  return c.json({ ok: true, organizationId, is_verified: false })
+})
+
+app.post('/admin/moderate-fundraising', async (c) => {
+  const { supa, error } = requireDb('ADMIN_MODERATE_FUNDRAISING')
+  if (!supa) return c.json({ error }, 503)
+
+  const auth = await resolveAuth(c, supa)
+  if (!auth.profile) return c.json({ error: auth.error }, auth.status ?? 401)
+
+  const roleErr = requireRole(auth.profile, ['admin'], 'ADMIN_MODERATE_FUNDRAISING')
+  if (roleErr) return c.json({ error: roleErr }, 403)
+
+  const body = await c.req.json().catch(() => null)
+  const campaignId = body?.campaignId as string | undefined
+  const status = body?.status as string | undefined
+  if (!campaignId || !['active', 'closed'].includes(status ?? '')) {
+    return c.json({ error: 'campaignId dan status (active | closed) wajib diisi' }, 400)
+  }
+
+  const { data, error: updErr } = await supa
+    .from('fundraising_campaigns')
+    .update({ status })
+    .eq('id', campaignId)
+    .select('id, status')
+    .single()
+
+  if (updErr || !data) {
+    return c.json({ error: 'Kampanye donasi tidak ditemukan' }, 404)
+  }
+
+  return c.json({ ok: true, campaign: data })
+})
+
 const FALSE_HOTSPOTS_CACHE_KEY = 'moderation:false_hotspots'
 const VERIFIED_SIGNALS_CACHE_KEY = 'moderation:verified_signals'
 

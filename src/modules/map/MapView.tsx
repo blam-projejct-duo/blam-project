@@ -1,14 +1,14 @@
-import { LngLatBounds, Map as MapLibreMap, Marker, Popup, setWorkerUrl } from 'maplibre-gl'
+import { LngLatBounds, Map as MapLibreMap, Popup, setWorkerUrl } from 'maplibre-gl'
 import type { GeoJSONSource } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { useEffect, useRef } from 'react'
-import type { ConservationEvent, MapStyle, SatelliteSignal } from '../../types'
+import type { ConservationEvent, MapStyle, Profile, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import type { ActiveRoute } from './directions'
 import { hazardToSignal, severityRank } from './hotspotCluster'
 import type { HazardPoint } from './hotspotCluster'
 import { getIndonesiaWipeSources, INDONESIA_GEOJSON, WIPE_SOFTNESS } from './indonesiaWipe'
-import { ensureEventPinImages, eventPinImageId, registerHazardIcons, syncUserMarkerElement } from './mapMarkers'
+import { buildUserPinImage, ensureEventPinImages, eventPinImageId, registerHazardIcons } from './mapMarkers'
 import { applyMapStyle, createInitialMapStyle, ensureGoogleSatelliteLayer } from './mapStyles'
 import { formatFloodRiskLabel, formatSignalDate, formatSignalSource } from './radarFilters'
 import SpaceBackdrop from './SpaceBackdrop'
@@ -298,6 +298,15 @@ function fitBox(
   }
 }
 
+function buildSinglePointGeoJson(coords: [number, number] | null) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: coords
+      ? [{ type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: coords }, properties: {} }]
+      : [],
+  }
+}
+
 export default function MapView({
   events,
   hazards,
@@ -320,9 +329,9 @@ export default function MapView({
   const mapRef = useRef<MapLibreMap | null>(null)
   const readyRef = useRef(false)
   const { profile } = useAuth()
-  const meRef = useRef<Marker | null>(null)
-  const meElRef = useRef<HTMLDivElement | null>(null)
-  const focusMarkerRef = useRef<Marker | null>(null)
+  const userCoordRef = useRef<[number, number]>(DEFAULT_CENTER)
+  const profileRef = useRef<Profile | null>(profile)
+  const focusCoordRef = useRef<[number, number] | null>(null)
   const popupRef = useRef<Popup | null>(null)
   const wipeRafRef = useRef<number>(0)
   const wipeTimerRef = useRef<number>(0)
@@ -393,6 +402,7 @@ export default function MapView({
     selectedIdRef.current = selectedId
     selectedSignalRef.current = selectedSignal
     styleRef.current = style
+    profileRef.current = profile
     radarModeRef.current = radarMode
     fitIndonesiaSignalRef.current = fitIndonesiaSignal
     if (mapRef.current) syncFlatRotationLock(mapRef.current)
@@ -556,12 +566,16 @@ export default function MapView({
       window.setTimeout(() => syncGlobeInset(260), 0)
     })
 
-    const meEl = document.createElement('div')
-    syncUserMarkerElement(meEl, null)
-    meElRef.current = meEl
-    meRef.current = new Marker({ element: meEl, anchor: 'center' })
-      .setLngLat(DEFAULT_CENTER)
-      .addTo(map)
+    const syncUserPinTexture = (prof: Profile | null) => {
+      void buildUserPinImage(prof).then((img) => {
+        const m = mapRef.current
+        if (!m || !readyRef.current) return
+        if (m.hasImage('blam-user-pin')) m.removeImage('blam-user-pin')
+        m.addImage('blam-user-pin', img, { pixelRatio: 2 })
+        const src = m.getSource('blam-user') as GeoJSONSource | undefined
+        src?.setData(buildSinglePointGeoJson(userCoordRef.current))
+      })
+    }
 
     const googleSessionAbort = new AbortController()
 
@@ -964,6 +978,50 @@ export default function MapView({
           .catch(() => undefined)
       })
 
+      map.addSource('blam-focus', {
+        type: 'geojson',
+        data: buildSinglePointGeoJson(focusCoordRef.current),
+      })
+      map.addLayer({
+        id: 'blam-focus-halo',
+        type: 'circle',
+        source: 'blam-focus',
+        paint: {
+          'circle-radius': 14,
+          'circle-color': '#2563EB',
+          'circle-opacity': 0.2,
+        },
+      })
+      map.addLayer({
+        id: 'blam-focus-dot',
+        type: 'circle',
+        source: 'blam-focus',
+        paint: {
+          'circle-radius': 7,
+          'circle-color': '#2563EB',
+          'circle-stroke-width': 2.5,
+          'circle-stroke-color': '#FFFFFF',
+        },
+      })
+
+      map.addSource('blam-user', {
+        type: 'geojson',
+        data: buildSinglePointGeoJson(userCoordRef.current),
+      })
+      map.addLayer({
+        id: 'blam-user-layer',
+        type: 'symbol',
+        source: 'blam-user',
+        layout: {
+          'icon-image': 'blam-user-pin',
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 1.5, 0.62, 4.5, 0.84, 8, 1],
+          'icon-anchor': 'center',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+      })
+      syncUserPinTexture(profileRef.current)
+
       applyMapStyle(map, styleRef.current)
     })
 
@@ -984,8 +1042,6 @@ export default function MapView({
       ro.disconnect()
       popupRef.current?.remove()
       popupRef.current = null
-      meRef.current?.remove()
-      meRef.current = null
       map.remove()
       mapRef.current = null
     }
@@ -998,8 +1054,18 @@ export default function MapView({
   }, [style])
 
   useEffect(() => {
-    if (meElRef.current) {
-      syncUserMarkerElement(meElRef.current, profile)
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    let cancelled = false
+    void buildUserPinImage(profile).then((img) => {
+      if (cancelled || !mapRef.current || !readyRef.current) return
+      if (map.hasImage('blam-user-pin')) map.removeImage('blam-user-pin')
+      map.addImage('blam-user-pin', img, { pixelRatio: 2 })
+      const src = map.getSource('blam-user') as GeoJSONSource | undefined
+      src?.setData(buildSinglePointGeoJson(userCoordRef.current))
+    })
+    return () => {
+      cancelled = true
     }
   }, [profile])
 
@@ -1031,7 +1097,9 @@ export default function MapView({
     src?.setData(buildRouteGeoJson(activeRoute))
     if (!activeRoute || activeRoute.coordinates.length < 2) return
 
-    meRef.current?.setLngLat([activeRoute.origin.lng, activeRoute.origin.lat])
+    userCoordRef.current = [activeRoute.origin.lng, activeRoute.origin.lat]
+    const userSrc = map.getSource('blam-user') as GeoJSONSource | undefined
+    userSrc?.setData(buildSinglePointGeoJson(userCoordRef.current))
     const bounds = new LngLatBounds()
     for (const coord of activeRoute.coordinates) bounds.extend(coord)
     const { bottom, right, left = 0 } = paddingRef.current
@@ -1059,18 +1127,15 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current
     if (!focusTarget || selectedId || selectedSignal) {
-      focusMarkerRef.current?.remove()
-      focusMarkerRef.current = null
+      focusCoordRef.current = null
+      const src = map?.getSource('blam-focus') as GeoJSONSource | undefined
+      src?.setData(buildSinglePointGeoJson(null))
       return
     }
     focusOn(focusTarget.lat, focusTarget.lng, focusTarget.zoom ?? 10.5)
-    if (!map) return
-    if (!focusMarkerRef.current) {
-      const el = document.createElement('div')
-      el.className = 'me-dot'
-      focusMarkerRef.current = new Marker({ element: el, anchor: 'center' })
-    }
-    focusMarkerRef.current.setLngLat([focusTarget.lng, focusTarget.lat]).addTo(map)
+    focusCoordRef.current = [focusTarget.lng, focusTarget.lat]
+    const src = map?.getSource('blam-focus') as GeoJSONSource | undefined
+    src?.setData(buildSinglePointGeoJson(focusCoordRef.current))
   }, [focusTarget, selectedId, selectedSignal])
 
   useEffect(() => {
@@ -1271,7 +1336,9 @@ export default function MapView({
     if (locateSignal === 0) return
     const fitAtStart = fitIndonesiaSignalRef.current
     const go = (lat: number, lng: number) => {
-      meRef.current?.setLngLat([lng, lat])
+      userCoordRef.current = [lng, lat]
+      const userSrc = mapRef.current?.getSource('blam-user') as GeoJSONSource | undefined
+      userSrc?.setData(buildSinglePointGeoJson(userCoordRef.current))
       if (fitIndonesiaSignalRef.current !== fitAtStart || radarModeRef.current) return
       const currentZoom = mapRef.current?.getZoom() ?? 0
       focusOn(lat, lng, Math.min(18, Math.max(currentZoom, LOCATE_ZOOM)))

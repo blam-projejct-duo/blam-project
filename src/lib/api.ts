@@ -328,6 +328,25 @@ export async function moderateHotspotAdmin(hotspotId: string): Promise<void> {
   })
 }
 
+export async function revokeOrgAdmin(organizationId: string): Promise<void> {
+  await apiFetch('/admin/revoke-org', {
+    method: 'POST',
+    requireAuth: true,
+    body: JSON.stringify({ organizationId }),
+  })
+}
+
+export async function moderateFundraisingAdmin(
+  campaignId: string,
+  status: 'active' | 'closed',
+): Promise<void> {
+  await apiFetch('/admin/moderate-fundraising', {
+    method: 'POST',
+    requireAuth: true,
+    body: JSON.stringify({ campaignId, status }),
+  })
+}
+
 export async function fetchVerifiedSignals(): Promise<VerifiedSignalRecord[]> {
   const data = await apiFetch<{ signals: VerifiedSignalRecord[] }>('/env/verified-signals')
   return data.signals ?? []
