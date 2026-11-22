@@ -2903,6 +2903,67 @@ app.post('/admin/moderate-fundraising', async (c) => {
   return c.json({ ok: true, campaign: data })
 })
 
+app.post('/admin/broadcast', async (c) => {
+  const { supa, error } = requireDb('ADMIN_BROADCAST')
+  if (!supa) return c.json({ error }, 503)
+
+  const auth = await resolveAuth(c, supa)
+  if (!auth.profile) return c.json({ error: auth.error }, auth.status ?? 401)
+
+  const roleErr = requireRole(auth.profile, ['admin'], 'ADMIN_BROADCAST')
+  if (roleErr) return c.json({ error: roleErr }, 403)
+
+  const body = await c.req.json().catch(() => null)
+  const title = typeof body?.title === 'string' ? body.title.trim().slice(0, 140) : ''
+  const detail = typeof body?.detail === 'string' ? body.detail.trim().slice(0, 500) : ''
+  const target = body?.target as string | undefined
+
+  if (!title || !detail) {
+    return c.json({ error: 'Judul dan isi pengumuman wajib diisi' }, 400)
+  }
+  if (!['all', 'citizen', 'volunteer', 'agency'].includes(target ?? '')) {
+    return c.json({ error: 'Target tidak valid' }, 400)
+  }
+
+  const roles = target === 'all' ? (['citizen', 'volunteer', 'agency'] as const) : ([target] as const)
+  const rows = roles.map((role) => ({
+    target_role: role,
+    title,
+    detail,
+    is_read: false,
+  }))
+
+  const { error: insErr } = await supa.from('notifications').insert(rows)
+  if (insErr) {
+    return c.json({ error: 'Gagal mengirim pengumuman' }, 500)
+  }
+
+  return c.json({ ok: true, sentRoles: roles })
+})
+
+app.get('/admin/users', async (c) => {
+  const { supa, error } = requireDb('ADMIN_USERS')
+  if (!supa) return c.json({ error }, 503)
+
+  const auth = await resolveAuth(c, supa)
+  if (!auth.profile) return c.json({ error: auth.error }, auth.status ?? 401)
+
+  const roleErr = requireRole(auth.profile, ['admin'], 'ADMIN_USERS')
+  if (roleErr) return c.json({ error: roleErr }, 403)
+
+  const { data, error: qErr } = await supa
+    .from('profiles')
+    .select('id, email, full_name, role, avatar_url, points, created_at')
+    .order('points', { ascending: false })
+    .limit(100)
+
+  if (qErr) {
+    return c.json({ error: 'Gagal memuat daftar pengguna' }, 500)
+  }
+
+  return c.json({ users: data ?? [] })
+})
+
 const FALSE_HOTSPOTS_CACHE_KEY = 'moderation:false_hotspots'
 const VERIFIED_SIGNALS_CACHE_KEY = 'moderation:verified_signals'
 

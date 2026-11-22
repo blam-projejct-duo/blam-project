@@ -347,6 +347,23 @@ export async function moderateFundraisingAdmin(
   })
 }
 
+export async function broadcastAdminNotification(payload: {
+  title: string
+  detail: string
+  target: 'all' | 'citizen' | 'volunteer' | 'agency'
+}): Promise<void> {
+  await apiFetch('/admin/broadcast', {
+    method: 'POST',
+    requireAuth: true,
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function fetchUsersAdmin(): Promise<Profile[]> {
+  const data = await apiFetch<{ users: Profile[] }>('/admin/users', { requireAuth: true })
+  return data.users ?? []
+}
+
 export async function fetchVerifiedSignals(): Promise<VerifiedSignalRecord[]> {
   const data = await apiFetch<{ signals: VerifiedSignalRecord[] }>('/env/verified-signals')
   return data.signals ?? []

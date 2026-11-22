@@ -1,4 +1,5 @@
 import {
+  FcAdvertising,
   FcApproval,
   FcClock,
   FcComboChart,
@@ -20,9 +21,11 @@ import {
   Plus,
   X,
 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { ROLE_LABEL } from '../../lib/constants'
+import { fetchOrgs, fetchReportsQueue } from '../../lib/api'
 import type { BlamChatAction, BlamChatContext, BlamSelectedPointContext, BlamSnapPrefill } from '../../lib/api'
 import BlamChatModal from '../../modules/chat/BlamChatModal'
 import type { BlamPointPromptSuggestion } from '../../modules/chat/BlamChatModal'
@@ -64,9 +67,9 @@ type NavTab =
   | 'Org'
   | 'Eskalasi'
   | 'Monitor'
-  | 'Persetujuan'
-  | 'Pantau Org'
+  | 'Tinjau'
   | 'Moderasi'
+  | 'Siaran'
 type Tab = NavTab | 'Profil'
 
 const RAIL_GAP = 16
@@ -348,9 +351,25 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     }
   }, [filterOpen, notifOpen])
 
+  const isAdmin = profile?.role === 'admin'
+  const adminOrgsQuery = useQuery({
+    queryKey: ['admin-all-orgs'],
+    queryFn: () => fetchOrgs(true),
+    enabled: isAdmin,
+    staleTime: 30_000,
+  })
+  const adminReportsQuery = useQuery({
+    queryKey: ['reports-queue', 'admin'],
+    queryFn: () => fetchReportsQueue(false),
+    enabled: isAdmin,
+    staleTime: 30_000,
+  })
+  const pendingOrgsCount = (adminOrgsQuery.data ?? []).filter((o) => !o.is_verified).length
+  const pendingReportsCount = (adminReportsQuery.data ?? []).length
+
   const navTabs = useMemo<NavTab[]>(() => {
     if (profile?.role === 'admin') {
-      return ['Jelajah', 'Monitor', 'Persetujuan', 'Pantau Org', 'Moderasi']
+      return ['Jelajah', 'Monitor', 'Tinjau', 'Org', 'Moderasi', 'Siaran']
     }
     const base: NavTab[] = ['Jelajah', 'Gerakan', 'Care', 'History', 'Org']
     if (profile?.role === 'agency') base.push('Eskalasi')
@@ -594,12 +613,12 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         return <FcHighPriority size={24} />
       case 'Monitor':
         return <FcComboChart size={24} />
-      case 'Persetujuan':
+      case 'Tinjau':
         return <FcApproval size={24} />
-      case 'Pantau Org':
-        return <FcDepartment size={24} />
       case 'Moderasi':
         return <FcTodoList size={24} />
+      case 'Siaran':
+        return <FcAdvertising size={24} />
     }
   }
 
@@ -821,6 +840,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           zoomCommand={radar.zoomCommand}
           focusTarget={radar.focusTarget}
           globeInsetLeft={drawerOpen ? edge : 0}
+          adminReports={isAdmin && drawerOpen && tab === 'Moderasi' ? (adminReportsQuery.data ?? []) : undefined}
         />
       </div>
 
@@ -874,12 +894,20 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             >
               {navTabs.map((label) => {
                 const isActive = tab === label && drawerOpen
+                const badge =
+                  label === 'Gerakan'
+                    ? openCount
+                    : label === 'Tinjau'
+                      ? pendingOrgsCount || undefined
+                      : label === 'Moderasi'
+                        ? pendingReportsCount || undefined
+                        : undefined
                 return (
                   <RailItem
                     key={label}
                     label={label}
                     active={isActive}
-                    badge={label === 'Gerakan' ? openCount : undefined}
+                    badge={badge}
                     onClick={() => openTab(label)}
                   >
                     {renderRailIcon(label)}
@@ -1011,7 +1039,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                     </div>
                   )}
 
-                  {tab === 'Org' && (
+                  {tab === 'Org' && !isAdmin && (
                     <div className="min-h-0 flex-1 overflow-y-auto p-5">
                       <OrgsPanel headerAction={expandBtn} query={query} />
                     </div>
@@ -1029,22 +1057,41 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                     </div>
                   )}
 
-                  {(tab === 'Monitor' || tab === 'Persetujuan' || tab === 'Pantau Org' || tab === 'Moderasi') && (
+                  {(tab === 'Monitor' ||
+                    tab === 'Tinjau' ||
+                    (tab === 'Org' && isAdmin) ||
+                    tab === 'Moderasi' ||
+                    tab === 'Siaran') && (
                     <div className="min-h-0 flex-1 overflow-y-auto p-5">
                       <AdminPanel
                         section={
                           tab === 'Monitor'
                             ? 'monitor'
-                            : tab === 'Persetujuan'
+                            : tab === 'Tinjau'
                               ? 'approvals'
-                              : tab === 'Pantau Org'
+                              : tab === 'Org'
                                 ? 'orgs'
-                                : 'moderation'
+                                : tab === 'Siaran'
+                                  ? 'broadcast'
+                                  : 'moderation'
                         }
                         events={radar.allEvents}
                         signals={radar.satelliteSignals}
                         signalsCount={radar.satelliteSignals.length}
                         headerAction={expandBtn}
+                        onNavigate={(next) =>
+                          openTab(
+                            next === 'approvals'
+                              ? 'Tinjau'
+                              : next === 'moderation'
+                                ? 'Moderasi'
+                                : next === 'orgs'
+                                  ? 'Org'
+                                  : next === 'broadcast'
+                                    ? 'Siaran'
+                                    : 'Monitor',
+                          )
+                        }
                         onFocusLocation={(lat, lng) => radar.focusLocation(lat, lng, 13)}
                         onRefreshEvents={radar.refresh}
                         onRefreshLayers={radar.refreshLayers}

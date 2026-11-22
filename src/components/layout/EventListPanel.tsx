@@ -13,6 +13,15 @@ import type { ConservationEvent, Ecosystem, SatelliteSignal, SignalVerificationS
 export type ListTab = 'Ringkasan' | 'Terbaru' | 'History' | 'Satelit' | 'Terdekat' | 'Semua' | 'Verifikasi'
 
 type EventStatusFilter = 'active' | 'all' | 'open' | 'in_progress' | 'resolved'
+type HazardKindFilter = 'all' | 'wildfire' | 'volcano' | 'flood' | 'storm'
+
+const HAZARD_FILTER_OPTIONS: { id: HazardKindFilter; label: string }[] = [
+  { id: 'all', label: 'Semua' },
+  { id: 'wildfire', label: 'Karhutla' },
+  { id: 'volcano', label: 'Gunung' },
+  { id: 'flood', label: 'Banjir' },
+  { id: 'storm', label: 'Badai' },
+]
 
 const EVENT_STATUS_OPTIONS: { id: EventStatusFilter; label: string }[] = [
   { id: 'active', label: 'Aktif' },
@@ -333,6 +342,7 @@ export default function EventListPanel({
   const [eventFilterOpen, setEventFilterOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<EventStatusFilter>('active')
   const [ecosystemFilter, setEcosystemFilter] = useState<Ecosystem | 'all'>('all')
+  const [hazardFilter, setHazardFilter] = useState<HazardKindFilter>('all')
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'ready' | 'denied' | 'unsupported'>('idle')
   const { fundraisings } = useFundraisings()
@@ -483,7 +493,7 @@ export default function EventListPanel({
     if (tab !== 'Ringkasan') return null
     let verifiedCount = 0
     let highRiskCount = 0
-    const counts = { wildfire: 0, volcano: 0, flood: 0, storm: 0 }
+    const counts = { wildfire: 0, volcano: 0, flood: 0, storm: 0, other: 0 }
 
     for (const sig of filteredSignals) {
       const isAction = linkedSet.has(sig.id) || sig.verificationState === 'has_action'
@@ -494,22 +504,40 @@ export default function EventListPanel({
       else if (k === 'volcano') counts.volcano += 1
       else if (k === 'flood') counts.flood += 1
       else if (k === 'storm') counts.storm += 1
+      else counts.other += 1
     }
 
     const total = Math.max(1, filteredSignals.length)
-    const distribution = [
+    const baseDist: { key: HazardKindFilter; label: string; count: number; color: string }[] = [
       { key: 'wildfire', label: 'Karhutla', count: counts.wildfire, color: '#EA580C' },
       { key: 'volcano', label: 'Gunung', count: counts.volcano, color: '#6D28D9' },
       { key: 'flood', label: 'Banjir', count: counts.flood, color: '#2563EB' },
-      { key: 'storm', label: 'Badai', count: counts.storm, color: '#0E7490' },
     ]
-      .filter((d) => d.count > 0)
+    if (counts.storm > 0) {
+      baseDist.push({ key: 'storm', label: 'Badai', count: counts.storm, color: '#0E7490' })
+    }
+    if (counts.other > 0) {
+      baseDist.push({ key: 'all', label: 'Lainnya', count: counts.other, color: '#D97706' })
+    }
+    const distribution = baseDist
       .sort((a, b) => b.count - a.count)
-      .map((d) => ({ ...d, pct: Math.max(6, Math.round((d.count / total) * 100)) }))
+      .map((d) => ({ ...d, pct: d.count > 0 ? Math.max(6, Math.round((d.count / total) * 100)) : 0 }))
 
     const activeEvents = events
       .filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled')
       .sort((a, b) => RANK[a.status] - RANK[b.status] || +new Date(b.created_at) - +new Date(a.created_at))
+
+    const sourceForImpact = impactEvents ?? events
+    let resolvedCount = 0
+    let wasteKg = 0
+    let treesPlanted = 0
+    for (const ev of sourceForImpact) {
+      if (ev.status === 'resolved') resolvedCount += 1
+      for (const a of ev.event_actions ?? []) {
+        wasteKg += Number(a.waste_kg) || 0
+        treesPlanted += a.trees_planted || 0
+      }
+    }
 
     const prioritySignals = [...filteredSignals]
       .sort((a, b) => {
@@ -527,13 +555,24 @@ export default function EventListPanel({
       verifiedCount,
       highRiskCount,
       activeActionCount: activeEvents.length,
+      resolvedCount,
+      wasteKg,
+      treesPlanted,
       distribution,
       featuredEvent: activeEvents[0] ?? null,
       prioritySignals,
     }
-  }, [tab, filteredSignals, events, linkedSet])
+  }, [tab, filteredSignals, events, impactEvents, linkedSet])
 
-  const shownSignals = tab === 'Satelit' ? filteredSignals : []
+  const shownSignals = useMemo(() => {
+    if (tab !== 'Satelit') return []
+    if (hazardFilter === 'all') return filteredSignals
+    return filteredSignals.filter((sig) => {
+      const k = sig.kind ?? 'suspected'
+      if (hazardFilter === 'wildfire') return k === 'wildfire' || k === 'suspected'
+      return k === hazardFilter
+    })
+  }, [tab, filteredSignals, hazardFilter])
   const customContent = renderTabContent?.(tab)
 
   return (
@@ -738,19 +777,56 @@ export default function EventListPanel({
 
           {summaryData.distribution.length > 0 && (
             <div className="atlas-group flex flex-col gap-2.5 p-3.5">
-              <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">
-                Kondisi Terkini
-              </p>
-              <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">
+                  Kondisi Terkini
+                </p>
+                <span className="text-[10px] font-medium text-ink-soft">NASA FIRMS &amp; EONET</span>
+              </div>
+              <div className="flex flex-col gap-1.5">
                 {summaryData.distribution.map((d) => (
-                  <div key={d.key} className="flex items-center gap-2.5 text-[12px]">
+                  <button
+                    key={d.label}
+                    type="button"
+                    onClick={() => {
+                      setHazardFilter(d.key)
+                      setTab('Satelit')
+                    }}
+                    className="flex items-center gap-2.5 rounded-[8px] px-1 py-0.5 text-left text-[12px] transition-colors hover:bg-canvas"
+                  >
                     <span className="w-16 shrink-0 font-medium text-ink">{d.label}</span>
                     <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
                       <div className="h-full rounded-full" style={{ width: `${d.pct}%`, backgroundColor: d.color }} />
                     </div>
-                    <span className="num w-8 shrink-0 text-right font-medium text-ink-soft">{d.count}</span>
-                  </div>
+                    <span className={`num w-8 shrink-0 text-right font-medium ${d.count > 0 ? 'text-ink-soft' : 'text-ink-soft/45'}`}>
+                      {d.count}
+                    </span>
+                  </button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {(summaryData.resolvedCount > 0 || summaryData.wasteKg > 0 || summaryData.treesPlanted > 0) && (
+            <div className="atlas-group p-1">
+              <div className="px-2.5 pt-2 pb-1">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">
+                  Dampak Pemulihan
+                </p>
+              </div>
+              <div className="atlas-strip grid-cols-3 divide-x divide-ink/8 border-y-0 text-center">
+                <div className="atlas-strip-cell">
+                  <p className="num text-[16px] font-semibold text-resolved">{summaryData.resolvedCount}</p>
+                  <p className="text-[10px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Pulih</p>
+                </div>
+                <div className="atlas-strip-cell">
+                  <p className="num text-[16px] font-semibold text-forest">{summaryData.wasteKg} kg</p>
+                  <p className="text-[10px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Sampah</p>
+                </div>
+                <div className="atlas-strip-cell">
+                  <p className="num text-[16px] font-semibold text-forest">{summaryData.treesPlanted}</p>
+                  <p className="text-[10px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Pohon</p>
+                </div>
               </div>
             </div>
           )}
@@ -889,6 +965,31 @@ export default function EventListPanel({
 
           {(shownSignals.length > 0 || (tab === 'Satelit' && Boolean(onOpenSignal))) && onOpenSignal && (
             <div className={rows.length > 0 ? 'mt-4 border-t border-ink/8 pt-4' : 'mt-2.5'}>
+              {tab === 'Satelit' && (
+                <div className="mb-2.5 flex flex-col gap-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {HAZARD_FILTER_OPTIONS.filter(
+                      (opt) => opt.id !== 'storm' || filteredSignals.some((s) => s.kind === 'storm'),
+                    ).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setHazardFilter(opt.id)}
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                          hazardFilter === opt.id
+                            ? 'bg-ink text-white'
+                            : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-ink-soft">
+                    Data satelit NASA FIRMS &amp; EONET · sinkronisasi berkala
+                  </p>
+                </div>
+              )}
               {shownSignals.length === 0 ? (
                 <div className="atlas-group flex flex-col items-center gap-2 py-8 text-center">
                   <BlamNatureIcon className="size-12 opacity-85" />

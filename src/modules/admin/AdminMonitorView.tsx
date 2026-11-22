@@ -1,10 +1,34 @@
-import { ClipboardList, Crosshair, Flame, HeartHandshake, Leaf, Satellite, Trees, Users } from 'lucide-react'
-import type { ConservationEvent, Ecosystem, FundraisingCampaign, Organization } from '../../types'
+import { ArrowRight, BarChart3, ClipboardList, Crosshair, HeartHandshake, Leaf, Satellite, Trees } from 'lucide-react'
+import type { CitizenReport, ConservationEvent, Ecosystem, FundraisingCampaign, Organization } from '../../types'
+import type { AdminSection } from './AdminPanel'
 
 export interface AdminAuditEntry {
   id: string
   label: string
   time: string
+}
+
+function buildLast7DaysBuckets(events: ConservationEvent[], reports: CitizenReport[]) {
+  const now = new Date()
+  const buckets: { key: string; label: string; events: number; reports: number }[] = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now)
+    d.setDate(now.getDate() - i)
+    const key = d.toISOString().slice(0, 10)
+    const label =
+      i === 0 ? 'Hari ini' : d.toLocaleDateString('id-ID', { weekday: 'short' }).replace('.', '')
+    buckets.push({ key, label, events: 0, reports: 0 })
+  }
+  const map = new Map(buckets.map((b) => [b.key, b]))
+  for (const ev of events) {
+    const bucket = map.get(ev.created_at?.slice(0, 10))
+    if (bucket) bucket.events += 1
+  }
+  for (const r of reports) {
+    const bucket = map.get(r.created_at?.slice(0, 10))
+    if (bucket) bucket.reports += 1
+  }
+  return buckets
 }
 
 const ECOSYSTEM_META: { id: Ecosystem; label: string; color: string }[] = [
@@ -22,21 +46,24 @@ function formatRupiahCompact(amount: number): string {
 
 export default function AdminMonitorView({
   events,
-  orgs,
+  reports = [],
   campaigns,
   pendingOrgsCount,
   pendingReportsCount,
   signalsCount,
   auditLog = [],
+  onNavigate,
   onFocusLocation,
 }: {
   events: ConservationEvent[]
-  orgs: Organization[]
+  reports?: CitizenReport[]
+  orgs?: Organization[]
   campaigns: FundraisingCampaign[]
   pendingOrgsCount: number
   pendingReportsCount: number
   signalsCount: number
   auditLog?: AdminAuditEntry[]
+  onNavigate?: (section: AdminSection) => void
   onFocusLocation?: (lat: number, lng: number) => void
 }) {
   const nonCancelled = events.filter((e) => e.status !== 'cancelled')
@@ -58,13 +85,6 @@ export default function AdminMonitorView({
     (sum, ev) => sum + (ev.event_actions?.reduce((s, a) => s + (a.trees_planted ?? 0), 0) ?? 0),
     0,
   )
-  const totalParticipants = events.reduce((sum, ev) => sum + (ev.event_participants?.length ?? 0), 0)
-
-  const verifiedOrgs = orgs.filter((o) => o.is_verified)
-  const communitiesCount = verifiedOrgs.filter((o) => o.type === 'community').length
-  const agenciesCount = verifiedOrgs.filter((o) => o.type === 'agency').length
-  const totalActiveMembers = verifiedOrgs.reduce((sum, o) => sum + (o.active_members_count ?? 0), 0)
-  const totalOrgActions = verifiedOrgs.reduce((sum, o) => sum + (o.actions_count ?? 0), 0)
 
   const totalCollected = campaigns.reduce((sum, c) => sum + (c.collected_amount ?? 0), 0)
   const totalTarget = campaigns.reduce((sum, c) => sum + (c.target_amount ?? 0), 0)
@@ -76,6 +96,11 @@ export default function AdminMonitorView({
     ...ECOSYSTEM_META.map((eco) => nonCancelled.filter((ev) => ev.ecosystem === eco.id).length),
   )
 
+  const trendBuckets = buildLast7DaysBuckets(events, reports)
+  const weeklyEvents = trendBuckets.reduce((s, b) => s + b.events, 0)
+  const weeklyReports = trendBuckets.reduce((s, b) => s + b.reports, 0)
+  const maxTrendVal = Math.max(1, ...trendBuckets.map((b) => Math.max(b.events, b.reports)))
+
   return (
     <div className="flex flex-col gap-3.5">
       {/* Top 2x2 Summary Strip */}
@@ -85,12 +110,88 @@ export default function AdminMonitorView({
             <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Pemulihan Bumi</p>
             <p className="num mt-1 text-[20px] font-semibold text-leaf">{recoveryPct}%</p>
           </div>
-          <div className="atlas-strip-cell">
+          <button
+            type="button"
+            onClick={() => onNavigate?.(pendingOrgsCount > 0 ? 'approvals' : 'moderation')}
+            className="atlas-strip-cell text-left transition-colors hover:bg-canvas"
+          >
             <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Perlu Tindakan</p>
-            <p className="num mt-1 text-[20px] font-semibold text-ink">{pendingOrgsCount + pendingReportsCount}</p>
-          </div>
+            <p className="num mt-1 flex items-center gap-1.5 text-[20px] font-semibold text-ink">
+              {pendingOrgsCount + pendingReportsCount}
+              {onNavigate && <ArrowRight className="size-3.5 text-ink-soft" />}
+            </p>
+          </button>
         </div>
+
+        {onNavigate && (pendingOrgsCount > 0 || pendingReportsCount > 0) && (
+          <div className="flex flex-wrap gap-1.5 border-t border-ink/8 px-2.5 py-2">
+            {pendingOrgsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => onNavigate('approvals')}
+                className="inline-flex items-center gap-1 rounded-full bg-amber-500/12 px-2.5 py-1 text-[11px] font-medium text-amber-800 hover:bg-amber-500/20"
+              >
+                {pendingOrgsCount} org menunggu <ArrowRight className="size-3" />
+              </button>
+            )}
+            {pendingReportsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => onNavigate('moderation')}
+                className="inline-flex items-center gap-1 rounded-full bg-leaf/12 px-2.5 py-1 text-[11px] font-medium text-forest hover:bg-leaf/20"
+              >
+                {pendingReportsCount} laporan perlu cek <ArrowRight className="size-3" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* 0. Tren Aktivitas 7 Hari */}
+      <section className="card-quiet flex flex-col gap-2.5 p-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <BarChart3 className="size-4 text-forest" strokeWidth={1.75} />
+            <h3 className="text-[13px] font-semibold text-ink">Tren 7 Hari Terakhir</h3>
+          </div>
+          <span className="num text-[11px] font-medium text-ink-soft">
+            +{weeklyEvents} event · +{weeklyReports} laporan
+          </span>
+        </div>
+
+        <div className="grid grid-cols-7 items-end gap-1.5 pt-1">
+          {trendBuckets.map((b) => {
+            const evH = Math.max(b.events > 0 ? 18 : 4, Math.round((b.events / maxTrendVal) * 48))
+            const repH = Math.max(b.reports > 0 ? 18 : 4, Math.round((b.reports / maxTrendVal) * 48))
+            return (
+              <div key={b.key} className="flex flex-col items-center gap-1">
+                <div className="flex h-12 items-end gap-0.5">
+                  <div
+                    title={`${b.label}: ${b.events} event`}
+                    className={`w-2 rounded-t-[3px] transition-all ${b.events > 0 ? 'bg-leaf' : 'bg-ink/10'}`}
+                    style={{ height: `${evH}px` }}
+                  />
+                  <div
+                    title={`${b.label}: ${b.reports} laporan`}
+                    className={`w-2 rounded-t-[3px] transition-all ${b.reports > 0 ? 'bg-amber-400' : 'bg-ink/10'}`}
+                    style={{ height: `${repH}px` }}
+                  />
+                </div>
+                <span className="text-[9px] text-ink-soft">{b.label}</span>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="flex items-center gap-3 text-[10px] text-ink-soft">
+          <span className="inline-flex items-center gap-1">
+            <span className="size-2 rounded-full bg-leaf" /> Event Baru
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="size-2 rounded-full bg-amber-400" /> Laporan Warga
+          </span>
+        </div>
+      </section>
 
       {/* 1. Kondisi Bumi & Radar */}
       <section className="card-quiet flex flex-col gap-3 p-3.5">
@@ -207,40 +308,7 @@ export default function AdminMonitorView({
         )}
       </section>
 
-      {/* 3. Keaktifan Relawan & Organisasi */}
-      <section className="card-quiet flex flex-col gap-2.5 p-3.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <Users className="size-4 text-forest" strokeWidth={1.75} />
-            <h3 className="text-[13px] font-semibold text-ink">Keaktifan Relawan &amp; Org</h3>
-          </div>
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-leaf">
-            <Flame className="size-3.5" /> {verifiedOrgs.length} org aktif
-          </span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-[10px] bg-canvas px-2.5 py-2 text-center">
-            <p className="num text-[16px] font-semibold text-ink">{totalActiveMembers}</p>
-            <p className="text-[10px] text-ink-soft">Anggota Org</p>
-          </div>
-          <div className="rounded-[10px] bg-canvas px-2.5 py-2 text-center">
-            <p className="num text-[16px] font-semibold text-ink">{totalParticipants}</p>
-            <p className="text-[10px] text-ink-soft">Peserta Aksi</p>
-          </div>
-          <div className="rounded-[10px] bg-canvas px-2.5 py-2 text-center">
-            <p className="num text-[16px] font-semibold text-ink">{totalOrgActions}</p>
-            <p className="text-[10px] text-ink-soft">Aksi Selesai</p>
-          </div>
-        </div>
-
-        <p className="text-[11px] text-ink-soft">
-          Terdiri dari <strong className="font-semibold text-ink">{communitiesCount}</strong> komunitas dan{' '}
-          <strong className="font-semibold text-ink">{agenciesCount}</strong> instansi terverifikasi.
-        </p>
-      </section>
-
-      {/* 4. Audit Log Sesi */}
+      {/* 3. Audit Log Sesi */}
       {auditLog.length > 0 && (
         <section className="card-quiet flex flex-col gap-2 p-3.5">
           <div className="flex items-center gap-1.5">

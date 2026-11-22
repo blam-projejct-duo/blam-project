@@ -6,20 +6,26 @@ import {
   ChevronDown,
   Crosshair,
   EyeOff,
+  Flame,
   Loader2,
   MapPin,
+  RefreshCw,
   RotateCcw,
   Search,
   Sparkles,
+  Users,
   X,
+  Zap,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ReportStatusPill, StatusPill } from '../../components/ui/atoms'
 import {
+  broadcastAdminNotification,
   fetchFundraisings,
   fetchOrgs,
   fetchReportsQueue,
+  fetchUsersAdmin,
   moderateEventAdmin,
   moderateFundraisingAdmin,
   moderateHotspotAdmin,
@@ -28,11 +34,14 @@ import {
   verifyOrgAdmin,
 } from '../../lib/api'
 import type { ConservationEvent, ReportStatus, SatelliteSignal } from '../../types'
+import AdminBroadcastView from './AdminBroadcastView'
+import type { BroadcastHistoryItem } from './AdminBroadcastView'
 import AdminMonitorView from './AdminMonitorView'
 import type { AdminAuditEntry } from './AdminMonitorView'
 import AdminOrgsMonitorView from './AdminOrgsMonitorView'
+import AdminUsersView from './AdminUsersView'
 
-export type AdminSection = 'monitor' | 'approvals' | 'orgs' | 'moderation'
+export type AdminSection = 'monitor' | 'approvals' | 'orgs' | 'moderation' | 'broadcast'
 type ModerationTab = 'reports' | 'events' | 'hotspots' | 'donations'
 type OrgFilter = 'all' | 'community' | 'agency'
 type ReportFilter = 'all' | 'mismatch' | 'critical'
@@ -41,8 +50,9 @@ type EventFilter = 'active' | 'all' | 'closed'
 const SECTION_TITLES: Record<AdminSection, string> = {
   monitor: 'Monitor Radar',
   approvals: 'Persetujuan Org',
-  orgs: 'Pantau Organisasi',
+  orgs: 'Org & Pengguna',
   moderation: 'Moderasi Konten',
+  broadcast: 'Siaran Pengumuman',
 }
 
 export default function AdminPanel({
@@ -51,6 +61,7 @@ export default function AdminPanel({
   signals = [],
   signalsCount,
   headerAction,
+  onNavigate,
   onFocusLocation,
   onRefreshEvents,
   onRefreshLayers,
@@ -60,6 +71,7 @@ export default function AdminPanel({
   signals?: SatelliteSignal[]
   signalsCount?: number
   headerAction?: ReactNode
+  onNavigate?: (section: AdminSection) => void
   onFocusLocation?: (lat: number, lng: number) => void
   onRefreshEvents: () => Promise<void>
   onRefreshLayers?: () => Promise<void>
@@ -68,15 +80,19 @@ export default function AdminPanel({
   const [mobileSection, setMobileSection] = useState<AdminSection>('monitor')
   const activeSection = section ?? mobileSection
 
+  const [orgSubTab, setOrgSubTab] = useState<'orgs' | 'users'>('orgs')
   const [modTab, setModTab] = useState<ModerationTab>('reports')
+  const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [orgFilter, setOrgFilter] = useState<OrgFilter>('all')
   const [reportFilter, setReportFilter] = useState<ReportFilter>('all')
   const [eventFilter, setEventFilter] = useState<EventFilter>('active')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [autoAdvance, setAutoAdvance] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [auditLog, setAuditLog] = useState<AdminAuditEntry[]>([])
+  const [broadcastHistory, setBroadcastHistory] = useState<BroadcastHistoryItem[]>([])
 
   const logAction = (label: string) => {
     const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
@@ -101,10 +117,17 @@ export default function AdminPanel({
     staleTime: 30_000,
   })
 
+  const usersQuery = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: fetchUsersAdmin,
+    staleTime: 30_000,
+  })
+
   const allOrgs = orgsQuery.data ?? []
   const pendingOrgs = useMemo(() => allOrgs.filter((o) => !o.is_verified), [allOrgs])
   const reports = reportsQuery.data ?? []
   const campaigns = fundraisingsQuery.data ?? []
+  const users = usersQuery.data ?? []
 
   const q = search.trim().toLowerCase()
 
@@ -192,8 +215,9 @@ export default function AdminPanel({
     setActionError(null)
     try {
       await verifyOrgAdmin(orgId, approve)
-      if (expandedId === orgId) setExpandedId(null)
       logAction(`${approve ? 'Menyetujui' : 'Menolak'} org ${orgName}`)
+      const nextOrg = autoAdvance ? filteredPendingOrgs.find((o) => o.id !== orgId) : undefined
+      setExpandedId(nextOrg ? nextOrg.id : null)
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin-all-orgs'] }),
         queryClient.invalidateQueries({ queryKey: ['admin-orgs'] }),
@@ -229,8 +253,10 @@ export default function AdminPanel({
     setActionError(null)
     try {
       await moderateReportAdmin(reportId, status)
-      if (expandedId === reportId) setExpandedId(null)
       logAction(`${status === 'verified' ? 'Verifikasi' : 'Tolak'} laporan "${title}"`)
+      const nextReport = autoAdvance ? filteredReports.find((r) => r.id !== reportId) : undefined
+      setExpandedId(nextReport ? nextReport.id : null)
+      if (nextReport) onFocusLocation?.(nextReport.lat, nextReport.lng)
       await queryClient.invalidateQueries({ queryKey: ['reports-queue'] })
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Gagal moderasi laporan')
@@ -286,22 +312,82 @@ export default function AdminPanel({
     }
   }
 
+  const handleBroadcast = async (payload: {
+    title: string
+    detail: string
+    target: 'all' | 'citizen' | 'volunteer' | 'agency'
+  }) => {
+    setActionError(null)
+    try {
+      await broadcastAdminNotification(payload)
+      const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+      setBroadcastHistory((prev) => [
+        { id: `${Date.now()}`, target: payload.target, title: payload.title, detail: payload.detail, time },
+        ...prev,
+      ])
+      logAction(`Siaran (${payload.target}): "${payload.title}"`)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Gagal mengirim broadcast')
+      throw err
+    }
+  }
+
+  const refreshAll = async () => {
+    setRefreshing(true)
+    setActionError(null)
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-all-orgs'] }),
+        queryClient.invalidateQueries({ queryKey: ['reports-queue'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-fundraisings'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+        onRefreshEvents(),
+        onRefreshLayers?.(),
+      ])
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const navigateSection = (next: AdminSection) => {
+    if (onNavigate) onNavigate(next)
+    else setMobileSection(next)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-[20px] font-semibold text-ink">{SECTION_TITLES[activeSection]}</h2>
-        {headerAction}
+        <div className="flex items-center gap-2">
+          <h2 className="text-[20px] font-semibold text-ink">{SECTION_TITLES[activeSection]}</h2>
+          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+            Admin
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            disabled={refreshing}
+            onClick={() => void refreshAll()}
+            aria-label="Segarkan data admin"
+            title="Segarkan data"
+            className="btn-soft size-8 !rounded-[9px] p-0 text-ink-soft hover:text-ink"
+          >
+            <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+          {headerAction}
+        </div>
       </div>
 
       {/* Mobile section switcher when rendered inside mobile sheet */}
       {!section && (
-        <div className="grid grid-cols-4 gap-1 rounded-[12px] bg-canvas p-1 ring-1 ring-ink/8">
+        <div className="grid grid-cols-5 gap-1 rounded-[12px] bg-canvas p-1 ring-1 ring-ink/8">
           {(
             [
               { id: 'monitor', label: 'Monitor' },
-              { id: 'approvals', label: `Setujui (${pendingOrgs.length})` },
+              { id: 'approvals', label: `Tinjau (${pendingOrgs.length})` },
               { id: 'orgs', label: 'Org' },
               { id: 'moderation', label: 'Moderasi' },
+              { id: 'broadcast', label: 'Siaran' },
             ] as const
           ).map((item) => {
             const active = activeSection === item.id
@@ -334,25 +420,100 @@ export default function AdminPanel({
       {activeSection === 'monitor' && (
         <AdminMonitorView
           events={events}
+          reports={reports}
           orgs={allOrgs}
           campaigns={campaigns}
           pendingOrgsCount={pendingOrgs.length}
           pendingReportsCount={reports.length}
           signalsCount={signalsCount ?? signals.length}
           auditLog={auditLog}
+          onNavigate={navigateSection}
           onFocusLocation={onFocusLocation}
         />
       )}
 
+      {activeSection === 'broadcast' && (
+        <AdminBroadcastView history={broadcastHistory} onBroadcast={handleBroadcast} />
+      )}
+
       {activeSection === 'orgs' && (
-        <AdminOrgsMonitorView
-          orgs={allOrgs}
-          events={events}
-          isLoading={orgsQuery.isLoading}
-          busyId={busyId}
-          onRevokeOrg={handleRevokeOrg}
-          onFocusLocation={onFocusLocation}
-        />
+        <div className="flex flex-col gap-3">
+          {(() => {
+            const verifiedOrgs = allOrgs.filter((o) => o.is_verified)
+            const communitiesCount = verifiedOrgs.filter((o) => o.type === 'community').length
+            const agenciesCount = verifiedOrgs.filter((o) => o.type === 'agency').length
+            const totalActiveMembers = verifiedOrgs.reduce((sum, o) => sum + (o.active_members_count ?? 0), 0)
+            const totalOrgActions = verifiedOrgs.reduce((sum, o) => sum + (o.actions_count ?? 0), 0)
+            const totalParticipants = events.reduce((sum, ev) => sum + (ev.event_participants?.length ?? 0), 0)
+            return (
+              <section className="card-quiet flex flex-col gap-2.5 p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="size-4 text-forest" strokeWidth={1.75} />
+                    <h3 className="text-[13px] font-semibold text-ink">Keaktifan Relawan &amp; Org</h3>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-leaf">
+                    <Flame className="size-3.5" /> {verifiedOrgs.length} org aktif
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-[10px] bg-canvas px-2.5 py-2 text-center">
+                    <p className="num text-[16px] font-semibold text-ink">{totalActiveMembers}</p>
+                    <p className="text-[10px] text-ink-soft">Anggota Org</p>
+                  </div>
+                  <div className="rounded-[10px] bg-canvas px-2.5 py-2 text-center">
+                    <p className="num text-[16px] font-semibold text-ink">{totalParticipants}</p>
+                    <p className="text-[10px] text-ink-soft">Peserta Aksi</p>
+                  </div>
+                  <div className="rounded-[10px] bg-canvas px-2.5 py-2 text-center">
+                    <p className="num text-[16px] font-semibold text-ink">{totalOrgActions}</p>
+                    <p className="text-[10px] text-ink-soft">Aksi Selesai</p>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-ink-soft">
+                  Terdiri dari <strong className="font-semibold text-ink">{communitiesCount}</strong> komunitas dan{' '}
+                  <strong className="font-semibold text-ink">{agenciesCount}</strong> instansi terverifikasi.
+                </p>
+              </section>
+            )
+          })()}
+
+          <div className="grid grid-cols-2 gap-1 rounded-[12px] bg-canvas p-1 ring-1 ring-ink/8">
+            <button
+              type="button"
+              onClick={() => setOrgSubTab('orgs')}
+              className={`rounded-[9px] px-2 py-2 text-[12px] font-medium transition ${
+                orgSubTab === 'orgs' ? 'bg-white text-ink shadow-xs ring-1 ring-ink/6' : 'text-ink-soft hover:text-ink'
+              }`}
+            >
+              Organisasi ({allOrgs.filter((o) => o.is_verified).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrgSubTab('users')}
+              className={`rounded-[9px] px-2 py-2 text-[12px] font-medium transition ${
+                orgSubTab === 'users' ? 'bg-white text-ink shadow-xs ring-1 ring-ink/6' : 'text-ink-soft hover:text-ink'
+              }`}
+            >
+              Pengguna ({users.length})
+            </button>
+          </div>
+
+          {orgSubTab === 'orgs' ? (
+            <AdminOrgsMonitorView
+              orgs={allOrgs}
+              events={events}
+              isLoading={orgsQuery.isLoading}
+              busyId={busyId}
+              onRevokeOrg={handleRevokeOrg}
+              onFocusLocation={onFocusLocation}
+            />
+          ) : (
+            <AdminUsersView users={users} isLoading={usersQuery.isLoading} />
+          )}
+        </div>
       )}
 
       {activeSection === 'approvals' && (
@@ -378,7 +539,7 @@ export default function AdminPanel({
             )}
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {(
               [
                 { id: 'all', label: `Semua (${pendingOrgs.length})` },
@@ -399,6 +560,22 @@ export default function AdminPanel({
                 {chip.label}
               </button>
             ))}
+            {filteredPendingOrgs.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!expandedId) setExpandedId(filteredPendingOrgs[0].id)
+                  else setAutoAdvance((v) => !v)
+                }}
+                className={`ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                  autoAdvance
+                    ? 'bg-leaf/15 text-forest ring-1 ring-leaf/30'
+                    : 'bg-white text-ink-soft ring-1 ring-ink/10'
+                }`}
+              >
+                <Zap className="size-3" /> {expandedId ? (autoAdvance ? 'Auto-lanjut' : 'Manual') : 'Mulai Triage'}
+              </button>
+            )}
           </div>
 
           {orgsQuery.isLoading ? (
@@ -561,7 +738,7 @@ export default function AdminPanel({
           </div>
 
           {(modTab === 'reports' || modTab === 'events') && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               {modTab === 'reports' &&
                 (
                   [
@@ -583,6 +760,27 @@ export default function AdminPanel({
                     {chip.label}
                   </button>
                 ))}
+              {modTab === 'reports' && filteredReports.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!expandedId) {
+                      const first = filteredReports[0]
+                      setExpandedId(first.id)
+                      onFocusLocation?.(first.lat, first.lng)
+                    } else {
+                      setAutoAdvance((v) => !v)
+                    }
+                  }}
+                  className={`ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                    autoAdvance
+                      ? 'bg-leaf/15 text-forest ring-1 ring-leaf/30'
+                      : 'bg-white text-ink-soft ring-1 ring-ink/10'
+                  }`}
+                >
+                  <Zap className="size-3" /> {expandedId ? (autoAdvance ? 'Auto-lanjut' : 'Manual') : 'Mulai Triage'}
+                </button>
+              )}
 
               {modTab === 'events' &&
                 (

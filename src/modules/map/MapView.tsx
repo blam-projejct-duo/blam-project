@@ -2,7 +2,7 @@ import { LngLatBounds, Map as MapLibreMap, Popup, setWorkerUrl } from 'maplibre-
 import type { GeoJSONSource } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { useEffect, useRef } from 'react'
-import type { ConservationEvent, MapStyle, Profile, SatelliteSignal } from '../../types'
+import type { CitizenReport, ConservationEvent, MapStyle, Profile, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import type { ActiveRoute } from './directions'
 import { hazardToSignal, severityRank } from './hotspotCluster'
@@ -114,6 +114,8 @@ interface Props {
   focusTarget?: { id: number; lat: number; lng: number; zoom?: number } | null
   /** Lebar (px) area kiri yang tertutup panel; di mode globe bumi digeser ke kanan sebesar setengahnya. */
   globeInsetLeft?: number
+  /** Titik laporan antrean moderasi yang ditampilkan khusus di mode Admin. */
+  adminReports?: CitizenReport[]
 }
 
 function buildEventGeoJson(events: ConservationEvent[], selectedId: string | null) {
@@ -307,6 +309,23 @@ function buildSinglePointGeoJson(coords: [number, number] | null) {
   }
 }
 
+function buildAdminReportsGeoJson(reports: CitizenReport[]) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: reports.map((r) => ({
+      type: 'Feature' as const,
+      geometry: { type: 'Point' as const, coordinates: [r.lng, r.lat] as [number, number] },
+      properties: {
+        id: r.id,
+        title: r.title,
+        location: r.location_name,
+        critical: r.ai_severity === 'critical' || r.status === 'escalated' ? 1 : 0,
+        mismatch: r.location_mismatch ? 1 : 0,
+      },
+    })),
+  }
+}
+
 export default function MapView({
   events,
   hazards,
@@ -324,6 +343,7 @@ export default function MapView({
   zoomCommand,
   focusTarget = null,
   globeInsetLeft = 0,
+  adminReports = [],
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
@@ -332,6 +352,7 @@ export default function MapView({
   const userCoordRef = useRef<[number, number]>(DEFAULT_CENTER)
   const profileRef = useRef<Profile | null>(profile)
   const focusCoordRef = useRef<[number, number] | null>(null)
+  const adminReportsRef = useRef<CitizenReport[]>(adminReports)
   const popupRef = useRef<Popup | null>(null)
   const wipeRafRef = useRef<number>(0)
   const wipeTimerRef = useRef<number>(0)
@@ -978,6 +999,57 @@ export default function MapView({
           .catch(() => undefined)
       })
 
+      map.addSource('blam-admin-reports', {
+        type: 'geojson',
+        data: buildAdminReportsGeoJson(adminReportsRef.current),
+      })
+      map.addLayer({
+        id: 'blam-admin-reports-halo',
+        type: 'circle',
+        source: 'blam-admin-reports',
+        paint: {
+          'circle-radius': 13,
+          'circle-color': ['case', ['==', ['get', 'critical'], 1], '#DC2626', '#F59E0B'],
+          'circle-opacity': 0.22,
+        },
+      })
+      map.addLayer({
+        id: 'blam-admin-reports-dot',
+        type: 'circle',
+        source: 'blam-admin-reports',
+        paint: {
+          'circle-radius': 6.5,
+          'circle-color': ['case', ['==', ['get', 'critical'], 1], '#DC2626', '#F59E0B'],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#FFFFFF',
+        },
+      })
+      map.on('mouseenter', 'blam-admin-reports-dot', () => {
+        map.getCanvas().style.cursor = 'pointer'
+      })
+      map.on('mouseleave', 'blam-admin-reports-dot', () => {
+        map.getCanvas().style.cursor = ''
+      })
+      map.on('click', 'blam-admin-reports-dot', (e) => {
+        const f = e.features?.[0]
+        if (!f || f.geometry.type !== 'Point') return
+        const props = f.properties as { title?: string; location?: string; mismatch?: number } | undefined
+        const box = document.createElement('div')
+        box.className = 'flex flex-col gap-0.5 text-left'
+        const t = document.createElement('p')
+        t.className = 'text-[13px] font-semibold text-ink'
+        t.textContent = props?.title ?? 'Laporan Warga'
+        const m = document.createElement('p')
+        m.className = 'text-[11px] text-ink-soft'
+        m.textContent = `${props?.location ?? ''}${props?.mismatch ? ' · Mismatch >5km' : ''}`
+        box.append(t, m)
+        popupRef.current?.remove()
+        popupRef.current = new Popup({ offset: 12, closeButton: false })
+          .setLngLat(f.geometry.coordinates as [number, number])
+          .setDOMContent(box)
+          .addTo(map)
+      })
+
       map.addSource('blam-focus', {
         type: 'geojson',
         data: buildSinglePointGeoJson(focusCoordRef.current),
@@ -1331,6 +1403,13 @@ export default function MapView({
       wipeTimerRef.current = window.setTimeout(runWipe, Math.max(0, fitDuration - 220))
     }
   }, [fitIndonesiaSignal])
+
+  useEffect(() => {
+    adminReportsRef.current = adminReports
+    if (!readyRef.current) return
+    const src = mapRef.current?.getSource('blam-admin-reports') as GeoJSONSource | undefined
+    src?.setData(buildAdminReportsGeoJson(adminReports))
+  }, [adminReports])
 
   useEffect(() => {
     if (locateSignal === 0) return
