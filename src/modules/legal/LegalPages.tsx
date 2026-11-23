@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { FileText, Mail, ShieldCheck, X } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 import { BlamNatureIcon } from '../../components/ui/bumpIcons'
 import type { AppPath } from '../../lib/route'
@@ -52,10 +52,19 @@ function LegalTab({
       href={href}
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`panel-tab flex-1 gap-1.5 whitespace-nowrap ${active ? 'is-active' : ''}`}
+      className={`panel-tab relative flex-1 whitespace-nowrap ${active ? 'font-semibold text-ink' : ''}`}
     >
-      {icon}
-      {label}
+      {active && (
+        <motion.span
+          layoutId="legal-tab-pill"
+          transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+          className="absolute inset-0 rounded-[9px] bg-white shadow-[0_1px_3px_rgba(15,29,50,0.09)]"
+        />
+      )}
+      <span className="relative z-10 inline-flex items-center gap-1.5">
+        {icon}
+        {label}
+      </span>
     </a>
   )
 }
@@ -75,9 +84,12 @@ function LegalShell({
   onClose: () => void
   children: ReactNode
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     const prevTitle = document.title
     document.title = active === 'privacy' ? 'Kebijakan Privasi - Blam' : 'Ketentuan Layanan - Blam'
+    scrollRef.current?.scrollTo({ top: 0 })
     return () => {
       document.title = prevTitle
     }
@@ -150,7 +162,7 @@ function LegalShell({
           </nav>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 pb-6 sm:px-6">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 pb-6 sm:px-6">
           <div className="pb-4">
             <span className="inline-flex items-center rounded-full bg-mint px-2.5 py-0.5 text-[11px] font-semibold text-forest">
               {active === 'privacy' ? 'Privasi & Data' : 'Aturan Penggunaan'}
@@ -179,19 +191,35 @@ function LegalShell({
 
 type LegalProps = { onNavigate: (path: AppPath) => void; onClose: () => void }
 
-export function LegalModal({ page, ...props }: LegalProps & { page: 'privacy' | 'terms' }) {
-  return page === 'privacy' ? <PrivacyPage {...props} /> : <TermsPage {...props} />
-}
+const LEGAL_META = {
+  privacy: {
+    title: 'Kebijakan Privasi Blam',
+    subtitle: 'Terakhir diperbarui: 19 November 2026 · Berlaku untuk https://blam.itzyx.my.id',
+  },
+  terms: {
+    title: 'Ketentuan Layanan Blam',
+    subtitle: 'Terakhir diperbarui: 19 November 2026 · Berlaku untuk https://blam.itzyx.my.id',
+  },
+} as const
 
-function PrivacyPage({ onNavigate, onClose }: LegalProps) {
+export function LegalModal({ page, onNavigate, onClose }: LegalProps & { page: 'privacy' | 'terms' }) {
+  const meta = LEGAL_META[page]
   return (
     <LegalShell
-      active="privacy"
-      title="Kebijakan Privasi Blam"
-      subtitle="Terakhir diperbarui: 19 November 2026 · Berlaku untuk https://blam.itzyx.my.id"
+      active={page}
+      title={meta.title}
+      subtitle={meta.subtitle}
       onNavigate={onNavigate}
       onClose={onClose}
     >
+      {page === 'privacy' ? <PrivacyContent /> : <TermsContent onNavigate={onNavigate} />}
+    </LegalShell>
+  )
+}
+
+function PrivacyContent() {
+  return (
+    <>
       <p className="px-1 text-[14px] leading-relaxed text-ink-soft [&_strong]:text-ink">
         <strong>Blam</strong> adalah platform radar konservasi untuk memantau, melaporkan, memverifikasi, dan
         menindaklanjuti ancaman terhadap hutan tropis, mangrove pesisir, serta daerah aliran sungai di Indonesia.
@@ -311,19 +339,13 @@ function PrivacyPage({ onNavigate, onClose }: LegalProps) {
           </ul>
         </LegalSection>
       </div>
-    </LegalShell>
+    </>
   )
 }
 
-function TermsPage({ onNavigate, onClose }: LegalProps) {
+function TermsContent({ onNavigate }: { onNavigate: (path: AppPath) => void }) {
   return (
-    <LegalShell
-      active="terms"
-      title="Ketentuan Layanan Blam"
-      subtitle="Terakhir diperbarui: 19 November 2026 · Berlaku untuk https://blam.itzyx.my.id"
-      onNavigate={onNavigate}
-      onClose={onClose}
-    >
+    <>
       <p className="px-1 text-[14px] leading-relaxed text-ink-soft [&_strong]:text-ink">
         Dengan mengakses atau menggunakan layanan <strong>Blam</strong>, Anda menyetujui Ketentuan Layanan ini serta{' '}
         <a
@@ -398,6 +420,6 @@ function TermsPage({ onNavigate, onClose }: LegalProps) {
           </p>
         </LegalSection>
       </div>
-    </LegalShell>
+    </>
   )
 }
