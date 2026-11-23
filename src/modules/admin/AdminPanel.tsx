@@ -629,13 +629,20 @@ export default function AdminPanel({
                     if (!expandedId) setExpandedId(filteredPendingOrgs[0].id)
                     else setAutoAdvance((v) => !v)
                   }}
-                  className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                  title={expandedId ? (autoAdvance ? 'Auto-lanjut aktif' : 'Mode manual') : 'Mulai Triage'}
+                  aria-label={expandedId ? (autoAdvance ? 'Auto-lanjut aktif' : 'Mode manual') : 'Mulai Triage'}
+                  className={`${
+                    expanded
+                      ? 'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[11px] px-3 text-[12px] font-medium whitespace-nowrap'
+                      : 'grid size-9 shrink-0 place-items-center rounded-[11px]'
+                  } transition ${
                     autoAdvance
                       ? 'bg-leaf/15 text-forest ring-1 ring-leaf/30'
-                      : 'bg-white text-ink-soft ring-1 ring-ink/10'
+                      : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
                   }`}
                 >
-                  <Zap className="size-3" /> {expandedId ? (autoAdvance ? 'Auto-lanjut' : 'Manual') : 'Mulai Triage'}
+                  <Zap className={expanded ? 'size-3.5' : 'size-4'} />
+                  {expanded && (expandedId ? (autoAdvance ? 'Auto-lanjut' : 'Manual') : 'Mulai Triage')}
                 </button>
               )}
             </div>
@@ -873,13 +880,19 @@ export default function AdminPanel({
                     }
                   }}
                   title={expandedId ? (autoAdvance ? 'Auto-lanjut aktif' : 'Mode manual') : 'Mulai Triage'}
-                  className={`inline-flex h-9 shrink-0 items-center gap-1 rounded-[11px] px-2.5 text-[11px] font-medium whitespace-nowrap transition ${
+                  aria-label={expandedId ? (autoAdvance ? 'Auto-lanjut aktif' : 'Mode manual') : 'Mulai Triage'}
+                  className={`${
+                    expanded
+                      ? 'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[11px] px-3 text-[12px] font-medium whitespace-nowrap'
+                      : 'grid size-9 shrink-0 place-items-center rounded-[11px]'
+                  } transition ${
                     autoAdvance
                       ? 'bg-leaf text-white shadow-xs'
                       : 'bg-white/85 text-ink-soft shadow-[0_1px_2px_rgba(15,23,42,0.05)] hover:text-ink'
                   }`}
                 >
-                  <Zap className="size-3.5" /> {expandedId ? (autoAdvance ? 'Auto' : 'Manual') : 'Triage'}
+                  <Zap className={expanded ? 'size-3.5' : 'size-4'} />
+                  {expanded && (expandedId ? (autoAdvance ? 'Auto-lanjut' : 'Manual') : 'Mulai Triage')}
                 </button>
               )}
 

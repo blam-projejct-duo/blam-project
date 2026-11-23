@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="smoke" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a2c24"/><stop offset="0.55" stop-color="#8b4528"/><stop offset="1" stop-color="#d97736"/></linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#smoke)"/>
+  <circle cx="310" cy="70" r="34" fill="#fbbf24" opacity="0.45"/>
+  <path d="M0 175Q90 155 190 178T400 165V300H0Z" fill="#2d1e18"/>
+  <path d="M0 220Q110 205 230 225T400 212V300H0Z" fill="#1f1512"/>
+  <g stroke="#140d0b" stroke-width="4" stroke-linecap="round">
+    <path d="M55 215V145M55 170l-14-16M55 180l12-12"/>
+    <path d="M135 225V155M135 182l14-14"/>
+    <path d="M265 210V138M265 166l-15-16M265 176l13-13"/>
+    <path d="M345 222V162M345 184l-11-12"/>
+  </g>
+  <path d="M90 250c8-22 22-28 24-46 10 14 14 28 8 46z" fill="#f97316"/>
+  <path d="M96 250c4-12 12-16 14-26 5 8 7 16 4 26z" fill="#fde047"/>
+  <path d="M200 260c10-26 24-32 28-52 12 16 16 32 10 52z" fill="#ef4444"/>
+  <path d="M208 260c5-14 13-18 15-30 6 10 8 18 5 30z" fill="#fef08a"/>
+</svg>

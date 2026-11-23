@@ -284,9 +284,21 @@ export function AuthPanel({
             </button>
           )
         ) : (
-          <p className="text-center text-[12px] font-normal text-ink-soft">
-            Auth belum dikonfigurasi
-          </p>
+          <div className="flex flex-col items-center gap-2.5 rounded-[12px] border border-line bg-canvas p-3.5 text-center">
+            <p className="text-[12px] font-normal text-ink-soft">
+              Auth server belum dikonfigurasi di <code className="font-mono text-[11px]">.env</code>. Gunakan Mode Demo lokal untuk mencoba semua peran.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                onDone?.()
+                navigateApp('/demo')
+              }}
+              className="btn-soft h-10 w-full text-[13px] font-medium text-forest"
+            >
+              Buka Mode Demo (Data Lokal)
+            </button>
+          </div>
         )}
 
         <p className="pt-1 text-center text-[12px] font-normal leading-relaxed text-ink-soft">

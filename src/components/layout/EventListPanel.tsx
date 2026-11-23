@@ -1237,7 +1237,9 @@ export default function EventListPanel({
                           role="tab"
                           aria-selected={active}
                           onClick={() => setHazardFilter(opt.id)}
-                          className={`panel-tab flex-1 whitespace-nowrap ${active ? 'is-active' : ''}`}
+                          className={`panel-tab shrink-0 flex-1 whitespace-nowrap ${
+                            expanded ? '' : '!px-2 !text-[11.5px]'
+                          } ${active ? 'is-active' : ''}`}
                         >
                           {opt.label}
                         </button>

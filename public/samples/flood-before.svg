@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="rain" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#475569"/><stop offset="1" stop-color="#94a3b8"/></linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#rain)"/>
+  <path d="M0 150Q100 138 210 152T400 144V300H0Z" fill="#64748b"/>
+  <path d="M0 185Q90 175 190 188T400 180V300H0Z" fill="#927556"/>
+  <path d="M0 215Q110 202 230 218T400 208V300H0Z" fill="#7c6247"/>
+  <path d="M20 232Q80 225 140 232M190 248Q250 240 320 248M60 268Q130 260 200 268" stroke="#cbd5e1" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <g fill="#b45309">
+    <rect x="70" y="156" width="54" height="34" rx="3"/><polygon points="64,156 97,134 130,156" fill="#78350f"/>
+    <rect x="260" y="162" width="60" height="32" rx="3"/><polygon points="254,162 290,140 326,162" fill="#78350f"/>
+  </g>
+  <g stroke="#cbd5e1" stroke-width="1.5" opacity="0.5">
+    <path d="M40 20l-8 28M95 15l-8 28M155 28l-8 28M220 18l-8 28M295 25l-8 28M355 15l-8 28"/>
+  </g>
+</svg>

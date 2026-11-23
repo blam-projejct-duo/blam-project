@@ -20,10 +20,18 @@ import type {
   Severity,
   VerifiedSignalRecord,
 } from '../types'
+import { localFallbackDispatch } from './localFallback'
 import { isDemoPathname } from './route'
 import { supabase } from './supabase'
 
 const DEMO_STORAGE_KEY = 'blam_demo_user_id'
+let localFallbackActive = false
+
+function extractActiveUserId(token: string | null): string | null {
+  if (token?.startsWith('demo:')) return token.slice(5).trim() || null
+  if (isDemoPathname()) return getDemoSessionId()
+  return null
+}
 
 export function setDemoSessionId(userId: string | null) {
   if (typeof window === 'undefined') return
@@ -65,12 +73,36 @@ async function apiFetch<T>(
     throw new Error('Silakan masuk akun terlebih dahulu')
   }
 
-  const res = await fetch(`/api${path}`, { ...rest, headers })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    throw new Error((data as { error?: string }).error ?? `Request gagal (${res.status})`)
+  const activeUserId = extractActiveUserId(token)
+  const method = rest.method ?? 'GET'
+
+  if (localFallbackActive) {
+    return localFallbackDispatch<T>(path, method, rest.body, activeUserId)
   }
-  return data as T
+
+  try {
+    const res = await fetch(`/api${path}`, { ...rest, headers })
+    if (res.status === 404 || res.status >= 500) {
+      localFallbackActive = true
+      console.info('[Blam:LocalFallback] API tidak terhubung, beralih ke data demo lokal JSON.')
+      return localFallbackDispatch<T>(path, method, rest.body, activeUserId)
+    }
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new Error((data as { error?: string }).error ?? `Request gagal (${res.status})`)
+    }
+    return data as T
+  } catch (err) {
+    if (rest.signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+      throw err
+    }
+    if (err instanceof TypeError || (err instanceof Error && /fetch|network|failed/i.test(err.message))) {
+      localFallbackActive = true
+      console.info('[Blam:LocalFallback] Jaringan API tidak tersedia, beralih ke data demo lokal JSON.')
+      return localFallbackDispatch<T>(path, method, rest.body, activeUserId)
+    }
+    throw err
+  }
 }
 
 export async function fetchDemoAccounts(): Promise<Profile[]> {
