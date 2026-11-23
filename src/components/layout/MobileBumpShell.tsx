@@ -1,5 +1,4 @@
-import { AnimatePresence, animate, motion, useDragControls, useMotionValue } from 'framer-motion'
-import type { PanInfo } from 'framer-motion'
+import { AnimatePresence, animate, motion, useMotionValue } from 'framer-motion'
 import {
   Building2,
   CalendarPlus,
@@ -122,12 +121,15 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const { profile, notifications, openAuthModal } = useAuth()
   const rootRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
+  const handleRef = useRef<HTMLDivElement>(null)
+  const animControlRef = useRef<{ stop: () => void } | null>(null)
   const touchStartYRef = useRef<number | null>(null)
   const touchStartSheetYRef = useRef<number>(0)
   const lastTouchYRef = useRef<number>(0)
   const lastTouchTimeRef = useRef<number>(0)
   const touchVelocityRef = useRef<number>(0)
   const isDraggingSheetRef = useRef(false)
+  const isHandleDragRef = useRef(false)
   const canPullDownRef = useRef(false)
   const didDragRef = useRef(false)
   const [H, setH] = useState(0)
@@ -147,7 +149,6 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const [draftReport, setDraftReport] = useState<CitizenReport | null>(null)
   const [draftSignal, setDraftSignal] = useState<SatelliteSignal | null>(null)
 
-  const controls = useDragControls()
   const sheetY = useMotionValue(1200)
   const sheetOpacity = useMotionValue(0)
 
@@ -177,10 +178,11 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
 
   useEffect(() => {
     if (H === 0) return
-    const cY = animate(sheetY, snapY[targetKey], SPRING)
+    animControlRef.current?.stop()
+    animControlRef.current = animate(sheetY, snapY[targetKey], SPRING)
     const cO = animate(sheetOpacity, targetKey === 'closed' ? 0 : 1, { duration: 0.18 })
     return () => {
-      cY.stop()
+      animControlRef.current?.stop()
       cO.stop()
     }
   }, [sheetY, sheetOpacity, snapY, targetKey, H])
@@ -265,15 +267,11 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         Math.abs(snapY[k] - projectedY) < Math.abs(snapY[best] - projectedY) ? k : best,
       )
       setSnap(next)
-      animate(sheetY, snapY[next], SPRING)
+      animControlRef.current?.stop()
+      animControlRef.current = animate(sheetY, snapY[next], SPRING)
     },
     [closeSheet, sheetY, snapY],
   )
-
-  const onDragEnd = (_: unknown, info: PanInfo) => {
-    const projected = sheetY.get() + info.velocity.y * 0.2
-    finishSheetDrag(projected)
-  }
 
   const cycleSnap = () => {
     if (didDragRef.current) {
@@ -287,17 +285,20 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
     const el = sheetRef.current
     if (!el) return
 
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return
-      const y = e.touches[0].clientY
-      touchStartYRef.current = y
+    const beginDrag = (clientY: number, target: EventTarget | null) => {
+      animControlRef.current?.stop()
+      touchStartYRef.current = clientY
       touchStartSheetYRef.current = sheetY.get()
-      lastTouchYRef.current = y
+      lastTouchYRef.current = clientY
       lastTouchTimeRef.current = performance.now()
       touchVelocityRef.current = 0
       isDraggingSheetRef.current = false
+      didDragRef.current = false
+      isHandleDragRef.current = Boolean(
+        handleRef.current && target instanceof Node && handleRef.current.contains(target),
+      )
 
-      let node = e.target instanceof HTMLElement ? e.target : null
+      let node = target instanceof HTMLElement ? target : null
       let scrolledDown = false
       while (node && node !== el) {
         if (node.scrollHeight > node.clientHeight + 2 && node.scrollTop > 2) {
@@ -306,57 +307,89 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
         }
         node = node.parentElement
       }
-      canPullDownRef.current = !scrolledDown
+      canPullDownRef.current = isHandleDragRef.current || !scrolledDown
     }
 
-    const onTouchMove = (e: TouchEvent) => {
-      if (touchStartYRef.current === null || e.touches.length !== 1) return
-      const currentY = e.touches[0].clientY
-      const dy = currentY - touchStartYRef.current
+    const moveDrag = (clientY: number, prevent?: () => void) => {
+      if (touchStartYRef.current === null) return
+      const dy = clientY - touchStartYRef.current
       const now = performance.now()
       const dt = Math.max(1, now - lastTouchTimeRef.current)
-      touchVelocityRef.current = ((currentY - lastTouchYRef.current) / dt) * 1000
-      lastTouchYRef.current = currentY
+      const instantV = ((clientY - lastTouchYRef.current) / dt) * 1000
+      touchVelocityRef.current = touchVelocityRef.current * 0.4 + instantV * 0.6
+      lastTouchYRef.current = clientY
       lastTouchTimeRef.current = now
 
       if (!isDraggingSheetRef.current) {
-        if (snap !== 'full' && dy < -6) {
+        if (isHandleDragRef.current && Math.abs(dy) > 3) {
           isDraggingSheetRef.current = true
-        } else if (canPullDownRef.current && dy > 6) {
+          didDragRef.current = true
+        } else if (snap !== 'full' && dy < -5) {
+          isDraggingSheetRef.current = true
+        } else if (canPullDownRef.current && dy > 5) {
           isDraggingSheetRef.current = true
         }
       }
 
       if (isDraggingSheetRef.current) {
-        if (e.cancelable) e.preventDefault()
+        prevent?.()
         const raw = touchStartSheetYRef.current + dy
         const clamped =
           raw < snapY.full
-            ? snapY.full + (raw - snapY.full) * 0.15
+            ? snapY.full + (raw - snapY.full) * 0.14
             : Math.min(snapY.peek + 90, raw)
         sheetY.set(clamped)
       }
     }
 
-    const onTouchEnd = () => {
+    const endDrag = () => {
       if (isDraggingSheetRef.current) {
-        const projected = sheetY.get() + touchVelocityRef.current * 0.18
+        const projected = sheetY.get() + touchVelocityRef.current * 0.16
         finishSheetDrag(projected)
       }
       touchStartYRef.current = null
       isDraggingSheetRef.current = false
+      isHandleDragRef.current = false
       canPullDownRef.current = false
+    }
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return
+      beginDrag(e.touches[0].clientY, e.target)
+    }
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return
+      moveDrag(e.touches[0].clientY, () => {
+        if (e.cancelable) e.preventDefault()
+      })
+    }
+    const onTouchEnd = () => endDrag()
+
+    const handleEl = handleRef.current
+    const onHandleMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return
+      beginDrag(e.clientY, e.target)
+      const onMouseMove = (ev: MouseEvent) => moveDrag(ev.clientY)
+      const onMouseUp = () => {
+        window.removeEventListener('mousemove', onMouseMove)
+        window.removeEventListener('mouseup', onMouseUp)
+        endDrag()
+      }
+      window.addEventListener('mousemove', onMouseMove)
+      window.addEventListener('mouseup', onMouseUp)
     }
 
     el.addEventListener('touchstart', onTouchStart, { passive: true })
     el.addEventListener('touchmove', onTouchMove, { passive: false })
     el.addEventListener('touchend', onTouchEnd, { passive: true })
     el.addEventListener('touchcancel', onTouchEnd, { passive: true })
+    handleEl?.addEventListener('mousedown', onHandleMouseDown)
     return () => {
       el.removeEventListener('touchstart', onTouchStart)
       el.removeEventListener('touchmove', onTouchMove)
       el.removeEventListener('touchend', onTouchEnd)
       el.removeEventListener('touchcancel', onTouchEnd)
+      handleEl?.removeEventListener('mousedown', onHandleMouseDown)
     }
   }, [H, snap, snapY, sheetY, finishSheetDrag])
 
@@ -837,30 +870,17 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
       {H > 0 && (
         <motion.div
           ref={sheetRef}
-          drag="y"
-          dragControls={controls}
-          dragListener={false}
-          dragConstraints={{ top: snapY.full, bottom: snapY.peek + 90 }}
-          dragElastic={0.08}
-          dragMomentum={false}
-          onDrag={() => {
-            didDragRef.current = true
-          }}
-          onDragEnd={onDragEnd}
           inert={!sheetOpen}
           aria-hidden={!sheetOpen}
           role="dialog"
           aria-label="Panel informasi"
           className={`atlas-sheet absolute inset-x-0 bottom-0 z-[600] flex flex-col rounded-t-[24px] border-x-0 border-b-0 ${sheetOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
-          style={{ height: sheetH, y: sheetY, opacity: sheetOpacity }}
+          style={{ height: sheetH, y: sheetY, opacity: sheetOpacity, willChange: 'transform' }}
         >
           <div
-            onPointerDown={(e) => {
-              didDragRef.current = false
-              controls.start(e)
-            }}
+            ref={handleRef}
             onClick={cycleSnap}
-            className="flex h-7 shrink-0 cursor-grab touch-none items-center justify-center"
+            className="flex h-7 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
           >
             <span className="h-1 w-9 rounded-full bg-line" />
           </div>
@@ -871,6 +891,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               if (snap !== 'full' && e.deltaY > 0) setSnap('full')
             }}
             onScrollCapture={(e) => {
+              if (isDraggingSheetRef.current) return
               const target = e.target
               if (snap !== 'full' && target instanceof HTMLElement && target.scrollTop > 4) {
                 setSnap('full')
