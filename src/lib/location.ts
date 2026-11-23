@@ -14,8 +14,34 @@ interface LocationSnapshot {
   error: string | null
 }
 
+const LAST_COORDS_KEY = 'blam_last_user_coords'
+
+function readSavedCoords(): UserCoords | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(LAST_COORDS_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<UserCoords>
+    if (typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+      return { lat: parsed.lat, lng: parsed.lng }
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+function saveCoords(coords: UserCoords) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(LAST_COORDS_KEY, JSON.stringify(coords))
+  } catch {
+    // ignore
+  }
+}
+
 let snapshot: LocationSnapshot = {
-  coords: null,
+  coords: readSavedCoords(),
   permission: typeof navigator !== 'undefined' && 'geolocation' in navigator ? 'prompt' : 'unsupported',
   requesting: false,
   error: null,
@@ -98,6 +124,7 @@ export function requestUserLocation(opts?: {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         }
+        saveCoords(coords)
         inflightPromise = null
         setSnapshot({
           coords,

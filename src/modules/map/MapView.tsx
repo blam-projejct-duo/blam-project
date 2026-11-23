@@ -1452,13 +1452,23 @@ export default function MapView({
     if (locateSignal === 0) return
     const fitAtStart = fitIndonesiaSignalRef.current
     let jumped = false
-    const go = (lat: number, lng: number) => {
+    const go = (lat: number, lng: number, animateMove = true) => {
       userCoordRef.current = [lng, lat]
       const userSrc = mapRef.current?.getSource('blam-user') as GeoJSONSource | undefined
       userSrc?.setData(buildSinglePointGeoJson(userCoordRef.current))
       if (fitIndonesiaSignalRef.current !== fitAtStart || radarModeRef.current) return
-      const currentZoom = mapRef.current?.getZoom() ?? 0
-      focusOn(lat, lng, Math.min(18, Math.max(currentZoom, LOCATE_ZOOM)))
+      const map = mapRef.current
+      if (!map) return
+      const targetZoom = Math.min(18, Math.max(map.getZoom(), LOCATE_ZOOM))
+      map.easeTo({
+        center: [lng, lat],
+        zoom: targetZoom,
+        bearing: 0,
+        pitch: 0,
+        padding: globePaddingFor(targetZoom),
+        duration: animateMove && !reducedMotion() ? 550 : 0,
+        essential: true,
+      })
       jumped = true
     }
 
@@ -1467,14 +1477,16 @@ export default function MapView({
       go(cached.lat, cached.lng)
     }
 
-    void requestUserLocation({ forceRefresh: Boolean(cached), timeoutMs: 3500 }).then((fresh) => {
+    void requestUserLocation({ forceRefresh: Boolean(cached), timeoutMs: 2000 }).then((fresh) => {
       if (fresh) {
-        if (
-          !jumped ||
-          !cached ||
-          Math.hypot(fresh.lat - cached.lat, fresh.lng - cached.lng) > 0.0005
-        ) {
+        if (!jumped) {
           go(fresh.lat, fresh.lng)
+        } else if (cached && Math.hypot(fresh.lat - cached.lat, fresh.lng - cached.lng) > 0.002) {
+          go(fresh.lat, fresh.lng)
+        } else {
+          userCoordRef.current = [fresh.lng, fresh.lat]
+          const userSrc = mapRef.current?.getSource('blam-user') as GeoJSONSource | undefined
+          userSrc?.setData(buildSinglePointGeoJson(userCoordRef.current))
         }
       } else if (!jumped) {
         go(DEFAULT_CENTER[1], DEFAULT_CENTER[0])
