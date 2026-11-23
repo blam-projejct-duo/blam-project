@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, useAnimationControls, useDragControls } from 'framer-motion'
+import { AnimatePresence, animate, motion, useDragControls, useMotionValue } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
 import {
   Building2,
@@ -121,8 +121,15 @@ function DockItem({ label, children }: { label: string; children: ReactNode }) {
 export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const { profile, notifications, openAuthModal } = useAuth()
   const rootRef = useRef<HTMLDivElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
   const touchStartYRef = useRef<number | null>(null)
+  const touchStartSheetYRef = useRef<number>(0)
+  const lastTouchYRef = useRef<number>(0)
+  const lastTouchTimeRef = useRef<number>(0)
+  const touchVelocityRef = useRef<number>(0)
+  const isDraggingSheetRef = useRef(false)
   const canPullDownRef = useRef(false)
+  const didDragRef = useRef(false)
   const [H, setH] = useState(0)
   const [mode, setMode] = useState<Mode>(() => (radar.deepLinkedId ? 'detail' : null))
   const [snap, setSnap] = useState<Snap>('half')
@@ -141,7 +148,8 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const [draftSignal, setDraftSignal] = useState<SatelliteSignal | null>(null)
 
   const controls = useDragControls()
-  const anim = useAnimationControls()
+  const sheetY = useMotionValue(1200)
+  const sheetOpacity = useMotionValue(0)
 
   useLayoutEffect(() => {
     const el = rootRef.current
@@ -169,8 +177,13 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
 
   useEffect(() => {
     if (H === 0) return
-    void anim.start({ y: snapY[targetKey], opacity: targetKey === 'closed' ? 0 : 1 }, SPRING)
-  }, [anim, snapY, targetKey, H])
+    const cY = animate(sheetY, snapY[targetKey], SPRING)
+    const cO = animate(sheetOpacity, targetKey === 'closed' ? 0 : 1, { duration: 0.18 })
+    return () => {
+      cY.stop()
+      cO.stop()
+    }
+  }, [sheetY, sheetOpacity, snapY, targetKey, H])
 
   const { setSelectedId, setSelectedSignal, fitIndonesia } = radar
 
@@ -242,22 +255,110 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
     setEventOpen(true)
   }
 
+  const finishSheetDrag = useCallback(
+    (projectedY: number) => {
+      if (projectedY > snapY.peek + 48) {
+        closeSheet()
+        return
+      }
+      const next = (['full', 'half', 'peek'] as const).reduce((best, k) =>
+        Math.abs(snapY[k] - projectedY) < Math.abs(snapY[best] - projectedY) ? k : best,
+      )
+      setSnap(next)
+      animate(sheetY, snapY[next], SPRING)
+    },
+    [closeSheet, sheetY, snapY],
+  )
+
   const onDragEnd = (_: unknown, info: PanInfo) => {
-    const projected = snapY[snap] + info.offset.y + info.velocity.y * 0.2
-    if (projected > snapY.peek + 48) {
-      closeSheet()
-      return
-    }
-    const next = (['full', 'half', 'peek'] as const).reduce((best, k) =>
-      Math.abs(snapY[k] - projected) < Math.abs(snapY[best] - projected) ? k : best,
-    )
-    setSnap(next)
-    void anim.start({ y: snapY[next], opacity: 1 }, SPRING)
+    const projected = sheetY.get() + info.velocity.y * 0.2
+    finishSheetDrag(projected)
   }
 
   const cycleSnap = () => {
+    if (didDragRef.current) {
+      didDragRef.current = false
+      return
+    }
     setSnap((s) => (s === 'peek' ? 'half' : s === 'half' ? 'full' : 'peek'))
   }
+
+  useEffect(() => {
+    const el = sheetRef.current
+    if (!el) return
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return
+      const y = e.touches[0].clientY
+      touchStartYRef.current = y
+      touchStartSheetYRef.current = sheetY.get()
+      lastTouchYRef.current = y
+      lastTouchTimeRef.current = performance.now()
+      touchVelocityRef.current = 0
+      isDraggingSheetRef.current = false
+
+      let node = e.target instanceof HTMLElement ? e.target : null
+      let scrolledDown = false
+      while (node && node !== el) {
+        if (node.scrollHeight > node.clientHeight + 2 && node.scrollTop > 2) {
+          scrolledDown = true
+          break
+        }
+        node = node.parentElement
+      }
+      canPullDownRef.current = !scrolledDown
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchStartYRef.current === null || e.touches.length !== 1) return
+      const currentY = e.touches[0].clientY
+      const dy = currentY - touchStartYRef.current
+      const now = performance.now()
+      const dt = Math.max(1, now - lastTouchTimeRef.current)
+      touchVelocityRef.current = ((currentY - lastTouchYRef.current) / dt) * 1000
+      lastTouchYRef.current = currentY
+      lastTouchTimeRef.current = now
+
+      if (!isDraggingSheetRef.current) {
+        if (snap !== 'full' && dy < -6) {
+          isDraggingSheetRef.current = true
+        } else if (canPullDownRef.current && dy > 6) {
+          isDraggingSheetRef.current = true
+        }
+      }
+
+      if (isDraggingSheetRef.current) {
+        if (e.cancelable) e.preventDefault()
+        const raw = touchStartSheetYRef.current + dy
+        const clamped =
+          raw < snapY.full
+            ? snapY.full + (raw - snapY.full) * 0.15
+            : Math.min(snapY.peek + 90, raw)
+        sheetY.set(clamped)
+      }
+    }
+
+    const onTouchEnd = () => {
+      if (isDraggingSheetRef.current) {
+        const projected = sheetY.get() + touchVelocityRef.current * 0.18
+        finishSheetDrag(projected)
+      }
+      touchStartYRef.current = null
+      isDraggingSheetRef.current = false
+      canPullDownRef.current = false
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    el.addEventListener('touchcancel', onTouchEnd, { passive: true })
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [H, snap, snapY, sheetY, finishSheetDrag])
 
   const sheetOpen = mode !== null
   const padBottom = !sheetOpen ? 0 : snap === 'peek' ? peekPx : halfPx
@@ -735,57 +836,29 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
       {/* Bottom Sheet */}
       {H > 0 && (
         <motion.div
-          initial={{ y: snapY.closed, opacity: 0 }}
-          animate={anim}
+          ref={sheetRef}
           drag="y"
           dragControls={controls}
           dragListener={false}
           dragConstraints={{ top: snapY.full, bottom: snapY.peek + 90 }}
-          dragElastic={0.05}
+          dragElastic={0.08}
           dragMomentum={false}
+          onDrag={() => {
+            didDragRef.current = true
+          }}
           onDragEnd={onDragEnd}
-          onTouchStart={(e) => {
-            touchStartYRef.current = e.touches[0]?.clientY ?? null
-            let el = e.target instanceof HTMLElement ? e.target : null
-            let scrolledDown = false
-            while (el && el !== e.currentTarget) {
-              if (el.scrollHeight > el.clientHeight + 2 && el.scrollTop > 2) {
-                scrolledDown = true
-                break
-              }
-              el = el.parentElement
-            }
-            canPullDownRef.current = !scrolledDown
-          }}
-          onTouchMove={(e) => {
-            if (touchStartYRef.current === null) return
-            const currentY = e.touches[0]?.clientY
-            if (currentY === undefined) return
-            const deltaUp = touchStartYRef.current - currentY
-            if (snap !== 'full' && deltaUp > 12) {
-              setSnap('full')
-              touchStartYRef.current = null
-              return
-            }
-            if (canPullDownRef.current && deltaUp < -48) {
-              if (snap === 'full') setSnap('half')
-              else closeSheet()
-              touchStartYRef.current = null
-            }
-          }}
-          onTouchEnd={() => {
-            touchStartYRef.current = null
-            canPullDownRef.current = false
-          }}
           inert={!sheetOpen}
           aria-hidden={!sheetOpen}
           role="dialog"
           aria-label="Panel informasi"
           className={`atlas-sheet absolute inset-x-0 bottom-0 z-[600] flex flex-col rounded-t-[24px] border-x-0 border-b-0 ${sheetOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
-          style={{ height: sheetH }}
+          style={{ height: sheetH, y: sheetY, opacity: sheetOpacity }}
         >
           <div
-            onPointerDown={(e) => controls.start(e)}
+            onPointerDown={(e) => {
+              didDragRef.current = false
+              controls.start(e)
+            }}
             onClick={cycleSnap}
             className="flex h-7 shrink-0 cursor-grab touch-none items-center justify-center"
           >
