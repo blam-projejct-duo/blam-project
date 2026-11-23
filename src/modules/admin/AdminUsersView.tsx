@@ -61,7 +61,7 @@ export default function AdminUsersView({
           )}
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
+        <div role="tablist" aria-label="Filter peran pengguna" className="panel-tabs min-w-0 flex-1">
           {(
             [
               { id: 'all', label: `Semua (${users.length})` },
@@ -70,20 +70,21 @@ export default function AdminUsersView({
               { id: 'agency', label: 'Instansi' },
               { id: 'admin', label: 'Admin' },
             ] as const
-          ).map((chip) => (
-            <button
-              key={chip.id}
-              type="button"
-              onClick={() => setRoleFilter(chip.id)}
-              className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                roleFilter === chip.id
-                  ? 'bg-ink text-white'
-                  : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
-              }`}
-            >
-              {chip.label}
-            </button>
-          ))}
+          ).map((chip) => {
+            const active = roleFilter === chip.id
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setRoleFilter(chip.id)}
+                className={`panel-tab flex-1 whitespace-nowrap ${active ? 'is-active' : ''}`}
+              >
+                {chip.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 

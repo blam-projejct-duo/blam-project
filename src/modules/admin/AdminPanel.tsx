@@ -598,27 +598,30 @@ export default function AdminPanel({
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5">
-              {(
-                [
-                  { id: 'all', label: `Semua (${pendingOrgs.length})` },
-                  { id: 'community', label: 'Komunitas' },
-                  { id: 'agency', label: 'Instansi' },
-                ] as const
-              ).map((chip) => (
-                <button
-                  key={chip.id}
-                  type="button"
-                  onClick={() => setOrgFilter(chip.id)}
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                    orgFilter === chip.id
-                      ? 'bg-ink text-white'
-                      : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
-                  }`}
-                >
-                  {chip.label}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <div role="tablist" aria-label="Filter organisasi" className="panel-tabs min-w-0 flex-1">
+                {(
+                  [
+                    { id: 'all', label: `Semua (${pendingOrgs.length})` },
+                    { id: 'community', label: 'Komunitas' },
+                    { id: 'agency', label: 'Instansi' },
+                  ] as const
+                ).map((chip) => {
+                  const active = orgFilter === chip.id
+                  return (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setOrgFilter(chip.id)}
+                      className={`panel-tab flex-1 whitespace-nowrap ${active ? 'is-active' : ''}`}
+                    >
+                      {chip.label}
+                    </button>
+                  )
+                })}
+              </div>
               {filteredPendingOrgs.length > 0 && (
                 <button
                   type="button"
@@ -626,7 +629,7 @@ export default function AdminPanel({
                     if (!expandedId) setExpandedId(filteredPendingOrgs[0].id)
                     else setAutoAdvance((v) => !v)
                   }}
-                  className={`ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
                     autoAdvance
                       ? 'bg-leaf/15 text-forest ring-1 ring-leaf/30'
                       : 'bg-white text-ink-soft ring-1 ring-ink/10'

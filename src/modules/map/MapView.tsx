@@ -466,10 +466,10 @@ export default function MapView({
       dragRotate: { around: 'center' },
       touchZoomRotate: true,
       touchPitch: false,
-      maxTileCacheZoomLevels: 15,
+      maxTileCacheZoomLevels: 18,
       refreshExpiredTiles: false,
-      cancelPendingTileRequestsWhileZooming: false,
-      fadeDuration: 150,
+      cancelPendingTileRequestsWhileZooming: true,
+      fadeDuration: 0,
       attributionControl: { compact: true },
       canvasContextAttributes: { alpha: true },
     })
@@ -599,8 +599,21 @@ export default function MapView({
     }
 
     const googleSessionAbort = new AbortController()
+    const canvas = map.getCanvas()
+    const onContextLost = (e: Event) => {
+      e.preventDefault()
+    }
+    const onContextRestored = () => {
+      map.resize()
+      map.triggerRepaint()
+    }
+    canvas.addEventListener('webglcontextlost', onContextLost, false)
+    canvas.addEventListener('webglcontextrestored', onContextRestored, false)
 
-    map.once('load', () => {
+    let initialized = false
+    const initMapOnce = () => {
+      if (initialized) return
+      initialized = true
       readyRef.current = true
       void ensureGoogleSatelliteLayer(map, styleRef.current, googleSessionAbort.signal)
       collapseDefaultAttrib()
@@ -1095,18 +1108,31 @@ export default function MapView({
       syncUserPinTexture(profileRef.current)
 
       applyMapStyle(map, styleRef.current)
-    })
+      window.dispatchEvent(new Event('blam:map-ready'))
+    }
 
+    map.once('style.load', initMapOnce)
+    map.once('load', initMapOnce)
+
+    let resizeRaf = 0
     const ro = new ResizeObserver(() => {
-      map.setMinZoom(computeGlobeMinZoom(host.clientWidth, host.clientHeight))
-      map.resize()
-      collapseDefaultAttrib()
+      if (resizeRaf) cancelAnimationFrame(resizeRaf)
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0
+        if (host.clientWidth <= 0 || host.clientHeight <= 0) return
+        map.setMinZoom(computeGlobeMinZoom(host.clientWidth, host.clientHeight))
+        map.resize()
+        collapseDefaultAttrib()
+      })
     })
     ro.observe(host)
 
     return () => {
       googleSessionAbort.abort()
+      canvas.removeEventListener('webglcontextlost', onContextLost, false)
+      canvas.removeEventListener('webglcontextrestored', onContextRestored, false)
       host.removeEventListener('click', onAttribClick, true)
+      cancelAnimationFrame(resizeRaf)
       cancelAnimationFrame(wipeRafRef.current)
       clearTimeout(wipeTimerRef.current)
       if (moveEndHandlerRef.current) map.off('moveend', moveEndHandlerRef.current)

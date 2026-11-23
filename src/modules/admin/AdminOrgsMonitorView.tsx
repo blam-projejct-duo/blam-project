@@ -65,27 +65,28 @@ export default function AdminOrgsMonitorView({
           )}
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
+        <div role="tablist" aria-label="Filter jenis organisasi" className="panel-tabs min-w-0 flex-1">
           {(
             [
               { id: 'all', label: `Semua (${verifiedOrgs.length})` },
               { id: 'community', label: 'Komunitas' },
               { id: 'agency', label: 'Instansi' },
             ] as const
-          ).map((chip) => (
-            <button
-              key={chip.id}
-              type="button"
-              onClick={() => setTypeFilter(chip.id)}
-              className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                typeFilter === chip.id
-                  ? 'bg-ink text-white'
-                  : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
-              }`}
-            >
-              {chip.label}
-            </button>
-          ))}
+          ).map((chip) => {
+            const active = typeFilter === chip.id
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTypeFilter(chip.id)}
+                className={`panel-tab flex-1 whitespace-nowrap ${active ? 'is-active' : ''}`}
+              >
+                {chip.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
