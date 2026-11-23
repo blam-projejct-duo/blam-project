@@ -997,22 +997,24 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           initial={false}
           animate={
             drawerOpen
-              ? { opacity: 1, clipPath: 'inset(0% 0% 0% 0% round 26px)' }
-              : { opacity: 0, clipPath: 'inset(0% 84% 0% 0% round 26px)' }
+              ? { opacity: 1, scaleX: 1 }
+              : { opacity: 0, scaleX: 0.18 }
           }
           transition={
             drawerOpen
-              ? { duration: 0.38, ease: [0.22, 1, 0.36, 1] }
-              : { duration: 0.24, ease: [0.4, 0, 0.2, 1] }
+              ? { duration: 0.26, ease: [0.22, 1, 0.36, 1] }
+              : { duration: 0.18, ease: [0.4, 0, 0.2, 1] }
           }
           style={{
             left: RAIL_GAP - 6,
             width: RAIL_W + FLOAT_GAP + drawerWidth + 12,
+            transformOrigin: 'left center',
+            willChange: 'transform, opacity',
           }}
-          className={`pointer-events-none absolute top-[10px] bottom-[10px] z-[590] rounded-[26px] backdrop-blur-xl transition-[width] duration-200 ${
+          className={`pointer-events-none absolute top-[10px] bottom-[10px] z-[590] rounded-[26px] backdrop-blur-md transition-[width] duration-200 ${
             isDarkMap
               ? 'border border-white/40 bg-white/24 shadow-[0_22px_50px_-10px_rgba(8,15,48,0.45),inset_0_1px_1px_rgba(255,255,255,0.48)]'
-              : 'border border-white/80 bg-[#f2f6fa]/78 shadow-[0_22px_50px_-10px_rgba(15,29,50,0.16),inset_0_1px_1px_rgba(255,255,255,0.9)]'
+              : 'border border-white/80 bg-[#f2f6fa]/82 shadow-[0_22px_50px_-10px_rgba(15,29,50,0.16),inset_0_1px_1px_rgba(255,255,255,0.9)]'
           }`}
         />
 
@@ -1023,15 +1025,19 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
           initial={false}
           animate={
             drawerOpen
-              ? { opacity: 1, x: 0, scale: 1 }
-              : { opacity: 0, x: -28, scale: 0.97 }
+              ? { opacity: 1, x: 0 }
+              : { opacity: 0, x: -24 }
           }
           transition={
             drawerOpen
-              ? { delay: 0.04, duration: 0.36, ease: [0.22, 1, 0.36, 1] }
-              : { duration: 0.22, ease: [0.4, 0, 0.2, 1] }
+              ? { duration: 0.24, ease: [0.22, 1, 0.36, 1] }
+              : { duration: 0.18, ease: [0.4, 0, 0.2, 1] }
           }
-          style={{ left: RAIL_GAP + RAIL_W + FLOAT_GAP, width: drawerWidth, transformOrigin: 'left center' }}
+          style={{
+            left: RAIL_GAP + RAIL_W + FLOAT_GAP,
+            width: drawerWidth,
+            willChange: 'transform, opacity',
+          }}
           className={`atlas-sheet absolute top-[70px] bottom-4 z-[600] flex flex-col overflow-hidden rounded-[22px] transition-[width] duration-200 ${drawerOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
         >
           <div className="flex min-h-0 flex-1 flex-col">

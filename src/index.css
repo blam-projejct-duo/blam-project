@@ -454,13 +454,15 @@ button {
   }
 
   .atlas-sheet {
-    background: rgba(242, 246, 250, 0.84);
-    -webkit-backdrop-filter: blur(26px) saturate(1.45);
-    backdrop-filter: blur(26px) saturate(1.45);
+    background: rgba(242, 246, 250, 0.88);
+    -webkit-backdrop-filter: blur(16px) saturate(1.35);
+    backdrop-filter: blur(16px) saturate(1.35);
     border: 1px solid rgba(255, 255, 255, 0.78);
     box-shadow:
       0 18px 42px -10px rgba(15, 29, 50, 0.18),
       inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   [data-map-style='satelit'] .atlas-sheet,

@@ -74,7 +74,7 @@ type Mode =
   | 'admin'
   | null
 
-const SPRING = { type: 'spring', stiffness: 290, damping: 32, mass: 0.9 } as const
+const SPRING = { type: 'spring', stiffness: 380, damping: 36, mass: 0.75 } as const
 const PEEK_PX = 214
 const JELAJAH_TABS: readonly ListTab[] = ['Ringkasan', 'Satelit']
 const AKSI_TABS_VERIFIER: readonly ListTab[] = ['Terdekat', 'Semua', 'Verifikasi']
@@ -150,7 +150,6 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const [draftSignal, setDraftSignal] = useState<SatelliteSignal | null>(null)
 
   const sheetY = useMotionValue(1200)
-  const sheetOpacity = useMotionValue(0)
 
   useLayoutEffect(() => {
     const el = rootRef.current
@@ -180,12 +179,10 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
     if (H === 0) return
     animControlRef.current?.stop()
     animControlRef.current = animate(sheetY, snapY[targetKey], SPRING)
-    const cO = animate(sheetOpacity, targetKey === 'closed' ? 0 : 1, { duration: 0.18 })
     return () => {
       animControlRef.current?.stop()
-      cO.stop()
     }
-  }, [sheetY, sheetOpacity, snapY, targetKey, H])
+  }, [sheetY, snapY, targetKey, H])
 
   const { setSelectedId, setSelectedSignal, fitIndonesia } = radar
 
@@ -875,7 +872,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           role="dialog"
           aria-label="Panel informasi"
           className={`atlas-sheet absolute inset-x-0 bottom-0 z-[600] flex flex-col rounded-t-[24px] border-x-0 border-b-0 ${sheetOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
-          style={{ height: sheetH, y: sheetY, opacity: sheetOpacity, willChange: 'transform' }}
+          style={{ height: sheetH, y: sheetY, willChange: 'transform' }}
         >
           <div
             ref={handleRef}
