@@ -433,7 +433,7 @@ export default function MapView({
     const map = mapRef.current
     if (!map) return
     const farJump = Math.abs(map.getZoom() - zoom) > 6
-    const duration = animate && !reducedMotion() ? (farJump ? 1150 : 850) : 0
+    const duration = animate && !reducedMotion() ? (farJump ? 850 : 600) : 0
     map.flyTo({
       center: [lng, lat],
       zoom,
@@ -1440,6 +1440,7 @@ export default function MapView({
   useEffect(() => {
     if (locateSignal === 0) return
     const fitAtStart = fitIndonesiaSignalRef.current
+    let jumped = false
     const go = (lat: number, lng: number) => {
       userCoordRef.current = [lng, lat]
       const userSrc = mapRef.current?.getSource('blam-user') as GeoJSONSource | undefined
@@ -1447,12 +1448,36 @@ export default function MapView({
       if (fitIndonesiaSignalRef.current !== fitAtStart || radarModeRef.current) return
       const currentZoom = mapRef.current?.getZoom() ?? 0
       focusOn(lat, lng, Math.min(18, Math.max(currentZoom, LOCATE_ZOOM)))
+      jumped = true
     }
-    if (!navigator.geolocation) return go(DEFAULT_CENTER[1], DEFAULT_CENTER[0])
+
+    // Jika koordinat pengguna sudah diketahui sebelumnya, langsung terbang ke titik tanpa menunggu GPS.
+    const cached = userCoordRef.current
+    if (cached) {
+      go(cached[1], cached[0])
+    }
+
+    if (!navigator.geolocation) {
+      if (!jumped) go(DEFAULT_CENTER[1], DEFAULT_CENTER[0])
+      return
+    }
+
     navigator.geolocation.getCurrentPosition(
-      (p) => go(p.coords.latitude, p.coords.longitude),
-      () => go(DEFAULT_CENTER[1], DEFAULT_CENTER[0]),
-      { enableHighAccuracy: true, maximumAge: 15000, timeout: 6000 },
+      (p) => {
+        const nextLat = p.coords.latitude
+        const nextLng = p.coords.longitude
+        if (
+          !jumped ||
+          !cached ||
+          Math.hypot(nextLat - cached[1], nextLng - cached[0]) > 0.0005
+        ) {
+          go(nextLat, nextLng)
+        }
+      },
+      () => {
+        if (!jumped) go(DEFAULT_CENTER[1], DEFAULT_CENTER[0])
+      },
+      { enableHighAccuracy: false, maximumAge: 60000, timeout: 2500 },
     )
   }, [locateSignal])
 
