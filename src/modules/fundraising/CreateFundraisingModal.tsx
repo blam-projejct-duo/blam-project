@@ -27,11 +27,12 @@ const KIND_LABEL: Record<HazardKind, string> = {
 
 interface Props {
   signal: SatelliteSignal
+  inline?: boolean
   onClose: () => void
   onCreated: () => Promise<void>
 }
 
-export default function CreateFundraisingModal({ signal, onClose, onCreated }: Props) {
+export default function CreateFundraisingModal({ signal, inline = false, onClose, onCreated }: Props) {
   const { memberships, profile } = useAuth()
   const activeOrgs = memberships.filter((m) => m.status === 'active' && m.organization)
 
@@ -114,18 +115,15 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
     }
   }
 
-  const modal = (
+  const panelContent = (
     <div
-      className="fixed inset-0 z-[1300] flex items-end justify-center bg-ink/45 backdrop-blur-[2px] sm:items-center sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Buat Penggalangan Dana"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
+      className={
+        inline
+          ? 'flex h-full min-h-0 w-full flex-col overflow-hidden'
+          : 'flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[16px] border border-line bg-surface shadow-[0_24px_48px_-12px_rgba(15,29,50,0.22)] sm:rounded-[16px]'
+      }
     >
-      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[16px] border border-line bg-surface shadow-[0_24px_48px_-12px_rgba(15,29,50,0.22)] sm:rounded-[16px]">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-white px-5 py-4">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-ink/8 px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="row-icon text-critical">
               <HeartHandshake className="size-5" strokeWidth={1.75} />
@@ -303,7 +301,22 @@ export default function CreateFundraisingModal({ signal, onClose, onCreated }: P
             </button>
           </div>
         </form>
-      </div>
+    </div>
+  )
+
+  if (inline) return panelContent
+
+  const modal = (
+    <div
+      className="fixed inset-0 z-[1300] flex items-end justify-center bg-ink/45 backdrop-blur-[2px] sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Buat Penggalangan Dana"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      {panelContent}
     </div>
   )
 

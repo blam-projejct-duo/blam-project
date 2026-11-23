@@ -2,7 +2,6 @@ import { motion } from 'framer-motion'
 import { FileText, Mail, ShieldCheck, X } from 'lucide-react'
 import { useEffect } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
-import { Pill } from '../../components/ui/atoms'
 import { BlamNatureIcon } from '../../components/ui/bumpIcons'
 import type { AppPath } from '../../lib/route'
 
@@ -17,13 +16,13 @@ function LegalSection({
 }) {
   return (
     <section className="atlas-group p-4 sm:p-5">
-      <div className="flex items-center gap-2.5">
-        <span className="num grid size-7 shrink-0 place-items-center rounded-full bg-canvas text-[12px] text-forest">
+      <div className="flex items-center gap-3">
+        <span className="num grid size-7 shrink-0 place-items-center rounded-[9px] bg-mint text-[12px] font-semibold text-forest">
           {number}
         </span>
-        <h3 className="text-[16px] font-semibold text-ink">{title}</h3>
+        <h3 className="text-[15px] font-semibold text-ink">{title}</h3>
       </div>
-      <div className="mt-2.5 space-y-2.5 text-[14px] leading-relaxed text-ink-soft [&_strong]:text-ink">
+      <div className="mt-3 space-y-2.5 text-[13.5px] leading-relaxed text-ink-soft [&_strong]:font-semibold [&_strong]:text-ink">
         {children}
       </div>
     </section>
@@ -53,9 +52,7 @@ function LegalTab({
       href={href}
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`relative flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] px-4 text-[12px] font-medium whitespace-nowrap transition-colors ${
-        active ? 'bg-ink text-white' : 'btn-soft'
-      }`}
+      className={`panel-tab flex-1 gap-1.5 whitespace-nowrap ${active ? 'is-active' : ''}`}
     >
       {icon}
       {label}
@@ -104,7 +101,7 @@ function LegalShell({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       onClick={onClose}
-      className="fixed inset-0 z-[1100] flex items-end justify-center bg-ink/30 backdrop-blur-[2px] md:items-center md:p-6"
+      className="fixed inset-0 z-[1100] flex items-stretch justify-center bg-ink/30 p-0 backdrop-blur-[2px] md:p-4"
     >
       <motion.div
         initial={{ opacity: 0, y: 28, scale: 0.98 }}
@@ -112,55 +109,59 @@ function LegalShell({
         exit={{ opacity: 0, y: 20, scale: 0.98 }}
         transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[16px] border border-line bg-white shadow-[0_24px_48px_-12px_rgba(15,29,50,0.22)] md:max-h-[88dvh] md:max-w-[640px] md:rounded-[16px]"
+        className="atlas-sheet flex h-dvh w-full flex-col overflow-hidden rounded-none md:h-full md:max-w-[660px] md:rounded-[22px]"
       >
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full border border-line bg-canvas">
-              <BlamNatureIcon className="size-6" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[16px] leading-tight font-semibold text-ink">Blam</span>
-              <span className="block truncate text-[12px] font-medium text-ink-soft">Dokumen Legal</span>
-            </span>
+        <header className="flex shrink-0 flex-col gap-3 border-b border-ink/8 px-5 pt-4 pb-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white shadow-xs">
+                <BlamNatureIcon className="size-6" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[15px] leading-tight font-semibold text-ink">Blam</span>
+                <span className="block truncate text-[12px] font-normal text-ink-soft">Dokumen Legal</span>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Tutup"
+              className="btn-soft size-9 shrink-0 !rounded-[10px] p-0 text-ink-soft hover:text-ink"
+            >
+              <X className="size-4" strokeWidth={1.75} />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Tutup"
-            className="btn-soft size-10 shrink-0 !rounded-[10px] p-0"
-          >
-            <X className="size-4" strokeWidth={1.75} />
-          </button>
-        </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-canvas px-4 pt-4 pb-6 sm:px-6">
-          <nav aria-label="Dokumen legal Blam" className="flex gap-2">
+          <nav aria-label="Dokumen legal Blam" className="panel-tabs">
             <LegalTab
               href="/privacy"
               active={active === 'privacy'}
-              icon={<ShieldCheck className="size-4 shrink-0" strokeWidth={1.75} />}
+              icon={<ShieldCheck className="size-3.5 shrink-0" strokeWidth={1.85} />}
               label="Kebijakan Privasi"
               onNavigate={onNavigate}
             />
             <LegalTab
               href="/terms"
               active={active === 'terms'}
-              icon={<FileText className="size-4 shrink-0" strokeWidth={1.75} />}
+              icon={<FileText className="size-3.5 shrink-0" strokeWidth={1.85} />}
               label="Ketentuan Layanan"
               onNavigate={onNavigate}
             />
           </nav>
+        </header>
 
-          <div className="mt-5 border-b border-line pb-5">
-            <Pill>{active === 'privacy' ? 'Privasi & Data' : 'Aturan Penggunaan'}</Pill>
-            <h1 className="mt-3 text-[24px] leading-tight font-semibold text-ink">{title}</h1>
-            <p className="mt-1.5 text-[12px] font-medium text-ink-soft">{subtitle}</p>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 pb-6 sm:px-6">
+          <div className="pb-4">
+            <span className="inline-flex items-center rounded-full bg-mint px-2.5 py-0.5 text-[11px] font-semibold text-forest">
+              {active === 'privacy' ? 'Privasi & Data' : 'Aturan Penggunaan'}
+            </span>
+            <h1 className="mt-2.5 text-[22px] leading-tight font-semibold text-ink sm:text-[24px]">{title}</h1>
+            <p className="mt-1 text-[12px] font-normal text-ink-soft">{subtitle}</p>
           </div>
 
-          <div className="mt-5 flex flex-col gap-3">{children}</div>
+          <div className="flex flex-col gap-3">{children}</div>
 
-          <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-[12px] font-medium text-ink-soft">
+          <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ink/8 pt-4 text-[12px] font-medium text-ink-soft">
             <span>&copy; 2026 Blam</span>
             <a
               href="mailto:blam@gmail.com"
@@ -197,11 +198,12 @@ function PrivacyPage({ onNavigate, onClose }: LegalProps) {
         Dokumen ini menjelaskan data yang kami kumpulkan, cara penggunaannya, serta hak Anda atas data tersebut.
       </p>
 
-      <div className="card-quiet bg-mint/45 p-4 sm:p-5">
-        <p className="text-[12px] font-semibold text-forest">
+      <div className="atlas-group border-l-4 border-leaf bg-mint/35 p-4 sm:p-5">
+        <p className="flex items-center gap-1.5 text-[12px] font-semibold text-forest">
+          <ShieldCheck className="size-4 shrink-0" strokeWidth={1.85} />
           Kepatuhan Google API Services User Data Policy (Limited Use)
         </p>
-        <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+        <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">
           Penggunaan dan transfer informasi yang diterima Blam dari Google API mematuhi sepenuhnya{' '}
           <a
             href="https://developers.google.com/terms/api-data-policy"

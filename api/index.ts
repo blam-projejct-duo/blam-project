@@ -1814,7 +1814,8 @@ app.post('/events', async (c) => {
       contentType: coverMimeType as string,
     })
     if (up.error) {
-      return c.json({ error: 'Gagal menyimpan foto sampul event' }, 500)
+      log('error', 'EVENT_COVER_UPLOAD', 'Gagal upload foto sampul event', { error: up.error.message })
+      return c.json({ error: `Gagal menyimpan foto sampul event: ${up.error.message}` }, 500)
     }
     coverUrl = supa.storage.from('conservation-media').getPublicUrl(uploadedPath).data.publicUrl
   }
@@ -1869,8 +1870,18 @@ app.post('/events', async (c) => {
 
   if (insErr || !created) {
     if (uploadedPath) await supa.storage.from('conservation-media').remove([uploadedPath])
-    log('error', 'EVENT_CREATE', 'Gagal membuat event baru', { error: insErr?.message })
-    return c.json({ error: 'Gagal membuat event konservasi' }, 500)
+    log('error', 'EVENT_CREATE', 'Gagal membuat event baru', { error: insErr?.message, code: insErr?.code })
+    if (insErr?.code === '23505') {
+      return c.json({ error: 'Titik satelit ini sudah terdaftar pada event lain' }, 409)
+    }
+    return c.json(
+      {
+        error: insErr?.message
+          ? `Gagal membuat event konservasi: ${insErr.message}`
+          : 'Gagal membuat event konservasi',
+      },
+      500,
+    )
   }
 
   if (linkedReport && linkedReport.status === 'escalated') {
@@ -3342,10 +3353,11 @@ app.get('/geocode/reverse', async (c) => {
 
     const name = nameParts.join(', ') || fallbackParts.slice(0, 2).join(', ') || 'Lokasi GPS'
     const detail = detailParts.join(', ') || fallbackParts.slice(2, 4).join(', ') || `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+    const area = [district, city, state].filter(Boolean).join(', ').slice(0, 140)
     const fullAddress = [name, detail].filter(Boolean).join(', ').slice(0, 160)
 
     c.header('Cache-Control', 'public, max-age=3600')
-    return c.json({ ok: true, name, detail, fullAddress })
+    return c.json({ ok: true, name, detail, area, fullAddress })
   } catch {
     return c.json({ ok: false, name: 'Lokasi GPS', detail: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, fullAddress: `Lokasi (${lat.toFixed(4)}, ${lng.toFixed(4)})` })
   }

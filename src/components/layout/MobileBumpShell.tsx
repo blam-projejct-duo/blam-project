@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import BlamLoader from '../../components/ui/BlamLoader'
 import { MarkerTierLegend, Orb } from '../../components/ui/atoms'
 import {
   AksiActionIcon,
@@ -120,6 +121,8 @@ function DockItem({ label, children }: { label: string; children: ReactNode }) {
 export default function MobileBumpShell({ radar }: { radar: Radar }) {
   const { profile, notifications, openAuthModal } = useAuth()
   const rootRef = useRef<HTMLDivElement>(null)
+  const touchStartYRef = useRef<number | null>(null)
+  const canPullDownRef = useRef(false)
   const [H, setH] = useState(0)
   const [mode, setMode] = useState<Mode>(() => (radar.deepLinkedId ? 'detail' : null))
   const [snap, setSnap] = useState<Snap>('half')
@@ -741,6 +744,39 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           dragElastic={0.05}
           dragMomentum={false}
           onDragEnd={onDragEnd}
+          onTouchStart={(e) => {
+            touchStartYRef.current = e.touches[0]?.clientY ?? null
+            let el = e.target instanceof HTMLElement ? e.target : null
+            let scrolledDown = false
+            while (el && el !== e.currentTarget) {
+              if (el.scrollHeight > el.clientHeight + 2 && el.scrollTop > 2) {
+                scrolledDown = true
+                break
+              }
+              el = el.parentElement
+            }
+            canPullDownRef.current = !scrolledDown
+          }}
+          onTouchMove={(e) => {
+            if (touchStartYRef.current === null) return
+            const currentY = e.touches[0]?.clientY
+            if (currentY === undefined) return
+            const deltaUp = touchStartYRef.current - currentY
+            if (snap !== 'full' && deltaUp > 12) {
+              setSnap('full')
+              touchStartYRef.current = null
+              return
+            }
+            if (canPullDownRef.current && deltaUp < -48) {
+              if (snap === 'full') setSnap('half')
+              else closeSheet()
+              touchStartYRef.current = null
+            }
+          }}
+          onTouchEnd={() => {
+            touchStartYRef.current = null
+            canPullDownRef.current = false
+          }}
           inert={!sheetOpen}
           aria-hidden={!sheetOpen}
           role="dialog"
@@ -757,51 +793,64 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
           </div>
 
           <div
-            className={`min-h-0 flex-1 px-5 pb-8 ${snap === 'full' ? 'overflow-y-auto' : 'overflow-hidden'}`}
+            className="flex min-h-0 flex-1 flex-col overflow-hidden px-5"
+            onWheel={(e) => {
+              if (snap !== 'full' && e.deltaY > 0) setSnap('full')
+            }}
+            onScrollCapture={(e) => {
+              const target = e.target
+              if (snap !== 'full' && target instanceof HTMLElement && target.scrollTop > 4) {
+                setSnap('full')
+              }
+            }}
           >
-            <Suspense fallback={<div className="py-6 text-xs font-medium text-ink-soft">Memuat…</div>}>
+            <Suspense fallback={<BlamLoader />}>
               {mode === 'detail' && selected && (
-                <EventDetail
-                  key={selected.id}
-                  event={selected}
-                  joined={radar.joinedIds.has(selected.id)}
-                  onJoin={async () => {
-                    await radar.joinAction(selected.id)
-                  }}
-                  onRefresh={radar.refresh}
-                  activeRoute={radar.activeRoute}
-                  routeLoading={radar.routeLoading}
-                  routeError={radar.routeError}
-                  onStartRoute={() => radar.startDirections(selected)}
-                  onSwitchRouteMode={radar.switchRouteMode}
-                  onClearRoute={radar.clearRoute}
-                />
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8">
+                  <EventDetail
+                    key={selected.id}
+                    event={selected}
+                    joined={radar.joinedIds.has(selected.id)}
+                    onJoin={async () => {
+                      await radar.joinAction(selected.id)
+                    }}
+                    onRefresh={radar.refresh}
+                    activeRoute={radar.activeRoute}
+                    routeLoading={radar.routeLoading}
+                    routeError={radar.routeError}
+                    onStartRoute={() => radar.startDirections(selected)}
+                    onSwitchRouteMode={radar.switchRouteMode}
+                    onClearRoute={radar.clearRoute}
+                  />
+                </div>
               )}
 
               {mode === 'signal' && radar.selectedSignal && (
-                <SatelliteSignalDetail
-                  key={radar.selectedSignal.id}
-                  signal={radar.selectedSignal}
-                  linkedEvent={
-                    radar.allEvents.find(
-                      (ev) =>
-                        ev.id === radar.selectedSignal?.linkedEventId ||
-                        (ev.ref_source === radar.selectedSignal?.source &&
-                          Boolean(
-                            ev.ref_external_id &&
-                              (ev.ref_external_id === radar.selectedSignal?.externalId ||
-                                radar.selectedSignal?.memberIds?.includes(ev.ref_external_id)),
-                          )),
-                    ) ?? null
-                  }
-                  onOpenEvent={openDetail}
-                  onCreateEvent={(s) => startCreateEvent(null, s)}
-                  onModerated={async () => {
-                    radar.setSelectedSignal(null)
-                    setMode('radar')
-                    await radar.refreshLayers()
-                  }}
-                />
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8">
+                  <SatelliteSignalDetail
+                    key={radar.selectedSignal.id}
+                    signal={radar.selectedSignal}
+                    linkedEvent={
+                      radar.allEvents.find(
+                        (ev) =>
+                          ev.id === radar.selectedSignal?.linkedEventId ||
+                          (ev.ref_source === radar.selectedSignal?.source &&
+                            Boolean(
+                              ev.ref_external_id &&
+                                (ev.ref_external_id === radar.selectedSignal?.externalId ||
+                                  radar.selectedSignal?.memberIds?.includes(ev.ref_external_id)),
+                            )),
+                      ) ?? null
+                    }
+                    onOpenEvent={openDetail}
+                    onCreateEvent={(s) => startCreateEvent(null, s)}
+                    onModerated={async () => {
+                      radar.setSelectedSignal(null)
+                      setMode('radar')
+                      await radar.refreshLayers()
+                    }}
+                  />
+                </div>
               )}
 
               {mode === 'radar' && (
@@ -825,8 +874,8 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
               )}
 
               {mode === 'list' && (
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
                     <h2 className="text-[20px] font-semibold text-ink">Gerakan</h2>
                     {canOrganize && (
                       <button
@@ -858,11 +907,6 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                         return (
                           <div className="card-quiet p-5 text-center">
                             <p className="text-[14px] font-semibold text-ink">Khusus Verifikator</p>
-                            <p className="mt-1 text-[12px] leading-relaxed font-normal text-ink-soft">
-                              {!profile
-                                ? 'Masuk untuk memverifikasi laporan lapangan'
-                                : 'Hanya relawan, instansi, atau admin terverifikasi'}
-                            </p>
                             {!profile && (
                               <button
                                 type="button"
@@ -901,43 +945,59 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
                 />
               )}
               {mode === 'orgs' && <OrgsPanel query={query} />}
-              {mode === 'profile' && <ProfilePanel />}
-              {mode === 'notifications' && <NotificationsPanel onOpenEvent={openDetail} />}
+              {mode === 'profile' && (
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8">
+                  <ProfilePanel />
+                </div>
+              )}
+              {mode === 'notifications' && (
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8">
+                  <NotificationsPanel onOpenEvent={openDetail} />
+                </div>
+              )}
               {mode === 'care' && (
-                <BlamDonasiModal
-                  embedded
-                  signals={radar.satelliteSignals}
-                  onClose={closeSheet}
-                  onOpenSignal={(sig) => openSignalDetail(sig)}
-                  onFocusLocation={(lat, lng) => {
-                    setMode(null)
-                    radar.focusLocation(lat, lng, 10)
-                  }}
-                />
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8">
+                  <BlamDonasiModal
+                    embedded
+                    signals={radar.satelliteSignals}
+                    onClose={closeSheet}
+                    onOpenSignal={(sig) => openSignalDetail(sig)}
+                    onFocusLocation={(lat, lng) => {
+                      setMode(null)
+                      radar.focusLocation(lat, lng, 10)
+                    }}
+                  />
+                </div>
               )}
               {mode === 'verify' && (
-                <VerificationRadarPanel
-                  onCreateEvent={(report) => startCreateEvent(report)}
-                  onCreateStandaloneEvent={() => startCreateEvent(null)}
-                />
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8">
+                  <VerificationRadarPanel
+                    onCreateEvent={(report) => startCreateEvent(report)}
+                    onCreateStandaloneEvent={() => startCreateEvent(null)}
+                  />
+                </div>
               )}
               {mode === 'agency' && (
-                <AgencyInboxPanel
-                  events={radar.allEvents}
-                  onSelectEvent={openDetail}
-                  onCreateEventFromReport={(report) => startCreateEvent(report)}
-                  onRefresh={radar.refresh}
-                />
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8">
+                  <AgencyInboxPanel
+                    events={radar.allEvents}
+                    onSelectEvent={openDetail}
+                    onCreateEventFromReport={(report) => startCreateEvent(report)}
+                    onRefresh={radar.refresh}
+                  />
+                </div>
               )}
               {mode === 'admin' && (
-                <AdminPanel
-                  events={radar.allEvents}
-                  signals={radar.satelliteSignals}
-                  signalsCount={radar.satelliteSignals.length}
-                  onFocusLocation={(lat, lng) => radar.focusLocation(lat, lng, 13)}
-                  onRefreshEvents={radar.refresh}
-                  onRefreshLayers={radar.refreshLayers}
-                />
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8">
+                  <AdminPanel
+                    events={radar.allEvents}
+                    signals={radar.satelliteSignals}
+                    signalsCount={radar.satelliteSignals.length}
+                    onFocusLocation={(lat, lng) => radar.focusLocation(lat, lng, 13)}
+                    onRefreshEvents={radar.refresh}
+                    onRefreshLayers={radar.refreshLayers}
+                  />
+                </div>
               )}
             </Suspense>
           </div>
@@ -954,7 +1014,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 z-[800] bg-canvas"
           >
-            <Suspense fallback={<div className="grid h-full place-items-center text-[12px] font-medium text-ink-soft">Memuat…</div>}>
+            <Suspense fallback={<BlamLoader fullHeight />}>
               <QuickReportFlow
                 initialPrefill={reportPrefill}
                 onClose={() => {
@@ -980,7 +1040,7 @@ export default function MobileBumpShell({ radar }: { radar: Radar }) {
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 z-[800] bg-canvas"
           >
-            <Suspense fallback={<div className="grid h-full place-items-center text-[12px] font-medium text-ink-soft">Memuat…</div>}>
+            <Suspense fallback={<BlamLoader fullHeight />}>
               <CreateEventForm
                 key={draftReport?.id ?? draftSignal?.id ?? 'standalone'}
                 initialReport={draftReport}

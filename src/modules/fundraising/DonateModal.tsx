@@ -79,11 +79,12 @@ function SimulatedQrSvg({ seed }: { seed: string }) {
 
 interface Props {
   campaign: FundraisingCampaign
+  inline?: boolean
   onClose: () => void
   onDonated: () => Promise<void>
 }
 
-export default function DonateModal({ campaign, onClose, onDonated }: Props) {
+export default function DonateModal({ campaign, inline = false, onClose, onDonated }: Props) {
   const { profile } = useAuth()
 
   const [step, setStep] = useState<'form' | 'payment' | 'done'>('form')
@@ -160,17 +161,14 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
     }
   }
 
-  const modal = (
+  const panelContent = (
     <div
-      className="fixed inset-0 z-[1300] flex items-end justify-center bg-ink/45 backdrop-blur-[2px] sm:items-center sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Donasi Penggalangan Dana"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
+      className={
+        inline
+          ? 'flex h-full min-h-0 w-full flex-col overflow-hidden'
+          : 'atlas-sheet flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[24px] sm:rounded-[22px]'
+      }
     >
-      <div className="atlas-sheet flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[24px] sm:rounded-[22px]">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-ink/8 px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="row-icon text-forest">
@@ -492,6 +490,21 @@ export default function DonateModal({ campaign, onClose, onDonated }: Props) {
           </div>
         )}
       </div>
+  )
+
+  if (inline) return panelContent
+
+  const modal = (
+    <div
+      className="fixed inset-0 z-[1300] flex items-end justify-center bg-ink/45 backdrop-blur-[2px] sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Donasi Penggalangan Dana"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      {panelContent}
     </div>
   )
 

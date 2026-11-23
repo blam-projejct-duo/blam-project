@@ -18,9 +18,11 @@ const TARGET_LABEL: Record<'all' | 'citizen' | 'volunteer' | 'agency', string> =
 
 export default function AdminBroadcastView({
   history,
+  expanded = false,
   onBroadcast,
 }: {
   history: BroadcastHistoryItem[]
+  expanded?: boolean
   onBroadcast: (payload: {
     title: string
     detail: string
@@ -49,18 +51,15 @@ export default function AdminBroadcastView({
   }
 
   return (
-    <div className="flex flex-col gap-3.5">
-      <section className="card-quiet flex flex-col gap-3 p-3.5">
+    <div className={expanded ? 'grid grid-cols-2 items-start gap-4' : 'flex flex-col gap-3.5'}>
+      <section className="card-quiet flex flex-col gap-3 p-4">
         <div className="flex items-center gap-1.5">
           <Megaphone className="size-4 text-forest" strokeWidth={1.75} />
           <h3 className="text-[13px] font-semibold text-ink">Kirim Pengumuman Resmi</h3>
         </div>
-        <p className="text-[12px] leading-relaxed text-ink-soft">
-          Pesan langsung masuk ke lonceng notifikasi sesuai target peran yang dipilih.
-        </p>
 
         <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-2.5">
-          <div className="flex flex-wrap gap-1.5">
+          <div role="tablist" aria-label="Target siaran" className="panel-tabs">
             {(
               [
                 { id: 'all', label: 'Semua' },
@@ -68,20 +67,21 @@ export default function AdminBroadcastView({
                 { id: 'agency', label: 'Instansi' },
                 { id: 'citizen', label: 'Warga' },
               ] as const
-            ).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTarget(t.id)}
-                className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                  target === t.id
-                    ? 'bg-ink text-white'
-                    : 'bg-canvas text-ink-soft hover:text-ink'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+            ).map((t) => {
+              const active = target === t.id
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setTarget(t.id)}
+                  className={`panel-tab flex-1 whitespace-nowrap ${active ? 'is-active' : ''}`}
+                >
+                  {t.label}
+                </button>
+              )
+            })}
           </div>
 
           <input
@@ -127,8 +127,15 @@ export default function AdminBroadcastView({
         </form>
       </section>
 
-      <section className="card-quiet flex flex-col gap-2 p-3.5">
-        <h3 className="text-[12px] font-semibold text-ink-soft">Riwayat Siaran Sesi Ini</h3>
+      <section className="card-quiet flex flex-col gap-2.5 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-[12px] font-semibold text-ink-soft">Riwayat Siaran Sesi Ini</h3>
+          {history.length > 0 && (
+            <span className="num rounded-full bg-canvas px-2 py-0.5 text-[11px] font-medium text-ink-soft">
+              {history.length} terkirim
+            </span>
+          )}
+        </div>
         {history.length === 0 ? (
           <p className="text-[12px] text-ink-soft">Belum ada siaran yang dikirim pada sesi ini.</p>
         ) : (

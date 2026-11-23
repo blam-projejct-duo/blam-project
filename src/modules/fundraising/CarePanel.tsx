@@ -7,6 +7,7 @@ import { shortLocation } from '../../lib/constants'
 import type { FundraisingCampaign, SatelliteSignal } from '../../types'
 import { CampaignDetail, compactRupiah, KIND_META, percentOf } from './BlamDonasiModal'
 import DonateModal from './DonateModal'
+import { useSideFundraising } from './SideFundraisingContext'
 import { findSignalForFundraising, formatRupiah, useFundraisings } from './useFundraisings'
 
 type CareTab = 'Aktif' | 'Selesai' | 'Semua'
@@ -43,6 +44,7 @@ export default function CarePanel({
   onFocusLocation: (lat: number, lng: number) => void
 }) {
   const { fundraisings, isLoading, refreshFundraisings } = useFundraisings()
+  const sideFundraising = useSideFundraising()
   const [tab, setTab] = useState<CareTab>('Aktif')
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [sortBy, setSortBy] = useState<SortBy>('latest')
@@ -101,20 +103,25 @@ export default function CarePanel({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between gap-2 px-5 pt-5 pb-3">
         <h2 className="text-[20px] font-semibold text-ink">
           {detail ? 'Detail Penggalangan' : 'Blam Care'}
         </h2>
         {headerAction}
       </div>
 
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 pb-5">
+
       {detail ? (
         <CampaignDetail
           campaign={detail}
           onBack={() => setDetailId(null)}
           onOpenPoint={() => openPoint(detail)}
-          onDonate={() => setDonateTarget(detail)}
+          onDonate={() => {
+            if (sideFundraising) sideFundraising.openDonate(detail, refreshFundraisings)
+            else setDonateTarget(detail)
+          }}
         />
       ) : (
         <>
@@ -242,9 +249,6 @@ export default function CarePanel({
                     ? 'Belum ada penggalangan selesai'
                     : 'Tidak ada penggalangan cocok'}
               </p>
-              <p className="max-w-[240px] text-[12px] leading-relaxed text-ink-soft">
-                Muncul saat organisasi membuka donasi di titik kejadian
-              </p>
             </div>
           ) : (
             <ul className="flex flex-col gap-3">
@@ -323,7 +327,10 @@ export default function CarePanel({
                       <div className="px-4 pb-4">
                         <button
                           type="button"
-                          onClick={() => setDonateTarget(c)}
+                          onClick={() => {
+                            if (sideFundraising) sideFundraising.openDonate(c, refreshFundraisings)
+                            else setDonateTarget(c)
+                          }}
                           className="btn-primary h-9 w-full !rounded-[10px] text-[12px]"
                         >
                           <HeartHandshake className="size-3.5" strokeWidth={1.85} />
@@ -338,6 +345,8 @@ export default function CarePanel({
           )}
         </>
       )}
+
+      </div>
 
       {donateTarget && (
         <DonateModal

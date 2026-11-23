@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { BadgeCheck, Building2, Check, Plus, SlidersHorizontal, UserCheck, UserMinus, Users } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import BlamLoader from '../../components/ui/BlamLoader'
 import { BlamNatureIcon } from '../../components/ui/bumpIcons'
 import { createOrg, fetchOrgs, joinOrg, manageOrgMember } from '../../lib/api'
 import { CACHE_TTL_MS } from '../../lib/queryClient'
@@ -152,8 +153,8 @@ export default function OrgsPanel({
   const activeFilterCount = typeFilter !== 'all' ? 1 : 0
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between gap-2 pb-3">
         <div className="flex items-baseline gap-2">
           <h2 className="text-[20px] font-semibold text-ink">Organisasi</h2>
           {!loading && orgs.length > 0 && (
@@ -172,6 +173,8 @@ export default function OrgsPanel({
           </button>
         </div>
       </div>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain pt-0.5 pb-8">
 
       <div className="relative flex items-center gap-2">
         <div role="tablist" className="panel-tabs min-w-0 flex-1">
@@ -298,18 +301,13 @@ export default function OrgsPanel({
           <div className="grid size-10 place-items-center rounded-full bg-canvas text-leaf">
             <Users className="size-5" strokeWidth={1.75} />
           </div>
-          <div>
-            <p className="text-[14px] font-semibold text-ink">Organisasi yang Kamu Ikuti</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-              Masuk untuk melihat keanggotaan dan mengelola organisasi kamu.
-            </p>
-          </div>
+          <p className="text-[14px] font-semibold text-ink">Organisasi yang Kamu Ikuti</p>
           <button type="button" onClick={openAuthModal} className="btn-primary mt-1 h-9 px-4 text-[12px]">
             Masuk
           </button>
         </div>
       ) : loading ? (
-        <p className="py-8 text-center text-[13px] font-normal text-ink-soft">Memuat organisasi…</p>
+        <BlamLoader label="Memuat organisasi…" />
       ) : filteredOrgs.length === 0 ? (
         <div className="atlas-group flex flex-col items-center gap-2 py-8 text-center">
           <BlamNatureIcon className="size-12 opacity-85" />
@@ -445,6 +443,7 @@ export default function OrgsPanel({
           })}
         </ul>
       )}
+      </div>
     </div>
   )
 }

@@ -8,6 +8,7 @@ import type {
     SignalVerificationState,
     VerifiedSignalRecord,
 } from '../../types'
+import { resolveIndonesianProvince } from './indonesiaProvinces'
 
 /**
  * Aturan "hotspot" Blam (satu tempat, supaya mudah diubah & dijelaskan ke juri).
@@ -233,16 +234,11 @@ function buildFireArea(group: HotspotPoint[]): HazardPoint | null {
 
     const severity: HazardPoint['severity'] = kind === 'wildfire' ? 'high' : 'medium'
 
+    const province = resolveIndonesianProvince(lat, lng)
     const title =
         kind === 'wildfire'
-            ? count > 1
-                ? `Karhutla Aktif · ${count} Titik Api`
-                : peakFrp > 80
-                    ? 'Karhutla · Panas Ekstrem'
-                    : 'Karhutla · Panas Tinggi'
-            : count > 1
-                ? `Titik Panas Satelit · ${count} Titik`
-                : 'Titik Panas Satelit'
+            ? `Karhutla Aktif · ${province}`
+            : `Titik Panas · ${province}`
 
     const externalId = hotspotKey(peak)
     return {
@@ -292,6 +288,52 @@ export function severityRank(s: HazardPoint['severity']): number {
     return SEVERITY_RANK[s]
 }
 
+function formatEonetTitle(kind: HazardKind, rawTitle: string, lat: number, lng: number): string {
+    const cleaned = rawTitle
+        .replace(/,\s*indonesia$/i, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    const province = resolveIndonesianProvince(lat, lng)
+
+    if (kind === 'volcano') {
+        const name = cleaned
+            .replace(/\bvolcano\b/gi, '')
+            .replace(/^(mount|mt\.?)\s+/i, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+        if (!name || /^gunung(\s+berapi)?$/i.test(name)) {
+            return `Gunung Berapi · ${province}`
+        }
+        return /^gunung\s+/i.test(name) ? name : `Gunung ${name}`
+    }
+
+    if (kind === 'flood') {
+        if (!cleaned || /^floods?$/i.test(cleaned)) {
+            return `Sedang Banjir · ${province}`
+        }
+        return cleaned.toLowerCase().includes('banjir') ? cleaned : `Sedang Banjir · ${cleaned}`
+    }
+
+    if (kind === 'wildfire') {
+        if (!cleaned || /^wildfires?$/i.test(cleaned)) {
+            return `Karhutla Aktif · ${province}`
+        }
+        const lower = cleaned.toLowerCase()
+        return lower.includes('karhutla') || lower.includes('kebakaran')
+            ? cleaned
+            : `Karhutla Aktif · ${cleaned}`
+    }
+
+    if (kind === 'storm') {
+        if (!cleaned || /^(severe\s+)?storms?$/i.test(cleaned)) {
+            return `Badai · ${province}`
+        }
+        return cleaned
+    }
+
+    return cleaned || `${KIND_LABEL[kind]} · ${province}`
+}
+
 function eonetToHazard(e: EonetPoint): HazardPoint {
     const kind = kindFromCategory(`${e.category} ${e.categoryLabel}`)
     const credible = kind !== 'other'
@@ -300,10 +342,7 @@ function eonetToHazard(e: EonetPoint): HazardPoint {
         : kind === 'storm'
             ? 'medium'
             : 'high'
-    const title =
-        kind === 'flood' && e.title && !e.title.toLowerCase().includes('sedang banjir')
-            ? `Sedang Banjir · ${e.title}`
-            : e.title || KIND_LABEL[kind]
+    const title = formatEonetTitle(kind, e.title ?? '', e.lat, e.lng)
     return {
         id: `nasa_eonet:${e.id}`,
         kind,
@@ -326,6 +365,11 @@ function eonetToHazard(e: EonetPoint): HazardPoint {
 }
 
 function floodToHazard(f: FloodPoint): HazardPoint {
+    const rawTitle = f.title?.trim() ?? ''
+    const title =
+        !rawTitle || rawTitle === 'Sedang Banjir · PetaBencana'
+            ? `Sedang Banjir · ${resolveIndonesianProvince(f.lat, f.lng)}`
+            : rawTitle
     return {
         id: f.id,
         kind: 'flood',
@@ -333,7 +377,7 @@ function floodToHazard(f: FloodPoint): HazardPoint {
         source: f.source,
         externalId: f.id,
         memberIds: [f.id],
-        title: f.title,
+        title,
         lat: f.lat,
         lng: f.lng,
         date: f.date,

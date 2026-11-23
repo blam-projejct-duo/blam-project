@@ -40,6 +40,9 @@ interface Props {
   onStartRoute?: () => Promise<void>
   onSwitchRouteMode?: (mode: RouteMode) => void
   onClearRoute?: () => void
+  hideRouteQrButtons?: boolean
+  qrOpen?: boolean
+  onQrOpenChange?: (open: boolean) => void
 }
 
 const STATUS_TONE = {
@@ -49,14 +52,21 @@ const STATUS_TONE = {
   neutral: 'text-ink-soft',
 } as const
 
-function StripMetric({ value, unit, label, status, tone = 'neutral' }: PulseTileData) {
+function StripMetric({
+  value,
+  unit,
+  label,
+  status,
+  tone = 'neutral',
+  spacious = false,
+}: PulseTileData & { spacious?: boolean }) {
   return (
-    <div className="atlas-strip-cell min-w-0">
-      <div className="flex items-center justify-between gap-1 text-[11px] font-medium text-ink-soft">
+    <div className={spacious ? 'min-w-0 px-4 py-3.5' : 'atlas-strip-cell min-w-0'}>
+      <div className="flex items-center justify-between gap-1.5 text-[11px] font-medium text-ink-soft">
         <span className="truncate">{label}</span>
         {status && <span className={`shrink-0 ${STATUS_TONE[tone]}`}>{status}</span>}
       </div>
-      <p className="num mt-1 flex items-baseline gap-1 text-[17px] leading-none font-semibold text-ink">
+      <p className={`num flex items-baseline gap-1 text-[17px] leading-none font-semibold text-ink ${spacious ? 'mt-2' : 'mt-1'}`}>
         <span>{value}</span>
         {unit && <span className="text-[11px] font-normal text-ink-soft">{unit}</span>}
       </p>
@@ -75,6 +85,9 @@ export default function EventDetail({
   onStartRoute,
   onSwitchRouteMode,
   onClearRoute,
+  hideRouteQrButtons = false,
+  qrOpen: qrOpenProp,
+  onQrOpenChange,
 }: Props) {
   const { profile, openAuthModal, isLeadOf, isActiveMemberOf } = useAuth()
   const [copied, setCopied] = useState(false)
@@ -82,7 +95,9 @@ export default function EventDetail({
   const [busyVis, setBusyVis] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [resolveOpen, setResolveOpen] = useState(false)
-  const [qrOpen, setQrOpen] = useState(false)
+  const [internalQrOpen, setInternalQrOpen] = useState(false)
+  const qrOpen = qrOpenProp ?? internalQrOpen
+  const setQrOpen = onQrOpenChange ?? setInternalQrOpen
 
   const { pulse, status: pulseStatus } = usePulse(event.lat, event.lng)
   const place = usePlaceName(event.lat, event.lng)
@@ -155,7 +170,6 @@ export default function EventDetail({
 
   const pulseTiles = formatPulseTiles(pulse)
   const score = latestAction?.ai_recovery_score ?? event.report?.ai_confidence ?? null
-  const recommendations = event.report?.ai_recommendations ?? []
   const photoClass = 'relative aspect-[4/3] overflow-hidden rounded-[16px] bg-muted shadow-[0_1px_3px_rgba(15,23,42,0.06)]'
   const labelClass = 'absolute top-3 rounded-[8px] bg-white/88 px-2.5 py-1 text-[12px] font-medium text-ink shadow-[0_1px_3px_rgba(15,23,42,0.08)] backdrop-blur-sm'
   const quotaText = event.max_participants ? `${participantsCount}/${event.max_participants}` : `${participantsCount}`
@@ -208,6 +222,10 @@ export default function EventDetail({
         <h2 className="text-[20px] leading-snug font-semibold text-ink">
           {event.title}
         </h2>
+        <p className="flex items-start gap-1.5 text-[12px] font-normal text-ink-soft">
+          <MapPin className="mt-0.5 size-4 shrink-0 text-leaf" strokeWidth={1.75} />
+          <span>{event.location_name}</span>
+        </p>
         <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] font-normal text-ink-soft">
           {event.organization && <span className="font-medium text-ink">{event.organization.name}</span>}
           {event.organization && <span aria-hidden="true">·</span>}
@@ -255,12 +273,12 @@ export default function EventDetail({
 
         <div
           className={
-            canResolve
+            canResolve && !hideRouteQrButtons
               ? 'grid grid-cols-2 gap-2'
               : 'flex items-center gap-2'
           }
         >
-          {onStartRoute && (
+          {!hideRouteQrButtons && onStartRoute && (
             <button
               type="button"
               disabled={routeLoading}
@@ -280,13 +298,15 @@ export default function EventDetail({
             <button
               type="button"
               onClick={() => setResolveOpen(true)}
-              className="btn-soft h-9 gap-1.5 whitespace-nowrap !rounded-[10px] px-3 text-[12px]"
+              className={`btn-soft h-9 gap-1.5 whitespace-nowrap !rounded-[10px] px-3 text-[12px] ${
+                hideRouteQrButtons ? 'flex-1' : ''
+              }`}
             >
               <Camera className="size-4 shrink-0" strokeWidth={1.75} />
               Lapor Selesai
             </button>
           )}
-          {canResolve && (
+          {!hideRouteQrButtons && canResolve && (
             <button
               type="button"
               onClick={() => setQrOpen(true)}
@@ -302,7 +322,7 @@ export default function EventDetail({
             onClick={() => void copyLink()}
             aria-label="Salin tautan gerakan"
             className={`btn-soft h-9 gap-1.5 whitespace-nowrap !rounded-[10px] px-3 text-[12px] ${
-              !canResolve ? 'flex-1' : ''
+              !canResolve || hideRouteQrButtons ? 'flex-1' : ''
             }`}
           >
             {copied ? <Check className="size-4 shrink-0 text-leaf" strokeWidth={1.75} /> : <Link2 className="size-4 shrink-0" strokeWidth={1.75} />}
@@ -421,7 +441,7 @@ export default function EventDetail({
 
       <div className={`atlas-group grid grid-cols-2 divide-x divide-y divide-ink/6 overflow-hidden ${pulseStatus === 'loading' ? 'opacity-60' : ''}`}>
         {pulseTiles.map((tile) => (
-          <StripMetric key={tile.label} {...tile} />
+          <StripMetric key={tile.label} {...tile} spacious />
         ))}
       </div>
 
@@ -430,30 +450,10 @@ export default function EventDetail({
           {event.description || event.report?.ai_site_brief || event.category}
         </p>
 
-        <div className="flex items-start gap-3 py-3.5">
-          <MapPin className="mt-0.5 size-4 shrink-0 text-leaf" strokeWidth={1.75} />
-          <div className="min-w-0 text-[14px]">
-            <p className="font-medium text-ink">{event.location_name}</p>
-            {placeText(place) !== event.location_name && (
-              <p className="mt-0.5 text-[12px] font-normal text-ink-soft">{placeText(place)}</p>
-            )}
-          </div>
-        </div>
-
         {scheduleLabel && (
           <div className="flex items-center gap-3 py-3.5 text-[14px]">
             <Calendar className="size-4 shrink-0 text-ink-soft" strokeWidth={1.75} />
             <span className="font-normal text-ink">{scheduleLabel}</span>
-          </div>
-        )}
-
-        {recommendations.length > 0 && (
-          <div className="py-3.5 text-[14px] font-normal text-ink-soft">
-            {recommendations.slice(0, 2).map((rec) => (
-              <p key={rec} className="leading-relaxed not-first:mt-1.5">
-                {rec}
-              </p>
-            ))}
           </div>
         )}
 

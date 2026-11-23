@@ -1,5 +1,6 @@
-import { Ban, Building2, ChevronDown, Crosshair, Loader2, MapPin, Search, Users, X } from 'lucide-react'
+import { Ban, Building2, ChevronDown, Crosshair, MapPin, Search, Users, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import BlamLoader from '../../components/ui/BlamLoader'
 import { StatusPill } from '../../components/ui/atoms'
 import type { ConservationEvent, Organization } from '../../types'
 
@@ -10,6 +11,7 @@ export default function AdminOrgsMonitorView({
   events,
   isLoading,
   busyId,
+  expanded = false,
   onRevokeOrg,
   onFocusLocation,
 }: {
@@ -17,6 +19,7 @@ export default function AdminOrgsMonitorView({
   events: ConservationEvent[]
   isLoading: boolean
   busyId: string | null
+  expanded?: boolean
   onRevokeOrg: (orgId: string, orgName: string) => Promise<void>
   onFocusLocation?: (lat: number, lng: number) => void
 }) {
@@ -40,60 +43,62 @@ export default function AdminOrgsMonitorView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-ink-soft" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cari organisasi atau instansi…"
-          className="h-9 w-full rounded-[10px] bg-white pr-8 pl-8 text-[13px] text-ink ring-1 ring-ink/10 placeholder:text-ink-soft/70 focus:ring-2 focus:ring-forest/40 focus:outline-none"
-        />
-        {search && (
-          <button
-            type="button"
-            onClick={() => setSearch('')}
-            aria-label="Hapus pencarian"
-            className="absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-soft hover:text-ink"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
-      </div>
+      <div className={expanded ? 'flex flex-wrap items-center justify-between gap-3' : 'flex flex-col gap-3'}>
+        <div className={expanded ? 'relative min-w-0 flex-1' : 'relative'}>
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-ink-soft" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari organisasi atau instansi…"
+            className="h-9 w-full rounded-[10px] bg-white pr-8 pl-8 text-[13px] text-ink ring-1 ring-ink/10 placeholder:text-ink-soft/70 focus:ring-2 focus:ring-forest/40 focus:outline-none"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Hapus pencarian"
+              className="absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-soft hover:text-ink"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {(
-          [
-            { id: 'all', label: `Semua (${verifiedOrgs.length})` },
-            { id: 'community', label: 'Komunitas' },
-            { id: 'agency', label: 'Instansi' },
-          ] as const
-        ).map((chip) => (
-          <button
-            key={chip.id}
-            type="button"
-            onClick={() => setTypeFilter(chip.id)}
-            className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-              typeFilter === chip.id
-                ? 'bg-ink text-white'
-                : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
-            }`}
-          >
-            {chip.label}
-          </button>
-        ))}
+        <div className="flex flex-wrap gap-1.5">
+          {(
+            [
+              { id: 'all', label: `Semua (${verifiedOrgs.length})` },
+              { id: 'community', label: 'Komunitas' },
+              { id: 'agency', label: 'Instansi' },
+            ] as const
+          ).map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => setTypeFilter(chip.id)}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                typeFilter === chip.id
+                  ? 'bg-ink text-white'
+                  : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="card-quiet flex items-center justify-center gap-2 p-6 text-[13px] text-ink-soft">
-          <Loader2 className="size-4 animate-spin" /> Memuat daftar organisasi…
+        <div className="card-quiet p-2">
+          <BlamLoader label="Memuat daftar organisasi…" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="card-quiet p-5 text-center text-[13px] text-ink-soft">
           Belum ada organisasi terverifikasi yang cocok.
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className={expanded ? 'grid grid-cols-2 items-start gap-3' : 'flex flex-col gap-2'}>
           {filtered.map((o) => {
             const open = expandedId === o.id
             const isBusy = busyId === o.id

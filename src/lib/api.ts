@@ -422,8 +422,8 @@ export async function reverseGeocode(
   lat: number,
   lng: number,
   signal?: AbortSignal,
-): Promise<{ ok: boolean; name: string; detail: string; fullAddress: string }> {
-  return apiFetch<{ ok: boolean; name: string; detail: string; fullAddress: string }>(
+): Promise<{ ok: boolean; name: string; detail: string; area?: string; fullAddress: string }> {
+  return apiFetch<{ ok: boolean; name: string; detail: string; area?: string; fullAddress: string }>(
     `/geocode/reverse?lat=${lat}&lng=${lng}`,
     { signal },
   )

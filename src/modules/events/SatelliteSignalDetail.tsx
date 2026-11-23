@@ -12,7 +12,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { useState } from 'react'
-import { AtlasCoordinateHero, MapMarkerGlyph } from '../../components/ui/MapMarkers'
+import { AtlasCoordinateHero } from '../../components/ui/MapMarkers'
 import { moderateHotspotAdmin, verifyRadarSignal } from '../../lib/api'
 import { shortLocation } from '../../lib/constants'
 import type { ConservationEvent, HazardKind, SatelliteSignal } from '../../types'
@@ -47,14 +47,21 @@ interface Props {
   onModerated: () => Promise<void>
 }
 
-function StripMetric({ value, unit, label, status, tone = 'neutral' }: PulseTileData) {
+function StripMetric({
+  value,
+  unit,
+  label,
+  status,
+  tone = 'neutral',
+  spacious = false,
+}: PulseTileData & { spacious?: boolean }) {
   return (
-    <div className="atlas-strip-cell min-w-0">
-      <div className="flex items-center justify-between gap-1 text-[11px] font-medium text-ink-soft">
+    <div className={spacious ? 'min-w-0 px-4 py-3.5' : 'atlas-strip-cell min-w-0'}>
+      <div className="flex items-center justify-between gap-1.5 text-[11px] font-medium text-ink-soft">
         <span className="truncate">{label}</span>
         {status && <span className={`shrink-0 ${STATUS_TONE[tone]}`}>{status}</span>}
       </div>
-      <p className="num mt-1 flex items-baseline gap-1 text-[17px] leading-none font-semibold text-ink">
+      <p className={`num flex items-baseline gap-1 text-[17px] leading-none font-semibold text-ink ${spacious ? 'mt-2' : 'mt-1'}`}>
         <span>{value}</span>
         {unit && <span className="text-[11px] font-normal text-ink-soft">{unit}</span>}
       </p>
@@ -135,6 +142,13 @@ export default function SatelliteSignalDetail({
   const floodRisk = formatFloodRiskLabel(signal)
   const pulseTiles = kind === 'flood' ? formatFloodPulseTiles(pulse) : formatPulseTiles(pulse)
   const tier = linkedEvent ? 'has_action' : isVerified ? 'verified' : 'unverified'
+  const sepIdx = signal.title.indexOf(' · ')
+  const headline = sepIdx > 0 ? signal.title.slice(0, sepIdx) : signal.title
+  const hasFireMetrics = (kind === 'wildfire' || kind === 'suspected') && (signal.pointCount ?? 0) > 0
+  const hasFloodMetrics = kind === 'flood' && signal.dischargeM3s != null
+  const hasVerifiedBlock = Boolean(verifiedInfo && !linkedEvent)
+  const hasWaitStatus = !linkedEvent && !canOrganize
+  const showDetailGroup = hasFireMetrics || hasFloodMetrics || hasVerifiedBlock || hasWaitStatus
 
   return (
     <div className="flex flex-col gap-4">
@@ -149,48 +163,47 @@ export default function SatelliteSignalDetail({
         />
       </div>
 
-      <header className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2 text-[12px] font-medium text-ink-soft">
-          <MapMarkerGlyph kind={kind} tier={tier} size="sm" />
-          {linkedEvent ? (
-            <span className="inline-flex items-center gap-1 text-resolved">
-              <CheckCircle2 className="size-4" strokeWidth={1.75} />
-              Ada Gerakan
-            </span>
-          ) : isVerified ? (
-            <span className="inline-flex items-center gap-1 text-leaf">
-              <ShieldCheck className="size-4" strokeWidth={1.75} />
-              Terverifikasi
-            </span>
-          ) : (
-            <span className={KIND_TEXT_CLASS[kind]}>
-              Belum terverifikasi
-            </span>
-          )}
-          {isAgency && !linkedEvent && (
-            <span className="inline-flex items-center gap-1 text-critical">
-              <ShieldAlert className="size-4" strokeWidth={1.75} /> Darurat
-            </span>
-          )}
+      <header className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex min-w-0 items-center gap-2 text-[20px] leading-snug font-semibold text-ink">
+            <SignalIcon className={`size-5 shrink-0 ${KIND_TEXT_CLASS[kind]}`} strokeWidth={1.75} />
+            <span className="truncate">{headline}</span>
+          </h2>
+
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5 text-[12px] font-medium text-ink-soft">
+            {linkedEvent ? (
+              <span className="inline-flex items-center gap-1 text-resolved">
+                <CheckCircle2 className="size-4" strokeWidth={1.75} />
+                Ada Gerakan
+              </span>
+            ) : isVerified ? (
+              <span className="inline-flex items-center gap-1 text-leaf">
+                <ShieldCheck className="size-4" strokeWidth={1.75} />
+                Terverifikasi
+              </span>
+            ) : (
+              <span className={KIND_TEXT_CLASS[kind]}>
+                Belum terverifikasi
+              </span>
+            )}
+            {isAgency && !linkedEvent && (
+              <span className="inline-flex items-center gap-1 text-critical">
+                <ShieldAlert className="size-4" strokeWidth={1.75} /> Darurat
+              </span>
+            )}
+          </div>
         </div>
 
-        <h2 className="mt-0.5 text-[20px] leading-snug font-semibold text-ink">
-          {signal.title}
-        </h2>
-
-        <p className="flex flex-wrap items-center gap-1.5 text-[12px] font-normal text-ink-soft">
-          <SignalIcon className={`size-4 shrink-0 ${KIND_TEXT_CLASS[kind]}`} strokeWidth={1.75} />
-          <span>{formatSignalSource(signal.source)}</span>
-          <span aria-hidden="true">·</span>
-          <span>{signal.categoryLabel}</span>
-          {floodRisk && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span className={signal.severity === 'high' ? 'font-medium text-critical' : 'font-medium text-progress'}>
-                {floodRisk}
-              </span>
-            </>
-          )}
+        <p
+          className="mt-0.5 flex items-start gap-1.5 text-[12px] font-normal text-ink-soft"
+          title={`${signal.lat.toFixed(4)}, ${signal.lng.toFixed(4)}`}
+        >
+          <MapPin className="mt-0.5 size-4 shrink-0 text-leaf" strokeWidth={1.75} />
+          <span>
+            {placeText(place)}
+            {signal.date ? ` · ${formatSignalDate(signal)}` : ''}
+            {floodRisk ? ` · ${floodRisk}` : ''}
+          </span>
         </p>
       </header>
 
@@ -244,62 +257,56 @@ export default function SatelliteSignalDetail({
         </p>
       )}
 
-      <div className="atlas-group divide-y divide-ink/6 px-4">
-        <div className="flex items-start gap-3 py-3.5">
-          <MapPin className="mt-0.5 size-4 shrink-0 text-leaf" strokeWidth={1.75} />
-          <span className="text-[14px] font-normal text-ink" title={`${signal.lat.toFixed(4)}, ${signal.lng.toFixed(4)}`}>
-            {placeText(place)}
-            {signal.date ? ` · ${formatSignalDate(signal)}` : ''}
-          </span>
-        </div>
-
-        {signal.reason && (
-          <div className="py-3.5">
-            <p className="text-[14px] leading-relaxed font-normal text-ink">{signal.reason}</p>
-            {(signal.kind === 'wildfire' || signal.kind === 'suspected') && (signal.pointCount ?? 0) > 0 && (
-              <div className="atlas-strip mt-3 grid-cols-3 divide-x divide-ink/8">
+      {showDetailGroup && (
+        <div className="atlas-group divide-y divide-ink/6 px-4">
+          {hasFireMetrics && (
+            <div className="py-1.5">
+              <div className="atlas-strip grid-cols-3 divide-x divide-ink/8 border-y-0">
                 <StripMetric
                   value={String(signal.pointCount)}
-                  label={signal.kind === 'suspected' ? 'Titik Panas' : 'Titik Api'}
+                  label={kind === 'suspected' ? 'Titik Panas' : 'Titik Api'}
                 />
                 <StripMetric value={formatHeatScale(signal.totalFrp, signal.frp)} label="Skala Panas" />
                 <StripMetric value={`±${signal.radiusKm ?? 1}`} unit="km" label="Radius Area" />
               </div>
-            )}
-            {signal.kind === 'flood' && signal.dischargeM3s != null && (
-              <div className="atlas-strip mt-3 grid-cols-3 divide-x divide-ink/8">
+            </div>
+          )}
+
+          {hasFloodMetrics && (
+            <div className="py-1.5">
+              <div className="atlas-strip grid-cols-3 divide-x divide-ink/8 border-y-0">
                 <StripMetric value={String(signal.dischargeM3s)} unit="m³/s" label="Debit Sungai" />
                 <StripMetric value={`${signal.dischargeRatio ?? 1}×`} label="Dari Normal" />
                 <StripMetric value={String(signal.rainMm ?? 0)} unit="mm" label="Hujan 72j" />
               </div>
-            )}
-          </div>
-        )}
-
-        {verifiedInfo && !linkedEvent && (
-          <div className="flex items-start gap-2.5 py-3.5">
-            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-leaf" strokeWidth={1.75} />
-            <div className="min-w-0 flex-1">
-              <p className="text-[14px] font-medium text-ink">
-                Terverifikasi oleh {verifiedInfo.verified_org_name ?? verifiedInfo.verified_by_name}
-              </p>
-              <p className="mt-0.5 text-[12px] font-normal text-ink-soft">
-                Valid · menunggu gerakan
-              </p>
             </div>
-          </div>
-        )}
+          )}
 
-        {!linkedEvent && !canOrganize && (
-          <p className="py-3.5 text-[12px] font-normal text-ink-soft">
-            {isVerified ? 'Terverifikasi · menunggu gerakan' : 'Menunggu verifikasi relawan'}
-          </p>
-        )}
-      </div>
+          {hasVerifiedBlock && verifiedInfo && (
+            <div className="flex items-start gap-2.5 py-3.5">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-leaf" strokeWidth={1.75} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-medium text-ink">
+                  Terverifikasi oleh {verifiedInfo.verified_org_name ?? verifiedInfo.verified_by_name}
+                </p>
+                <p className="mt-0.5 text-[12px] font-normal text-ink-soft">
+                  Belum ada aksi atau event
+                </p>
+              </div>
+            </div>
+          )}
+
+          {hasWaitStatus && (
+            <p className="py-3.5 text-[12px] font-normal text-ink-soft">
+              {isVerified ? 'Belum ada aksi atau event' : 'Menunggu verifikasi relawan'}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className={`atlas-group grid grid-cols-2 divide-x divide-y divide-ink/6 overflow-hidden ${pulseStatus === 'loading' ? 'opacity-60' : ''}`}>
         {pulseTiles.map((tile) => (
-          <StripMetric key={tile.label} {...tile} />
+          <StripMetric key={tile.label} {...tile} spacious />
         ))}
       </div>
 

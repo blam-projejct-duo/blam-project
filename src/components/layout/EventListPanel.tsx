@@ -1,10 +1,11 @@
-import { BadgeCheck, Check, CircleDashed, HeartHandshake, LocateFixed, Search, ShieldCheck, SlidersHorizontal, Sprout, Users, X } from 'lucide-react'
+import { BadgeCheck, Check, LocateFixed, Search, SlidersHorizontal, Users, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ECOSYSTEM_FILTERS, EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
 import { haversineDistanceKm } from '../../lib/imageCompress'
-import { findFundraisingForSignal, useFundraisings } from '../../modules/fundraising/useFundraisings'
+import { resolveIndonesianProvince } from '../../modules/map/indonesiaProvinces'
 import { formatSignalSource } from '../../modules/map/radarFilters'
+import { useAreaName } from '../../modules/map/usePlaceName'
 import { EcoBadge, MarkerTierLegend } from '../ui/atoms'
 import { BlamNatureIcon } from '../ui/bumpIcons'
 import { AtlasCoordinateHero, MapMarkerGlyph } from '../ui/MapMarkers'
@@ -36,6 +37,55 @@ const FALLBACK_COORDS = { lat: -2.5, lng: 118.0 }
 const TABS: ListTab[] = ['Ringkasan', 'Terbaru', 'History', 'Satelit']
 const TONE_TEXT = { critical: 'text-critical', progress: 'text-progress', resolved: 'text-resolved' } as const
 const RANK = { open: 0, in_progress: 1, resolved: 2, cancelled: 3 } as const
+
+function SignalDonutChart({
+  items,
+  total,
+}: {
+  items: { label: string; count: number; color: string }[]
+  total: number
+}) {
+  const r = 40
+  const circ = 2 * Math.PI * r
+  const safeTotal = Math.max(1, total)
+  const segments = items.reduce<{ label: string; color: string; dash: number; offset: number }[]>(
+    (acc, item) => {
+      const prevLen = acc.reduce((sum, s) => sum + s.dash, 0)
+      const dash = (item.count / safeTotal) * circ
+      acc.push({ label: item.label, color: item.color, dash, offset: -prevLen })
+      return acc
+    },
+    [],
+  )
+
+  return (
+    <div className="relative grid size-28 shrink-0 place-items-center">
+      <svg viewBox="0 0 100 100" className="size-full -rotate-90" aria-hidden="true">
+        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(15,23,42,0.06)" strokeWidth="12" />
+        {segments.map((seg) =>
+          seg.dash > 0 ? (
+            <circle
+              key={seg.label}
+              cx="50"
+              cy="50"
+              r={r}
+              fill="none"
+              stroke={seg.color}
+              strokeWidth="12"
+              strokeDasharray={`${seg.dash} ${circ - seg.dash}`}
+              strokeDashoffset={seg.offset}
+              strokeLinecap="butt"
+            />
+          ) : null,
+        )}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        <span className="num text-[20px] leading-none font-semibold text-ink">{total}</span>
+        <span className="mt-0.5 text-[10px] font-medium text-ink-soft uppercase">Sinyal</span>
+      </div>
+    </div>
+  )
+}
 
 function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListTab; onOpen: () => void }) {
   const action = event.event_actions?.[0]
@@ -71,23 +121,19 @@ function EventRow({ event, tab, onOpen }: { event: ConservationEvent; tab: ListT
 function SignalRow({
   signal,
   linked,
-  hasFundraising,
   onOpen,
 }: {
   signal: SatelliteSignal
   linked: boolean
-  hasFundraising: boolean
   onOpen: () => void
 }) {
-  const sourceLabel = formatSignalSource(signal.source)
   const isAction = linked || signal.verificationState === 'has_action'
   const isVerified = !isAction && signal.verificationState === 'verified'
   const tier: SignalVerificationState = isAction ? 'has_action' : isVerified ? 'verified' : 'unverified'
-  const hasCategoryInTitle = signal.title.toLowerCase().includes(signal.categoryLabel.toLowerCase())
-  const meta = hasCategoryInTitle ? sourceLabel : `${sourceLabel} · ${signal.categoryLabel}`
   const kind = signal.kind ?? 'suspected'
-  const tierTitle = isAction ? 'Ada gerakan' : isVerified ? 'Terverifikasi' : 'Belum terverifikasi'
-  const pointCount = signal.pointCount && signal.pointCount > 1 ? signal.pointCount : null
+  const sepIdx = signal.title.indexOf(' · ')
+  const headline = sepIdx > 0 ? signal.title.slice(0, sepIdx) : signal.title
+  const areaName = useAreaName(signal.lat, signal.lng)
 
   return (
     <li>
@@ -98,27 +144,8 @@ function SignalRow({
       >
         <MapMarkerGlyph kind={kind} tier={tier} size="md" />
         <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 block text-[14px] leading-snug font-medium text-ink">{signal.title}</span>
-          <span className="mt-0.5 block truncate text-[12px] font-normal text-ink-soft">{meta}</span>
-        </span>
-        <span className="flex shrink-0 items-center gap-2">
-          {pointCount !== null && (
-            <span title={`${pointCount} titik`} className="num text-[12px] font-medium text-ink-soft">
-              {pointCount}
-            </span>
-          )}
-          {hasFundraising && (
-            <HeartHandshake className="size-3.5 text-ink-soft" strokeWidth={1.9} aria-label="Penggalangan dana aktif" />
-          )}
-          <span title={tierTitle} aria-label={tierTitle} className="inline-flex items-center">
-            {isAction ? (
-              <Sprout className="size-4 text-resolved" strokeWidth={2} aria-hidden="true" />
-            ) : isVerified ? (
-              <ShieldCheck className="size-4 text-leaf/80" strokeWidth={2} aria-hidden="true" />
-            ) : (
-              <CircleDashed className="size-4 text-ink-soft/45" strokeWidth={1.9} aria-hidden="true" />
-            )}
-          </span>
+          <span className="line-clamp-2 block text-[14px] leading-snug font-medium text-ink">{headline}</span>
+          <span className="mt-0.5 block truncate text-[12px] font-normal text-ink-soft">{areaName}</span>
         </span>
       </button>
     </li>
@@ -315,6 +342,7 @@ export default function EventListPanel({
   activeTiers,
   onToggleTier,
   renderTabContent,
+  expanded = false,
 }: {
   events: ConservationEvent[]
   impactEvents?: ConservationEvent[]
@@ -333,6 +361,7 @@ export default function EventListPanel({
   activeTiers?: Set<SignalVerificationState>
   onToggleTier?: (tier: SignalVerificationState) => void
   renderTabContent?: (tab: ListTab) => ReactNode
+  expanded?: boolean
 }) {
   const [rawTab, setTab] = useState<ListTab>(() =>
     initialTab && tabs.includes(initialTab) ? initialTab : (tabs[0] ?? 'Ringkasan'),
@@ -345,7 +374,6 @@ export default function EventListPanel({
   const [hazardFilter, setHazardFilter] = useState<HazardKindFilter>('all')
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'ready' | 'denied' | 'unsupported'>('idle')
-  const { fundraisings } = useFundraisings()
   const searchRef = useRef<HTMLInputElement>(null)
   const tierMenuRef = useRef<HTMLDivElement>(null)
   const eventFilterRef = useRef<HTMLDivElement>(null)
@@ -492,22 +520,54 @@ export default function EventListPanel({
   const summaryData = useMemo(() => {
     if (tab !== 'Ringkasan') return null
     let verifiedCount = 0
+    let actionSignalCount = 0
+    let unverifiedCount = 0
     let highRiskCount = 0
+    let mediumRiskCount = 0
+    let lowRiskCount = 0
     const counts = { wildfire: 0, volcano: 0, flood: 0, storm: 0, other: 0 }
+    const provinceCounts = new Map<string, number>()
+    const sourceCounts = new Map<string, number>()
 
     for (const sig of filteredSignals) {
       const isAction = linkedSet.has(sig.id) || sig.verificationState === 'has_action'
-      if (isAction || sig.verificationState === 'verified') verifiedCount += 1
+      if (isAction) {
+        actionSignalCount += 1
+        verifiedCount += 1
+      } else if (sig.verificationState === 'verified') {
+        verifiedCount += 1
+      } else {
+        unverifiedCount += 1
+      }
       if (sig.severity === 'high') highRiskCount += 1
+      else if (sig.severity === 'medium') mediumRiskCount += 1
+      else lowRiskCount += 1
+
       const k = sig.kind ?? 'suspected'
       if (k === 'wildfire' || k === 'suspected') counts.wildfire += 1
       else if (k === 'volcano') counts.volcano += 1
       else if (k === 'flood') counts.flood += 1
       else if (k === 'storm') counts.storm += 1
       else counts.other += 1
+
+      const prov = resolveIndonesianProvince(sig.lat, sig.lng)
+      provinceCounts.set(prov, (provinceCounts.get(prov) ?? 0) + 1)
+      const srcLabel = formatSignalSource(sig.source)
+      sourceCounts.set(srcLabel, (sourceCounts.get(srcLabel) ?? 0) + 1)
     }
 
     const total = Math.max(1, filteredSignals.length)
+    const topProvinces = [...provinceCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({
+        name,
+        count,
+        pct: Math.max(8, Math.round((count / total) * 100)),
+      }))
+    const topSources = [...sourceCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ name, count }))
     const baseDist: { key: HazardKindFilter; label: string; count: number; color: string }[] = [
       { key: 'wildfire', label: 'Karhutla', count: counts.wildfire, color: '#EA580C' },
       { key: 'volcano', label: 'Gunung', count: counts.volcano, color: '#6D28D9' },
@@ -549,20 +609,28 @@ export default function EventListPanel({
         }
         return rank(b) - rank(a) || (b.pointCount ?? 0) - (a.pointCount ?? 0)
       })
-      .slice(0, 3)
+      .slice(0, expanded ? 6 : 3)
 
     return {
+      totalSignals: filteredSignals.length,
       verifiedCount,
+      verifiedOnlyCount: verifiedCount - actionSignalCount,
+      actionSignalCount,
+      unverifiedCount,
       highRiskCount,
+      mediumRiskCount,
+      lowRiskCount,
       activeActionCount: activeEvents.length,
       resolvedCount,
       wasteKg,
       treesPlanted,
       distribution,
+      topProvinces,
+      topSources,
       featuredEvent: activeEvents[0] ?? null,
       prioritySignals,
     }
-  }, [tab, filteredSignals, events, impactEvents, linkedSet])
+  }, [tab, filteredSignals, events, impactEvents, linkedSet, expanded])
 
   const shownSignals = useMemo(() => {
     if (tab !== 'Satelit') return []
@@ -576,10 +644,11 @@ export default function EventListPanel({
   const customContent = renderTabContent?.(tab)
 
   return (
-    <div>
-      {showTitle && (
-        <h2 className="mb-2 text-[20px] font-semibold text-ink">{title}</h2>
-      )}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 pb-2.5">
+        {showTitle && (
+          <h2 className="mb-2.5 text-[20px] font-semibold text-ink">{title}</h2>
+        )}
 
       {showSearch && (
         <label className="flex h-9 items-center gap-2 rounded-full border border-line bg-canvas px-3.5 transition-colors focus-within:border-leaf focus-within:bg-white">
@@ -637,11 +706,10 @@ export default function EventListPanel({
               aria-expanded={tierMenuOpen}
               aria-label="Filter status sinyal"
               title="Filter status sinyal"
-              className={`relative grid size-9 place-items-center rounded-[11px] transition-colors ${
-                (activeTiers?.size ?? 0) > 0 || tierMenuOpen
+              className={`relative grid size-9 place-items-center rounded-[11px] transition-colors ${(activeTiers?.size ?? 0) > 0 || tierMenuOpen
                   ? 'bg-leaf text-white shadow-xs'
                   : 'bg-white/85 text-ink-soft shadow-[0_1px_2px_rgba(15,23,42,0.05)] hover:text-ink'
-              }`}
+                }`}
             >
               <SlidersHorizontal className="size-4" strokeWidth={2} />
               {(activeTiers?.size ?? 0) > 0 && (
@@ -671,11 +739,10 @@ export default function EventListPanel({
               aria-expanded={eventFilterOpen}
               aria-label="Filter gerakan"
               title="Filter gerakan"
-              className={`relative grid size-9 place-items-center rounded-[11px] transition-colors ${
-                activeFilterCount > 0 || eventFilterOpen
+              className={`relative grid size-9 place-items-center rounded-[11px] transition-colors ${activeFilterCount > 0 || eventFilterOpen
                   ? 'bg-leaf text-white shadow-xs'
                   : 'bg-white/85 text-ink-soft shadow-[0_1px_2px_rgba(15,23,42,0.05)] hover:text-ink'
-              }`}
+                }`}
             >
               <SlidersHorizontal className="size-4" strokeWidth={2} />
               {activeFilterCount > 0 && (
@@ -715,9 +782,8 @@ export default function EventListPanel({
                       role="menuitemradio"
                       aria-checked={active}
                       onClick={() => setStatusFilter(opt.id)}
-                      className={`flex w-full items-center justify-between gap-2 rounded-[10px] px-2.5 py-1.5 text-left text-[13px] transition-colors ${
-                        active ? 'bg-mint font-medium text-forest' : 'text-ink hover:bg-canvas/80'
-                      }`}
+                      className={`flex w-full items-center justify-between gap-2 rounded-[10px] px-2.5 py-1.5 text-left text-[13px] transition-colors ${active ? 'bg-mint font-medium text-forest' : 'text-ink hover:bg-canvas/80'
+                        }`}
                     >
                       <span>{opt.label}</span>
                       {active && <Check className="size-3.5 shrink-0 text-forest" strokeWidth={2.2} />}
@@ -739,9 +805,8 @@ export default function EventListPanel({
                       role="menuitemradio"
                       aria-checked={active}
                       onClick={() => setEcosystemFilter(opt.id)}
-                      className={`flex w-full items-center justify-between gap-2 rounded-[10px] px-2.5 py-1.5 text-left text-[13px] transition-colors ${
-                        active ? 'bg-mint font-medium text-forest' : 'text-ink hover:bg-canvas/80'
-                      }`}
+                      className={`flex w-full items-center justify-between gap-2 rounded-[10px] px-2.5 py-1.5 text-left text-[13px] transition-colors ${active ? 'bg-mint font-medium text-forest' : 'text-ink hover:bg-canvas/80'
+                        }`}
                     >
                       <span>{opt.label}</span>
                       {active && <Check className="size-3.5 shrink-0 text-forest" strokeWidth={2.2} />}
@@ -753,9 +818,203 @@ export default function EventListPanel({
           </div>
         )}
       </div>
+      </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-0.5 pb-8">
       {customContent ? (
         <div className="mt-3">{customContent}</div>
+      ) : tab === 'Ringkasan' && summaryData && expanded ? (
+        <div className="mt-3 flex flex-col gap-3">
+          {/* KPI Row */}
+          <div className="grid grid-cols-4 gap-3">
+            <div className="atlas-group p-3.5">
+              <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Total Sinyal</p>
+              <p className="num mt-1.5 text-[22px] leading-none font-semibold text-ink">{summaryData.totalSignals}</p>
+              <p className="mt-1.5 text-[11px] text-critical">{summaryData.highRiskCount} tingkat tinggi</p>
+            </div>
+            <div className="atlas-group p-3.5">
+              <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Sudah Dicek</p>
+              <p className="num mt-1.5 text-[22px] leading-none font-semibold text-leaf">{summaryData.verifiedCount}</p>
+              <p className="num mt-1.5 text-[11px] text-ink-soft">
+                {Math.round((summaryData.verifiedCount / Math.max(1, summaryData.totalSignals)) * 100)}% dari total
+              </p>
+            </div>
+            <div className="atlas-group p-3.5">
+              <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Gerakan Aktif</p>
+              <p className="num mt-1.5 text-[22px] leading-none font-semibold text-resolved">{summaryData.activeActionCount}</p>
+              <p className="num mt-1.5 text-[11px] text-ink-soft">{summaryData.resolvedCount} selesai</p>
+            </div>
+            <div className="atlas-group p-3.5">
+              <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Dampak Pulih</p>
+              <p className="num mt-1.5 text-[22px] leading-none font-semibold text-forest">{summaryData.wasteKg} kg</p>
+              <p className="num mt-1.5 text-[11px] text-ink-soft">{summaryData.treesPlanted} pohon ditanam</p>
+            </div>
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="atlas-group flex flex-col gap-3 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">
+                  Distribusi Ancaman
+                </p>
+                <span className="text-[11px] text-ink-soft">Klik untuk filter</span>
+              </div>
+              <div className="flex items-center gap-5">
+                <SignalDonutChart items={summaryData.distribution} total={summaryData.totalSignals} />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  {summaryData.distribution.map((d) => (
+                    <button
+                      key={d.label}
+                      type="button"
+                      onClick={() => {
+                        setHazardFilter(d.key)
+                        setTab('Satelit')
+                      }}
+                      className="flex items-center justify-between gap-2 rounded-[8px] px-2 py-1 text-left text-[12px] transition-colors hover:bg-canvas"
+                    >
+                      <span className="flex items-center gap-2 font-medium text-ink">
+                        <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: d.color }} />
+                        {d.label}
+                      </span>
+                      <span className="num font-semibold text-ink-soft">{d.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="atlas-group flex flex-col gap-3 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">
+                  Sebaran Provinsi Teratas
+                </p>
+                <span className="text-[11px] text-ink-soft">Top {summaryData.topProvinces.length}</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {summaryData.topProvinces.map((prov) => (
+                  <div key={prov.name} className="flex items-center gap-2.5 text-[12px]">
+                    <span className="w-32 shrink-0 truncate font-medium text-ink">{prov.name}</span>
+                    <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-leaf" style={{ width: `${prov.pct}%` }} />
+                    </div>
+                    <span className="num w-7 shrink-0 text-right font-semibold text-ink-soft">{prov.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Operational Breakdown Row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="atlas-group flex flex-col gap-3 p-4">
+              <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">
+                Status Tindak Lanjut
+              </p>
+              <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
+                {summaryData.actionSignalCount > 0 && (
+                  <div
+                    className="h-full bg-resolved"
+                    style={{ width: `${(summaryData.actionSignalCount / Math.max(1, summaryData.totalSignals)) * 100}%` }}
+                  />
+                )}
+                {summaryData.verifiedOnlyCount > 0 && (
+                  <div
+                    className="h-full bg-leaf"
+                    style={{ width: `${(summaryData.verifiedOnlyCount / Math.max(1, summaryData.totalSignals)) * 100}%` }}
+                  />
+                )}
+                {summaryData.unverifiedCount > 0 && (
+                  <div
+                    className="h-full bg-ink-soft/30"
+                    style={{ width: `${(summaryData.unverifiedCount / Math.max(1, summaryData.totalSignals)) * 100}%` }}
+                  />
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-[12px]">
+                <div>
+                  <p className="flex items-center gap-1.5 text-ink-soft">
+                    <span className="size-2 rounded-full bg-ink-soft/35" /> Belum Cek
+                  </p>
+                  <p className="num mt-0.5 text-[15px] font-semibold text-ink">{summaryData.unverifiedCount}</p>
+                </div>
+                <div>
+                  <p className="flex items-center gap-1.5 text-ink-soft">
+                    <span className="size-2 rounded-full bg-leaf" /> Terverifikasi
+                  </p>
+                  <p className="num mt-0.5 text-[15px] font-semibold text-leaf">{summaryData.verifiedOnlyCount}</p>
+                </div>
+                <div>
+                  <p className="flex items-center gap-1.5 text-ink-soft">
+                    <span className="size-2 rounded-full bg-resolved" /> Ada Gerakan
+                  </p>
+                  <p className="num mt-0.5 text-[15px] font-semibold text-resolved">{summaryData.actionSignalCount}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="atlas-group flex flex-col gap-3 p-4">
+              <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">
+                Tingkat Keparahan &amp; Sumber
+              </p>
+              <div className="grid grid-cols-3 gap-2 text-[12px]">
+                <div className="rounded-[10px] bg-canvas px-3 py-2">
+                  <p className="text-ink-soft">Tinggi</p>
+                  <p className="num mt-0.5 text-[16px] font-semibold text-critical">{summaryData.highRiskCount}</p>
+                </div>
+                <div className="rounded-[10px] bg-canvas px-3 py-2">
+                  <p className="text-ink-soft">Sedang</p>
+                  <p className="num mt-0.5 text-[16px] font-semibold text-progress">{summaryData.mediumRiskCount}</p>
+                </div>
+                <div className="rounded-[10px] bg-canvas px-3 py-2">
+                  <p className="text-ink-soft">Rendah</p>
+                  <p className="num mt-0.5 text-[16px] font-semibold text-ink">{summaryData.lowRiskCount}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {summaryData.topSources.map((src) => (
+                  <span
+                    key={src.name}
+                    className="num inline-flex items-center gap-1.5 rounded-full bg-canvas px-2.5 py-1 text-[11px] font-medium text-ink-soft"
+                  >
+                    <span>{src.name}</span>
+                    <span className="font-semibold text-ink">{src.count}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Priority Signals Grid */}
+          {summaryData.prioritySignals.length > 0 && onOpenSignal && (
+            <div className="atlas-group p-3">
+              <div className="flex items-center justify-between px-1 pb-2">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">
+                  Perlu Perhatian ({summaryData.prioritySignals.length})
+                </p>
+                {filteredSignals.length > 6 && (
+                  <button
+                    type="button"
+                    onClick={() => setTab('Satelit')}
+                    className="text-[12px] font-medium text-leaf hover:underline"
+                  >
+                    Lihat semua ({filteredSignals.length})
+                  </button>
+                )}
+              </div>
+              <ul className="grid grid-cols-2 gap-1.5">
+                {summaryData.prioritySignals.map((sig) => (
+                  <SignalRow
+                    key={sig.id}
+                    signal={sig}
+                    linked={linkedSet.has(sig.id)}
+                    onOpen={() => onOpenSignal(sig)}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       ) : tab === 'Ringkasan' && summaryData ? (
         <div className="mt-3 flex flex-col gap-3">
           <div className="atlas-group p-1">
@@ -889,7 +1148,6 @@ export default function EventListPanel({
                     key={sig.id}
                     signal={sig}
                     linked={linkedSet.has(sig.id)}
-                    hasFundraising={Boolean(findFundraisingForSignal(fundraisings, sig))}
                     onOpen={() => onOpenSignal(sig)}
                   />
                 ))}
@@ -967,27 +1225,25 @@ export default function EventListPanel({
             <div className={rows.length > 0 ? 'mt-4 border-t border-ink/8 pt-4' : 'mt-2.5'}>
               {tab === 'Satelit' && (
                 <div className="mb-2.5 flex flex-col gap-2">
-                  <div className="flex flex-wrap gap-1.5">
+                  <div role="tablist" aria-label="Filter kategori sinyal" className="panel-tabs min-w-0 flex-1">
                     {HAZARD_FILTER_OPTIONS.filter(
                       (opt) => opt.id !== 'storm' || filteredSignals.some((s) => s.kind === 'storm'),
-                    ).map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setHazardFilter(opt.id)}
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                          hazardFilter === opt.id
-                            ? 'bg-ink text-white'
-                            : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                    ).map((opt) => {
+                      const active = hazardFilter === opt.id
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={active}
+                          onClick={() => setHazardFilter(opt.id)}
+                          className={`panel-tab flex-1 whitespace-nowrap ${active ? 'is-active' : ''}`}
+                        >
+                          {opt.label}
+                        </button>
+                      )
+                    })}
                   </div>
-                  <p className="text-[11px] text-ink-soft">
-                    Data satelit NASA FIRMS &amp; EONET · sinkronisasi berkala
-                  </p>
                 </div>
               )}
               {shownSignals.length === 0 ? (
@@ -996,13 +1252,12 @@ export default function EventListPanel({
                   <p className="text-[12px] text-ink-soft">Tidak ada sinyal dengan status terpilih</p>
                 </div>
               ) : (
-                <ul className="atlas-group divide-y divide-ink/6 p-1">
+                <ul className={expanded ? 'atlas-group grid grid-cols-2 gap-1.5 p-2' : 'atlas-group divide-y divide-ink/6 p-1'}>
                   {shownSignals.map((sig) => (
                     <SignalRow
                       key={sig.id}
                       signal={sig}
                       linked={linkedSet.has(sig.id)}
-                      hasFundraising={Boolean(findFundraisingForSignal(fundraisings, sig))}
                       onOpen={() => onOpenSignal(sig)}
                     />
                   ))}
@@ -1025,6 +1280,7 @@ export default function EventListPanel({
           )}
         </>
       )}
+      </div>
     </div>
   )
 }

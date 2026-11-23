@@ -1,18 +1,17 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Ban, CalendarPlus, Check, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import BlamLoader from '../../components/ui/BlamLoader'
 import { ReportStatusPill } from '../../components/ui/atoms'
 import { fetchReportsQueue, verifyCitizenReport } from '../../lib/api'
 import { ECOSYSTEM_LABEL } from '../../lib/constants'
 import type { CitizenReport, ReportStatus } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 
-type FilterTab = 'all' | 'pending_verification' | 'escalated' | 'verified'
+type FilterTab = 'queue' | 'verified'
 
 const TABS: { id: FilterTab; label: string }[] = [
-  { id: 'all', label: 'Semua' },
-  { id: 'pending_verification', label: 'Antrean' },
-  { id: 'escalated', label: 'Eskalasi' },
+  { id: 'queue', label: 'Antrean' },
   { id: 'verified', label: 'Terverifikasi' },
 ]
 
@@ -29,7 +28,7 @@ export default function VerificationRadarPanel({
 }) {
   const queryClient = useQueryClient()
   const { profile, memberships } = useAuth()
-  const [filter, setFilter] = useState<FilterTab>('all')
+  const [filter, setFilter] = useState<FilterTab>('queue')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -50,7 +49,11 @@ export default function VerificationRadarPanel({
     const rows = queueQuery.data ?? []
     const q = query.trim().toLowerCase()
     return rows.filter((r) => {
-      if (filter !== 'all' && r.status !== filter) return false
+      if (filter === 'queue') {
+        if (r.status === 'verified' || r.status === 'rejected') return false
+      } else if (r.status !== 'verified') {
+        return false
+      }
       if (!q) return true
       return (
         r.title.toLowerCase().includes(q) ||
@@ -109,7 +112,7 @@ export default function VerificationRadarPanel({
       )}
 
       {queueQuery.isPending && !queueQuery.data ? (
-        <p className="py-8 text-center text-[14px] font-normal text-ink-soft">Memuat antrean</p>
+        <BlamLoader label="Memuat antrean…" />
       ) : queueQuery.isError && !queueQuery.data ? (
         <div className="card-quiet p-4 text-center">
           <p className="text-[12px] font-normal text-ink-soft">
@@ -131,7 +134,7 @@ export default function VerificationRadarPanel({
         <div className="flex flex-col gap-3">
           {reports.map((r) => {
             const hasLinkedEvent = (r.linked_events?.length ?? 0) > 0
-            const canCreateEvent = r.status === 'verified' || r.status === 'escalated'
+            const canCreateEvent = r.status === 'verified'
             const isPending = r.status === 'pending_verification' || r.status === 'escalated'
             const reporterName = r.is_anonymous ? 'Anonim' : (r.reporter?.full_name ?? 'Warga')
             return (
@@ -197,7 +200,7 @@ export default function VerificationRadarPanel({
                         <button
                           type="button"
                           onClick={() => onCreateEvent(r)}
-                          className="btn-primary h-9 flex-1 !rounded-[10px] px-3 text-[12px]"
+                          className="btn-primary h-10 flex-1 gap-2 !rounded-[10px] px-4 text-[13px]"
                         >
                           <CalendarPlus className="size-4" strokeWidth={1.75} /> Buat Event
                         </button>

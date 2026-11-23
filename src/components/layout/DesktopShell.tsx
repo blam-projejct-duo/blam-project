@@ -18,7 +18,9 @@ import {
   Maximize2,
   Minimize2,
   Minus,
+  Navigation,
   Plus,
+  QrCode,
   X,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -30,6 +32,7 @@ import type { BlamChatAction, BlamChatContext, BlamSelectedPointContext, BlamSna
 import BlamChatModal from '../../modules/chat/BlamChatModal'
 import type { BlamPointPromptSuggestion } from '../../modules/chat/BlamChatModal'
 import BlamCompanion from '../../modules/chat/BlamCompanion'
+import BlamLoader from '../ui/BlamLoader'
 import { MarkerTierLegend, Orb } from '../ui/atoms'
 import {
   BellSolidIcon,
@@ -46,6 +49,10 @@ import EventDetail from '../../modules/events/EventDetail'
 import SatelliteSignalDetail from '../../modules/events/SatelliteSignalDetail'
 import HistoryPanel from '../../modules/history/HistoryPanel'
 import CarePanel from '../../modules/fundraising/CarePanel'
+import CreateFundraisingModal from '../../modules/fundraising/CreateFundraisingModal'
+import DonateModal from '../../modules/fundraising/DonateModal'
+import { SideFundraisingContext } from '../../modules/fundraising/SideFundraisingContext'
+import type { SideFundraisingContextValue } from '../../modules/fundraising/SideFundraisingContext'
 import MapStyleSwitcher from '../../modules/map/MapStyleSwitcher'
 import MapView from '../../modules/map/MapView'
 import { filterRadarItems, LAYER_CHIPS } from '../../modules/map/radarFilters'
@@ -55,7 +62,7 @@ import OrgsPanel from '../../modules/organizations/OrgsPanel'
 import NotificationsPanel from '../../modules/notifications/NotificationsPanel'
 import ProfilePanel from '../../modules/profile/ProfilePanel'
 import VerificationRadarPanel from '../../modules/reports/VerificationRadarPanel'
-import type { CitizenReport, ConservationEvent, SatelliteSignal, SignalVerificationState } from '../../types'
+import type { CitizenReport, ConservationEvent, FundraisingCampaign, SatelliteSignal, SignalVerificationState } from '../../types'
 import EventListPanel from './EventListPanel'
 import type { ListTab } from './EventListPanel'
 
@@ -232,6 +239,12 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const [companionOut, setCompanionOut] = useState(false)
   const [companionSeen, setCompanionSeen] = useState(() => readFlag(COMPANION_SEEN_KEY))
   const [chatOpen, setChatOpen] = useState(false)
+  const [eventQrOpen, setEventQrOpen] = useState(false)
+  const [sideFundraising, setSideFundraising] = useState<
+    | { type: 'create'; signal: SatelliteSignal; onCreated: () => Promise<void> }
+    | { type: 'donate'; campaign: FundraisingCampaign; onDonated: () => Promise<void> }
+    | null
+  >(null)
   const [chatBusy, setChatBusy] = useState(false)
   const [replyPulse, setReplyPulse] = useState(0)
   const [reportOpen, setReportOpen] = useState(false)
@@ -296,16 +309,33 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const unreadCount = notifications.filter((n) => !n.is_read).length
   const initials = profile?.full_name ? profile.full_name.slice(0, 1).toUpperCase() : null
   const selected = radar.selected
-  const drawerWidth = drawerExpanded
+  const isAdminRole = profile?.role === 'admin'
+  const drawerWidth = isAdminRole && drawerExpanded
     ? Math.min(920, Math.max(DRAWER_W, viewportW - (RAIL_GAP + RAIL_W + FLOAT_GAP + 84)))
     : DRAWER_W
   const edge = RAIL_GAP + RAIL_W + (drawerOpen ? FLOAT_GAP + drawerWidth : 0)
   const chatLeft = drawerOpen
     ? RAIL_GAP + RAIL_W + FLOAT_GAP + drawerWidth + FLOAT_GAP
     : RAIL_GAP + RAIL_W + FLOAT_GAP
-  const rawCompanionLeft = (chatOpen ? chatLeft + DRAWER_W : edge) - 4
+  const sideFundraisingCtx = useMemo<SideFundraisingContextValue>(
+    () => ({
+      openCreateFundraising: (signal, onCreated) => {
+        setChatOpen(false)
+        setSideFundraising({ type: 'create', signal, onCreated })
+      },
+      openDonate: (campaign, onDonated) => {
+        setChatOpen(false)
+        setSideFundraising({ type: 'donate', campaign, onDonated })
+      },
+    }),
+    [],
+  )
+
+  const rightPanelEdge = chatOpen ? chatLeft + 392 : sideFundraising ? chatLeft + 400 : edge
+  const isAnyPanelOpen = drawerOpen || chatOpen || Boolean(sideFundraising)
+  const rawCompanionLeft = rightPanelEdge - 4
   const companionLeft = Math.min(rawCompanionLeft, Math.max(RAIL_GAP + RAIL_W - 4, viewportW - 152))
-  const isCompactRail = !drawerOpen && !chatOpen
+  const isCompactRail = !drawerOpen && !chatOpen && !sideFundraising
   const pillInsetY = Math.max(16, Math.round((viewportH - compactNavH) / 2))
   const companionBoundsTop = isCompactRail ? pillInsetY + 12 : 96
   const companionBoundsBottom = isCompactRail ? pillInsetY + 20 : 24
@@ -316,7 +346,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const openCount = radar.events.filter((ev) => ev.status !== 'resolved' && ev.status !== 'cancelled').length
   const isRadarMode = drawerOpen && tab === 'Jelajah' && view === 'list' && !radar.selectedId && !radar.selectedSignal
 
-  const expandBtn = (
+  const expandBtn = isAdminRole ? (
     <button
       type="button"
       onClick={() => setDrawerExpanded((v) => !v)}
@@ -326,7 +356,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     >
       {drawerExpanded ? <Minimize2 className="size-4" strokeWidth={1.9} /> : <Maximize2 className="size-4" strokeWidth={1.9} />}
     </button>
-  )
+  ) : null
 
   useEffect(() => {
     if (!filterOpen && !notifOpen) return
@@ -689,25 +719,54 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     }
 
     if (view === 'detail' && selected) {
+      const routeActive = radar.activeRoute?.eventId === selected.id
+      const canShowQr =
+        canOrganize && selected.status !== 'resolved' && selected.status !== 'cancelled'
       return (
         <>
           <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-5">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
                 onClick={() => {
+                  setEventQrOpen(false)
                   radar.setSelectedId(null)
                   setView('list')
                   if (mode === 'Jelajah') radar.fitIndonesia()
                 }}
                 aria-label="Kembali ke daftar"
-                className="btn-soft size-9 !rounded-[10px] p-0"
+                className="btn-soft size-9 shrink-0 !rounded-[10px] p-0"
               >
                 <ChevronLeft className="size-4" strokeWidth={1.75} />
               </button>
-              <span className="text-[14px] font-medium text-ink-soft">{mode}</span>
+              <span className="truncate text-[14px] font-medium text-ink-soft">{mode}</span>
             </div>
-            {expandBtn}
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                disabled={radar.routeLoading}
+                onClick={() => (routeActive ? radar.clearRoute() : void radar.startDirections(selected))}
+                aria-pressed={routeActive}
+                className={`h-8 gap-1.5 whitespace-nowrap !rounded-[10px] px-2.5 text-[12px] disabled:opacity-60 ${
+                  routeActive ? 'inline-flex items-center justify-center bg-ink font-medium text-white' : 'btn-soft'
+                }`}
+              >
+                <Navigation className="size-3.5 shrink-0" strokeWidth={1.85} />
+                {radar.routeLoading ? 'Rute…' : 'Rute'}
+              </button>
+              {canShowQr && (
+                <button
+                  type="button"
+                  onClick={() => setEventQrOpen(true)}
+                  aria-label="QR Gerakan"
+                  className="btn-soft h-8 gap-1.5 whitespace-nowrap !rounded-[10px] px-2.5 text-[12px]"
+                >
+                  <QrCode className="size-3.5 shrink-0" strokeWidth={1.85} />
+                  QR
+                </button>
+              )}
+              {expandBtn}
+            </div>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
             <EventDetail
@@ -724,6 +783,9 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               onStartRoute={() => radar.startDirections(selected)}
               onSwitchRouteMode={radar.switchRouteMode}
               onClearRoute={radar.clearRoute}
+              hideRouteQrButtons
+              qrOpen={eventQrOpen}
+              onQrOpenChange={setEventQrOpen}
             />
           </div>
         </>
@@ -731,20 +793,14 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
     }
 
     const isJelajah = mode === 'Jelajah'
-    const countText = isJelajah
-      ? radar.layersLoading && visibleHazards.length === 0
-        ? 'Memuat sinyal…'
-        : `${visibleHazards.length} sinyal`
-      : radar.state === 'loading'
-        ? 'Memuat…'
-        : `${visibleEvents.length} event`
+    const countText = radar.state === 'loading' ? 'Memuat…' : `${visibleEvents.length} event`
 
     return (
       <>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-5">
           <div className="flex items-baseline gap-2">
             <h2 className="text-[20px] font-semibold text-ink">{mode}</h2>
-            <span className="num text-[12px] font-normal text-ink-soft">{countText}</span>
+            {!isJelajah && <span className="num text-[12px] font-normal text-ink-soft">{countText}</span>}
           </div>
           <div className="flex items-center gap-1.5">
             {canOrganize && (
@@ -759,9 +815,10 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             {expandBtn}
           </div>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5">
           <EventListPanel
             key={mode}
+            expanded={isAdminRole && drawerExpanded}
             events={visibleEvents}
             impactEvents={radar.events}
             signals={isJelajah ? visibleSignals : []}
@@ -784,11 +841,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                     return (
                       <div className="card-quiet p-5 text-center">
                         <p className="text-[14px] font-semibold text-ink">Khusus Verifikator</p>
-                        <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-                          {!profile
-                            ? 'Masuk sebagai relawan, instansi, atau admin terverifikasi untuk memverifikasi titik laporan'
-                            : 'Hanya relawan, instansi, atau admin terverifikasi yang dapat memverifikasi laporan'}
-                        </p>
                         {!profile && (
                           <button
                             type="button"
@@ -821,6 +873,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
   const isDarkMap = radar.style === 'satelit' || radar.style === 'gelap'
 
   return (
+    <SideFundraisingContext.Provider value={sideFundraisingCtx}>
     <div data-map-style={radar.style} className="relative h-full w-full overflow-clip bg-canvas">
       <div className="absolute inset-0">
         <MapView
@@ -1013,7 +1066,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                   {(tab === 'Jelajah' || tab === 'Gerakan') && radarOrAksiBody(tab)}
 
                   {tab === 'Care' && (
-                    <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                    <div className="flex min-h-0 flex-1 flex-col">
                       <CarePanel
                         signals={radar.satelliteSignals}
                         query={query}
@@ -1025,7 +1078,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                   )}
 
                   {tab === 'History' && (
-                    <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-5">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-5">
                       <HistoryPanel
                         events={radar.allEvents}
                         signals={radar.satelliteSignals}
@@ -1040,7 +1093,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                   )}
 
                   {tab === 'Org' && !isAdmin && (
-                    <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-5">
                       <OrgsPanel headerAction={expandBtn} query={query} />
                     </div>
                   )}
@@ -1079,6 +1132,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                         signals={radar.satelliteSignals}
                         signalsCount={radar.satelliteSignals.length}
                         headerAction={expandBtn}
+                        expanded={isAdminRole && drawerExpanded}
                         onNavigate={(next) =>
                           openTab(
                             next === 'approvals'
@@ -1115,6 +1169,14 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         type="button"
         onClick={() => {
           clearSwitchTimer()
+          if (chatOpen) {
+            setChatOpen(false)
+            return
+          }
+          if (sideFundraising) {
+            setSideFundraising(null)
+            return
+          }
           const next = !drawerOpen
           setDrawerOpen(next)
           if (!next) setDrawerExpanded(false)
@@ -1122,11 +1184,11 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
             radar.fitIndonesia()
           }
         }}
-        aria-label={drawerOpen ? 'Sembunyikan panel' : 'Tampilkan panel'}
-        style={{ left: edge + 14 }}
+        aria-label={isAnyPanelOpen ? 'Sembunyikan panel' : 'Tampilkan panel'}
+        style={{ left: rightPanelEdge + 14 }}
         className="orb-surface orb-surface-btn absolute top-1/2 z-[650] grid size-9 -translate-y-1/2 place-items-center text-forest transition-[left,transform] duration-[360ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
       >
-        {drawerOpen ? <ChevronLeft className="size-4" strokeWidth={2.5} /> : <ChevronRight className="size-4" strokeWidth={2.5} />}
+        {isAnyPanelOpen ? <ChevronLeft className="size-4" strokeWidth={2.5} /> : <ChevronRight className="size-4" strokeWidth={2.5} />}
       </button>
 
       <div
@@ -1330,10 +1392,50 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
               chatBusy={chatOpen && chatBusy}
               replyPulse={replyPulse}
               tips={companionTips}
-              onOpenChat={() => setChatOpen(true)}
+              onOpenChat={() => {
+                setSideFundraising(null)
+                setChatOpen(true)
+              }}
               onResetMap={resetToIndonesia}
               onDismiss={toggleCompanion}
             />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {sideFundraising && (
+            <motion.aside
+              key={
+                sideFundraising.type === 'create'
+                  ? `side-create-${sideFundraising.signal.id}`
+                  : `side-donate-${sideFundraising.campaign.id}`
+              }
+              initial={{ opacity: 0, x: -24, scale: 0.96 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -20, scale: 0.96 }}
+              transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+              style={{ left: chatLeft, transformOrigin: 'left center' }}
+              className="atlas-sheet pointer-events-auto absolute top-[70px] bottom-4 z-[610] flex w-[400px] flex-col overflow-hidden rounded-[22px]"
+            >
+              {sideFundraising.type === 'create' ? (
+                <CreateFundraisingModal
+                  inline
+                  signal={sideFundraising.signal}
+                  onClose={() => setSideFundraising(null)}
+                  onCreated={async () => {
+                    await sideFundraising.onCreated()
+                    setSideFundraising(null)
+                  }}
+                />
+              ) : (
+                <DonateModal
+                  inline
+                  campaign={sideFundraising.campaign}
+                  onClose={() => setSideFundraising(null)}
+                  onDonated={sideFundraising.onDonated}
+                />
+              )}
+            </motion.aside>
           )}
         </AnimatePresence>
 
@@ -1369,7 +1471,7 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
                 transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 className="atlas-sheet relative h-[min(780px,calc(100dvh-48px))] w-[440px] overflow-hidden rounded-[22px]"
               >
-                <Suspense fallback={<div className="grid h-full place-items-center text-[12px] font-medium text-ink-soft">Memuat…</div>}>
+                <Suspense fallback={<BlamLoader fullHeight />}>
                   <QuickReportFlow
                     initialPrefill={reportPrefill}
                     onClose={() => {
@@ -1389,5 +1491,6 @@ export default function DesktopShell({ radar }: { radar: Radar }) {
         </AnimatePresence>
       </MotionConfig>
     </div>
+    </SideFundraisingContext.Provider>
   )
 }

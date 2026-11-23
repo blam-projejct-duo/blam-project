@@ -89,7 +89,7 @@ export default function App() {
           <LegalModal
             key="legal-modal"
             page={legalPage}
-            onNavigate={navigateTo}
+            onNavigate={(path) => navigateTo(path, { replace: true })}
             onClose={() => navigateBack('/')}
           />
         )}

@@ -4,6 +4,7 @@ import type { ConservationEvent, OrganizerKind, SatelliteSignal } from '../../ty
 import { useAuth } from '../auth/AuthContext'
 import CreateFundraisingModal from './CreateFundraisingModal'
 import DonateModal from './DonateModal'
+import { useSideFundraising } from './SideFundraisingContext'
 import {
   findFundraisingForEvent,
   findFundraisingForSignal,
@@ -36,6 +37,7 @@ interface Props {
 export default function FundraisingSection({ signal, event }: Props) {
   const { profile, memberships } = useAuth()
   const { fundraisings, refreshFundraisings } = useFundraisings()
+  const sideFundraising = useSideFundraising()
   const [showCreate, setShowCreate] = useState(false)
   const [showDonate, setShowDonate] = useState(false)
 
@@ -74,7 +76,10 @@ export default function FundraisingSection({ signal, event }: Props) {
           </div>
           <button
             type="button"
-            onClick={() => setShowCreate(true)}
+            onClick={() => {
+              if (sideFundraising) sideFundraising.openCreateFundraising(signal, refreshFundraisings)
+              else setShowCreate(true)
+            }}
             className="btn-soft h-10 w-full gap-2 px-4 text-[12px] text-critical hover:bg-critical/8"
           >
             <HeartHandshake className="size-4" strokeWidth={1.75} />
@@ -159,7 +164,10 @@ export default function FundraisingSection({ signal, event }: Props) {
 
         <button
           type="button"
-          onClick={() => setShowDonate(true)}
+          onClick={() => {
+            if (sideFundraising) sideFundraising.openDonate(campaign, refreshFundraisings)
+            else setShowDonate(true)
+          }}
           className="btn-primary h-11 w-full px-5 text-[14px]"
         >
           <HeartHandshake className="size-4" strokeWidth={1.75} />

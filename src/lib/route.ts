@@ -17,10 +17,15 @@ export function getLegalRoute(pathname?: string): 'privacy' | 'terms' | null {
 }
 
 /** Navigasi SPA di tab yang sama, bisa dipanggil dari komponen mana pun. */
-export function navigateApp(next: AppPath) {
+export function navigateApp(next: AppPath, opts?: { replace?: boolean }) {
   if (typeof window === 'undefined') return
   if (window.location.pathname !== next) {
-    window.history.pushState({ blamFrom: window.location.pathname }, '', next)
+    const curState = window.history.state as { blamFrom?: string } | null
+    if (opts?.replace) {
+      window.history.replaceState({ blamFrom: curState?.blamFrom }, '', next)
+    } else {
+      window.history.pushState({ blamFrom: window.location.pathname }, '', next)
+    }
   }
   window.dispatchEvent(new PopStateEvent('popstate'))
   window.scrollTo({ top: 0, behavior: 'auto' })
@@ -30,11 +35,11 @@ export function navigateApp(next: AppPath) {
 export function navigateBack(fallback: AppPath = '/') {
   if (typeof window === 'undefined') return
   const state = window.history.state as { blamFrom?: string } | null
-  if (state?.blamFrom) {
+  if (state?.blamFrom && !getLegalRoute(state.blamFrom)) {
     window.history.back()
     return
   }
-  navigateApp(fallback)
+  navigateApp(fallback, { replace: true })
 }
 
 export function useAppRoute() {
@@ -48,8 +53,8 @@ export function useAppRoute() {
     return () => window.removeEventListener('popstate', onPop)
   }, [])
 
-  const navigateTo = useCallback((next: AppPath) => {
-    navigateApp(next)
+  const navigateTo = useCallback((next: AppPath, opts?: { replace?: boolean }) => {
+    navigateApp(next, opts)
   }, [])
 
   return {

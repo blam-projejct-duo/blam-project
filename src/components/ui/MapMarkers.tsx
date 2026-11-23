@@ -108,22 +108,14 @@ export function MapMarkerGlyph({
   )
 }
 
-function formatCoord(lat: number, lng: number): string {
-  const ns = lat < 0 ? 'LS' : 'LU'
-  const ew = lng < 0 ? 'BB' : 'BT'
-  return `${Math.abs(lat).toFixed(2)}°${ns}, ${Math.abs(lng).toFixed(2)}°${ew}`
-}
-
 /**
  * Mini-atlas koordinat lapangan untuk sinyal satelit & gerakan tanpa foto lapangan.
  */
 export function AtlasCoordinateHero({
-  lat,
-  lng,
+  lat: _lat,
+  lng: _lng,
   kind,
   tier = 'verified',
-  subtitle,
-  badge,
   compact = false,
   className = '',
 }: {
@@ -138,7 +130,6 @@ export function AtlasCoordinateHero({
 }) {
   const effectiveKind: HazardKind | 'event' = tier === 'has_action' ? 'event' : kind
   const hex = HAZARD_HEX[effectiveKind]
-  const coordText = formatCoord(lat, lng)
 
   return (
     <div
@@ -174,27 +165,6 @@ export function AtlasCoordinateHero({
       {/* Penanda pusat */}
       <div className="relative z-10 flex size-full flex-col items-center justify-center">
         <MapMarkerGlyph kind={kind} tier={tier} size={compact ? 'md' : 'lg'} className="drop-shadow-[0_4px_10px_rgba(15,23,42,0.18)]" />
-      </div>
-
-      {/* Label kiri atas (opsional) */}
-      {badge && (
-        <span className="absolute top-3 left-3 z-10 rounded-[8px] bg-white/88 px-2.5 py-1 text-[12px] font-medium text-ink shadow-[0_1px_3px_rgba(15,23,42,0.08)] backdrop-blur-sm">
-          {badge}
-        </span>
-      )}
-
-      {/* Koordinat & wilayah di kiri/kanan bawah */}
-      <div className="pointer-events-none absolute inset-x-3 bottom-2.5 z-10 flex items-center justify-between gap-2 text-[12px]">
-        {subtitle ? (
-          <span className="max-w-[54%] truncate rounded-[8px] bg-white/88 px-2 py-0.5 font-medium text-ink shadow-[0_1px_3px_rgba(15,23,42,0.08)] backdrop-blur-sm">
-            {subtitle}
-          </span>
-        ) : (
-          <span />
-        )}
-        <span className="num shrink-0 rounded-[8px] bg-white/88 px-2 py-0.5 font-normal text-ink-soft shadow-[0_1px_3px_rgba(15,23,42,0.08)] backdrop-blur-sm">
-          {coordText}
-        </span>
       </div>
     </div>
   )

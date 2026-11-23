@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import BlamLoader from '../../components/ui/BlamLoader'
 import { ReportStatusPill, StatusPill } from '../../components/ui/atoms'
 import {
   broadcastAdminNotification,
@@ -61,6 +62,7 @@ export default function AdminPanel({
   signals = [],
   signalsCount,
   headerAction,
+  expanded = false,
   onNavigate,
   onFocusLocation,
   onRefreshEvents,
@@ -71,6 +73,7 @@ export default function AdminPanel({
   signals?: SatelliteSignal[]
   signalsCount?: number
   headerAction?: ReactNode
+  expanded?: boolean
   onNavigate?: (section: AdminSection) => void
   onFocusLocation?: (lat: number, lng: number) => void
   onRefreshEvents: () => Promise<void>
@@ -422,18 +425,20 @@ export default function AdminPanel({
           events={events}
           reports={reports}
           orgs={allOrgs}
+          signals={signals}
           campaigns={campaigns}
           pendingOrgsCount={pendingOrgs.length}
           pendingReportsCount={reports.length}
           signalsCount={signalsCount ?? signals.length}
           auditLog={auditLog}
+          expanded={expanded}
           onNavigate={navigateSection}
           onFocusLocation={onFocusLocation}
         />
       )}
 
       {activeSection === 'broadcast' && (
-        <AdminBroadcastView history={broadcastHistory} onBroadcast={handleBroadcast} />
+        <AdminBroadcastView history={broadcastHistory} expanded={expanded} onBroadcast={handleBroadcast} />
       )}
 
       {activeSection === 'orgs' && (
@@ -445,6 +450,34 @@ export default function AdminPanel({
             const totalActiveMembers = verifiedOrgs.reduce((sum, o) => sum + (o.active_members_count ?? 0), 0)
             const totalOrgActions = verifiedOrgs.reduce((sum, o) => sum + (o.actions_count ?? 0), 0)
             const totalParticipants = events.reduce((sum, ev) => sum + (ev.event_participants?.length ?? 0), 0)
+            if (expanded) {
+              return (
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="atlas-group p-3.5">
+                    <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Organisasi Aktif</p>
+                    <p className="num mt-1.5 text-[22px] leading-none font-semibold text-ink">{verifiedOrgs.length}</p>
+                    <p className="mt-1.5 text-[11px] text-ink-soft">
+                      {communitiesCount} komunitas · {agenciesCount} instansi
+                    </p>
+                  </div>
+                  <div className="atlas-group p-3.5">
+                    <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Anggota Org</p>
+                    <p className="num mt-1.5 text-[22px] leading-none font-semibold text-leaf">{totalActiveMembers}</p>
+                    <p className="mt-1.5 text-[11px] text-ink-soft">Keanggotaan aktif</p>
+                  </div>
+                  <div className="atlas-group p-3.5">
+                    <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Peserta Aksi</p>
+                    <p className="num mt-1.5 text-[22px] leading-none font-semibold text-ink">{totalParticipants}</p>
+                    <p className="mt-1.5 text-[11px] text-ink-soft">Total relawan event</p>
+                  </div>
+                  <div className="atlas-group p-3.5">
+                    <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Aksi Selesai</p>
+                    <p className="num mt-1.5 text-[22px] leading-none font-semibold text-resolved">{totalOrgActions}</p>
+                    <p className="mt-1.5 text-[11px] text-ink-soft">Laporan pemulihan</p>
+                  </div>
+                </div>
+              )
+            }
             return (
               <section className="card-quiet flex flex-col gap-2.5 p-3.5">
                 <div className="flex items-center justify-between gap-2">
@@ -507,80 +540,107 @@ export default function AdminPanel({
               events={events}
               isLoading={orgsQuery.isLoading}
               busyId={busyId}
+              expanded={expanded}
               onRevokeOrg={handleRevokeOrg}
               onFocusLocation={onFocusLocation}
             />
           ) : (
-            <AdminUsersView users={users} isLoading={usersQuery.isLoading} />
+            <AdminUsersView users={users} isLoading={usersQuery.isLoading} expanded={expanded} />
           )}
         </div>
       )}
 
       {activeSection === 'approvals' && (
         <div className="flex flex-col gap-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-ink-soft" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari nama organisasi atau wilayah…"
-              className="h-9 w-full rounded-[10px] bg-white pr-8 pl-8 text-[13px] text-ink ring-1 ring-ink/10 placeholder:text-ink-soft/70 focus:ring-2 focus:ring-forest/40 focus:outline-none"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                aria-label="Hapus pencarian"
-                className="absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-soft hover:text-ink"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </div>
+          {expanded && (
+            <div className="grid grid-cols-3 gap-3">
+              <div className="atlas-group p-3.5">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Menunggu Tinjau</p>
+                <p className="num mt-1.5 text-[22px] leading-none font-semibold text-ink">{pendingOrgs.length}</p>
+                <p className="mt-1.5 text-[11px] text-ink-soft">Pengajuan baru</p>
+              </div>
+              <div className="atlas-group p-3.5">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Komunitas</p>
+                <p className="num mt-1.5 text-[22px] leading-none font-semibold text-leaf">
+                  {pendingOrgs.filter((o) => o.type === 'community').length}
+                </p>
+                <p className="mt-1.5 text-[11px] text-ink-soft">Menunggu verifikasi</p>
+              </div>
+              <div className="atlas-group p-3.5">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Instansi</p>
+                <p className="num mt-1.5 text-[22px] leading-none font-semibold text-forest">
+                  {pendingOrgs.filter((o) => o.type === 'agency').length}
+                </p>
+                <p className="mt-1.5 text-[11px] text-ink-soft">Menunggu verifikasi</p>
+              </div>
+            </div>
+          )}
 
-          <div className="flex flex-wrap items-center gap-1.5">
-            {(
-              [
-                { id: 'all', label: `Semua (${pendingOrgs.length})` },
-                { id: 'community', label: 'Komunitas' },
-                { id: 'agency', label: 'Instansi' },
-              ] as const
-            ).map((chip) => (
-              <button
-                key={chip.id}
-                type="button"
-                onClick={() => setOrgFilter(chip.id)}
-                className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                  orgFilter === chip.id
-                    ? 'bg-ink text-white'
-                    : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
-                }`}
-              >
-                {chip.label}
-              </button>
-            ))}
-            {filteredPendingOrgs.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (!expandedId) setExpandedId(filteredPendingOrgs[0].id)
-                  else setAutoAdvance((v) => !v)
-                }}
-                className={`ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                  autoAdvance
-                    ? 'bg-leaf/15 text-forest ring-1 ring-leaf/30'
-                    : 'bg-white text-ink-soft ring-1 ring-ink/10'
-                }`}
-              >
-                <Zap className="size-3" /> {expandedId ? (autoAdvance ? 'Auto-lanjut' : 'Manual') : 'Mulai Triage'}
-              </button>
-            )}
+          <div className={expanded ? 'flex flex-wrap items-center justify-between gap-3' : 'flex flex-col gap-3'}>
+            <div className={expanded ? 'relative min-w-0 flex-1' : 'relative'}>
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-ink-soft" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari nama organisasi atau wilayah…"
+                className="h-9 w-full rounded-[10px] bg-white pr-8 pl-8 text-[13px] text-ink ring-1 ring-ink/10 placeholder:text-ink-soft/70 focus:ring-2 focus:ring-forest/40 focus:outline-none"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  aria-label="Hapus pencarian"
+                  className="absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-soft hover:text-ink"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(
+                [
+                  { id: 'all', label: `Semua (${pendingOrgs.length})` },
+                  { id: 'community', label: 'Komunitas' },
+                  { id: 'agency', label: 'Instansi' },
+                ] as const
+              ).map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => setOrgFilter(chip.id)}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                    orgFilter === chip.id
+                      ? 'bg-ink text-white'
+                      : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
+                  }`}
+                >
+                  {chip.label}
+                </button>
+              ))}
+              {filteredPendingOrgs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!expandedId) setExpandedId(filteredPendingOrgs[0].id)
+                    else setAutoAdvance((v) => !v)
+                  }}
+                  className={`ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                    autoAdvance
+                      ? 'bg-leaf/15 text-forest ring-1 ring-leaf/30'
+                      : 'bg-white text-ink-soft ring-1 ring-ink/10'
+                  }`}
+                >
+                  <Zap className="size-3" /> {expandedId ? (autoAdvance ? 'Auto-lanjut' : 'Manual') : 'Mulai Triage'}
+                </button>
+              )}
+            </div>
           </div>
 
           {orgsQuery.isLoading ? (
-            <div className="card-quiet flex items-center justify-center gap-2 p-6 text-[13px] text-ink-soft">
-              <Loader2 className="size-4 animate-spin" /> Memuat pengajuan organisasi…
+            <div className="card-quiet p-2">
+              <BlamLoader label="Memuat pengajuan organisasi…" />
             </div>
           ) : filteredPendingOrgs.length === 0 ? (
             <div className="card-quiet flex flex-col items-center gap-1.5 p-6 text-center">
@@ -604,20 +664,22 @@ export default function AdminPanel({
               )}
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className={expanded ? 'grid grid-cols-2 items-start gap-3' : 'flex flex-col gap-2'}>
               {filteredPendingOrgs.map((o) => {
-                const open = expandedId === o.id
+                const open = expanded || expandedId === o.id
                 const isBusy = busyId === o.id
                 return (
                   <article
                     key={o.id}
                     className={`card-quiet overflow-hidden rounded-[12px] transition ${
-                      open ? 'bg-white ring-2 ring-forest/30' : ''
+                      !expanded && open ? 'bg-white ring-2 ring-forest/30' : ''
                     }`}
                   >
                     <button
                       type="button"
-                      onClick={() => toggleExpand(o.id)}
+                      onClick={() => {
+                        if (!expanded) toggleExpand(o.id)
+                      }}
                       className="flex w-full items-center justify-between gap-2 p-3.5 text-left"
                     >
                       <div className="min-w-0">
@@ -626,9 +688,11 @@ export default function AdminPanel({
                         </p>
                         <p className="mt-0.5 truncate text-[14px] font-medium text-ink">{o.name}</p>
                       </div>
-                      <ChevronDown
-                        className={`size-4 shrink-0 text-ink-soft transition-transform ${open ? 'rotate-180' : ''}`}
-                      />
+                      {!expanded && (
+                        <ChevronDown
+                          className={`size-4 shrink-0 text-ink-soft transition-transform ${open ? 'rotate-180' : ''}`}
+                        />
+                      )}
                     </button>
 
                     {open && (
@@ -672,6 +736,35 @@ export default function AdminPanel({
 
       {activeSection === 'moderation' && (
         <div className="flex flex-col gap-3">
+          {expanded && (
+            <div className="grid grid-cols-4 gap-3">
+              <div className="atlas-group p-3.5">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Antrean Laporan</p>
+                <p className="num mt-1.5 text-[22px] leading-none font-semibold text-ink">{reports.length}</p>
+                <p className="mt-1.5 text-[11px] text-ink-soft">Perlu verifikasi</p>
+              </div>
+              <div className="atlas-group p-3.5">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Total Event</p>
+                <p className="num mt-1.5 text-[22px] leading-none font-semibold text-leaf">{events.length}</p>
+                <p className="num mt-1.5 text-[11px] text-ink-soft">
+                  {events.filter((e) => e.status !== 'resolved' && e.status !== 'cancelled').length} aktif
+                </p>
+              </div>
+              <div className="atlas-group p-3.5">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Hotspot Satelit</p>
+                <p className="num mt-1.5 text-[22px] leading-none font-semibold text-progress">{signals.length}</p>
+                <p className="mt-1.5 text-[11px] text-ink-soft">Terpantau aktif</p>
+              </div>
+              <div className="atlas-group p-3.5">
+                <p className="text-[11px] font-semibold tracking-[0.04em] text-ink-soft uppercase">Galang Dana</p>
+                <p className="num mt-1.5 text-[22px] leading-none font-semibold text-forest">{campaigns.length}</p>
+                <p className="num mt-1.5 text-[11px] text-ink-soft">
+                  {campaigns.filter((c) => c.status === 'active').length} aktif
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-4 gap-1 rounded-[12px] bg-canvas p-1 ring-1 ring-ink/8">
             {(
               [
@@ -738,28 +831,32 @@ export default function AdminPanel({
           </div>
 
           {(modTab === 'reports' || modTab === 'events') && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {modTab === 'reports' &&
-                (
-                  [
-                    { id: 'all', label: 'Semua' },
-                    { id: 'mismatch', label: 'Mismatch > 5km' },
-                    { id: 'critical', label: 'Kritis / Eskalasi' },
-                  ] as const
-                ).map((chip) => (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    onClick={() => setReportFilter(chip.id)}
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                      reportFilter === chip.id
-                        ? 'bg-ink text-white'
-                        : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
-                    }`}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
+            <div className="flex items-center gap-2">
+              {modTab === 'reports' && (
+                <div role="tablist" aria-label="Filter laporan" className="panel-tabs min-w-0 flex-1">
+                  {(
+                    [
+                      { id: 'all', label: 'Semua' },
+                      { id: 'mismatch', label: 'Mismatch' },
+                      { id: 'critical', label: 'Kritis' },
+                    ] as const
+                  ).map((chip) => {
+                    const active = reportFilter === chip.id
+                    return (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setReportFilter(chip.id)}
+                        className={`panel-tab flex-1 whitespace-nowrap ${active ? 'is-active' : ''}`}
+                      >
+                        {chip.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
               {modTab === 'reports' && filteredReports.length > 0 && (
                 <button
                   type="button"
@@ -772,44 +869,49 @@ export default function AdminPanel({
                       setAutoAdvance((v) => !v)
                     }
                   }}
-                  className={`ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                  title={expandedId ? (autoAdvance ? 'Auto-lanjut aktif' : 'Mode manual') : 'Mulai Triage'}
+                  className={`inline-flex h-9 shrink-0 items-center gap-1 rounded-[11px] px-2.5 text-[11px] font-medium whitespace-nowrap transition ${
                     autoAdvance
-                      ? 'bg-leaf/15 text-forest ring-1 ring-leaf/30'
-                      : 'bg-white text-ink-soft ring-1 ring-ink/10'
+                      ? 'bg-leaf text-white shadow-xs'
+                      : 'bg-white/85 text-ink-soft shadow-[0_1px_2px_rgba(15,23,42,0.05)] hover:text-ink'
                   }`}
                 >
-                  <Zap className="size-3" /> {expandedId ? (autoAdvance ? 'Auto-lanjut' : 'Manual') : 'Mulai Triage'}
+                  <Zap className="size-3.5" /> {expandedId ? (autoAdvance ? 'Auto' : 'Manual') : 'Triage'}
                 </button>
               )}
 
-              {modTab === 'events' &&
-                (
-                  [
-                    { id: 'active', label: 'Aktif' },
-                    { id: 'all', label: 'Semua' },
-                    { id: 'closed', label: 'Selesai / Batal' },
-                  ] as const
-                ).map((chip) => (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    onClick={() => setEventFilter(chip.id)}
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                      eventFilter === chip.id
-                        ? 'bg-ink text-white'
-                        : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
-                    }`}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
+              {modTab === 'events' && (
+                <div role="tablist" aria-label="Filter event" className="panel-tabs min-w-0 flex-1">
+                  {(
+                    [
+                      { id: 'active', label: 'Aktif' },
+                      { id: 'all', label: 'Semua' },
+                      { id: 'closed', label: 'Selesai / Batal' },
+                    ] as const
+                  ).map((chip) => {
+                    const active = eventFilter === chip.id
+                    return (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setEventFilter(chip.id)}
+                        className={`panel-tab flex-1 whitespace-nowrap ${active ? 'is-active' : ''}`}
+                      >
+                        {chip.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 
           {modTab === 'reports' &&
             (reportsQuery.isLoading ? (
-              <div className="card-quiet flex items-center justify-center gap-2 p-6 text-[13px] text-ink-soft">
-                <Loader2 className="size-4 animate-spin" /> Memuat antrean laporan…
+              <div className="card-quiet p-2">
+                <BlamLoader label="Memuat antrean laporan…" />
               </div>
             ) : filteredReports.length === 0 ? (
               <div className="card-quiet flex flex-col items-center gap-1.5 p-6 text-center">
@@ -831,7 +933,7 @@ export default function AdminPanel({
                 )}
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className={expanded ? 'grid grid-cols-2 items-start gap-3' : 'flex flex-col gap-2'}>
                 {filteredReports.map((r) => {
                   const open = expandedId === r.id
                   const isBusy = busyId === r.id
@@ -949,7 +1051,7 @@ export default function AdminPanel({
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className={expanded ? 'grid grid-cols-2 items-start gap-3' : 'flex flex-col gap-2'}>
                 {filteredEvents.map((ev) => {
                   const open = expandedId === ev.id
                   const isClosed = ev.status === 'resolved' || ev.status === 'cancelled'
@@ -1052,7 +1154,7 @@ export default function AdminPanel({
                 <p className="text-[13px] font-medium text-ink">Tidak ada sinyal satelit yang cocok</p>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className={expanded ? 'grid grid-cols-2 items-start gap-3' : 'flex flex-col gap-2'}>
                 {filteredSignals.slice(0, 20).map((sig) => {
                   const open = expandedId === sig.id
                   const isBusy = busyId === sig.id
@@ -1119,8 +1221,8 @@ export default function AdminPanel({
 
           {modTab === 'donations' &&
             (fundraisingsQuery.isLoading ? (
-              <div className="card-quiet flex items-center justify-center gap-2 p-6 text-[13px] text-ink-soft">
-                <Loader2 className="size-4 animate-spin" /> Memuat kampanye donasi…
+              <div className="card-quiet p-2">
+                <BlamLoader label="Memuat kampanye donasi…" />
               </div>
             ) : filteredCampaigns.length === 0 ? (
               <div className="card-quiet flex flex-col items-center gap-1.5 p-6 text-center">
@@ -1128,7 +1230,7 @@ export default function AdminPanel({
                 <p className="text-[13px] font-medium text-ink">Tidak ada kampanye donasi yang cocok</p>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className={expanded ? 'grid grid-cols-2 items-start gap-3' : 'flex flex-col gap-2'}>
                 {filteredCampaigns.map((c) => {
                   const open = expandedId === c.id
                   const isBusy = busyId === c.id

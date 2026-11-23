@@ -19,6 +19,7 @@ import { REPORT_STATUS_LABEL, shortLocation } from '../../lib/constants'
 import type { CitizenReport, ConservationEvent, FundraisingCampaign, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import DonateModal from '../fundraising/DonateModal'
+import { useSideFundraising } from '../fundraising/SideFundraisingContext'
 import { findSignalForFundraising, formatRupiah, useFundraisings } from '../fundraising/useFundraisings'
 
 type HistoryCategory = 'all' | 'karhutla' | 'banjir' | 'gunung' | 'donasi'
@@ -206,6 +207,7 @@ export default function HistoryPanel({
 }) {
   const { profile, openAuthModal } = useAuth()
   const { fundraisings, refreshFundraisings } = useFundraisings()
+  const sideFundraising = useSideFundraising()
   const { data: reports = [] } = useQuery({
     queryKey: ['reports-queue', profile?.id ?? 'guest'],
     queryFn: () => fetchReportsQueue(true),
@@ -306,9 +308,6 @@ export default function HistoryPanel({
             <Clock className="size-5" strokeWidth={2} />
           </span>
           <p className="text-[14px] font-semibold text-ink">Riwayat Aktivitas Kamu</p>
-          <p className="max-w-[260px] text-[12px] leading-relaxed text-ink-soft">
-            Masuk untuk melihat gerakan yang kamu ikuti, laporan Blam Snap, dan donasi kamu.
-          </p>
           <button
             type="button"
             onClick={openAuthModal}
@@ -322,14 +321,16 @@ export default function HistoryPanel({
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between gap-2 pb-3">
         <div className="flex items-baseline gap-2">
           <h2 className="text-[20px] font-semibold text-ink">History</h2>
           <span className="num text-[12px] font-normal text-ink-soft">{filtered.length} catatan</span>
         </div>
         {headerAction}
       </div>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain pt-0.5 pb-8">
 
       <div className="atlas-group p-1">
         <div className="atlas-strip grid-cols-3 divide-x divide-ink/8 border-y-0 text-center">
@@ -550,13 +551,19 @@ export default function HistoryPanel({
                                 tabIndex={0}
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setDonateCampaign(item.fundraising ?? null)
+                                  if (item.fundraising) {
+                                    if (sideFundraising) sideFundraising.openDonate(item.fundraising, refreshFundraisings)
+                                    else setDonateCampaign(item.fundraising)
+                                  }
                                 }}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' || e.key === ' ') {
                                     e.preventDefault()
                                     e.stopPropagation()
-                                    setDonateCampaign(item.fundraising ?? null)
+                                    if (item.fundraising) {
+                                      if (sideFundraising) sideFundraising.openDonate(item.fundraising, refreshFundraisings)
+                                      else setDonateCampaign(item.fundraising)
+                                    }
                                   }
                                 }}
                                 className="btn-primary mt-2 inline-flex h-8 px-3.5 text-[12px]"
@@ -576,6 +583,8 @@ export default function HistoryPanel({
           ))}
         </div>
       )}
+
+      </div>
 
       {donateCampaign && (
         <DonateModal

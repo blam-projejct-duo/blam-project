@@ -1,5 +1,6 @@
-import { Award, Loader2, Search, Sparkles, X } from 'lucide-react'
+import { Award, Search, Sparkles, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import BlamLoader from '../../components/ui/BlamLoader'
 import { ROLE_LABEL } from '../../lib/constants'
 import type { Profile, UserRole } from '../../types'
 
@@ -15,9 +16,11 @@ const ROLE_BADGE_STYLE: Record<UserRole, string> = {
 export default function AdminUsersView({
   users,
   isLoading,
+  expanded = false,
 }: {
   users: Profile[]
   isLoading: boolean
+  expanded?: boolean
 }) {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
@@ -36,62 +39,64 @@ export default function AdminUsersView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-ink-soft" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cari nama atau email…"
-          className="h-9 w-full rounded-[10px] bg-white pr-8 pl-8 text-[13px] text-ink ring-1 ring-ink/10 placeholder:text-ink-soft/70 focus:ring-2 focus:ring-forest/40 focus:outline-none"
-        />
-        {search && (
-          <button
-            type="button"
-            onClick={() => setSearch('')}
-            aria-label="Hapus pencarian"
-            className="absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-soft hover:text-ink"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
-      </div>
+      <div className={expanded ? 'flex flex-wrap items-center justify-between gap-3' : 'flex flex-col gap-3'}>
+        <div className={expanded ? 'relative min-w-0 flex-1' : 'relative'}>
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-ink-soft" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari nama atau email…"
+            className="h-9 w-full rounded-[10px] bg-white pr-8 pl-8 text-[13px] text-ink ring-1 ring-ink/10 placeholder:text-ink-soft/70 focus:ring-2 focus:ring-forest/40 focus:outline-none"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Hapus pencarian"
+              className="absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-soft hover:text-ink"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {(
-          [
-            { id: 'all', label: `Semua (${users.length})` },
-            { id: 'citizen', label: 'Warga' },
-            { id: 'volunteer', label: 'Relawan' },
-            { id: 'agency', label: 'Instansi' },
-            { id: 'admin', label: 'Admin' },
-          ] as const
-        ).map((chip) => (
-          <button
-            key={chip.id}
-            type="button"
-            onClick={() => setRoleFilter(chip.id)}
-            className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-              roleFilter === chip.id
-                ? 'bg-ink text-white'
-                : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
-            }`}
-          >
-            {chip.label}
-          </button>
-        ))}
+        <div className="flex flex-wrap gap-1.5">
+          {(
+            [
+              { id: 'all', label: `Semua (${users.length})` },
+              { id: 'citizen', label: 'Warga' },
+              { id: 'volunteer', label: 'Relawan' },
+              { id: 'agency', label: 'Instansi' },
+              { id: 'admin', label: 'Admin' },
+            ] as const
+          ).map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => setRoleFilter(chip.id)}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                roleFilter === chip.id
+                  ? 'bg-ink text-white'
+                  : 'bg-white text-ink-soft ring-1 ring-ink/10 hover:text-ink'
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="card-quiet flex items-center justify-center gap-2 p-6 text-[13px] text-ink-soft">
-          <Loader2 className="size-4 animate-spin" /> Memuat daftar pengguna…
+        <div className="card-quiet p-2">
+          <BlamLoader label="Memuat daftar pengguna…" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="card-quiet p-5 text-center text-[13px] text-ink-soft">
           Tidak ada pengguna yang cocok dengan filter.
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className={expanded ? 'grid grid-cols-2 gap-2.5' : 'flex flex-col gap-2'}>
           {filtered.map((u) => {
             const initial = u.full_name?.slice(0, 1).toUpperCase() || 'B'
             return (
