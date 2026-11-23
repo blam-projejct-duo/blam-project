@@ -292,13 +292,19 @@ function fitBox(
   map.setPadding(prevPad)
   if (!cam?.center || cam.zoom === undefined) return
 
-  const farJump = Math.abs(map.getZoom() - cam.zoom) > 5
-  const opts = { center: cam.center, zoom: cam.zoom, bearing: 0, pitch: 0, padding: ZERO_PADDING, duration, essential: true }
-  if (duration > 0 && farJump) {
-    map.flyTo(opts)
-  } else {
-    map.easeTo(opts)
-  }
+  const zoomDelta = Math.abs(map.getZoom() - cam.zoom)
+  const smoothDuration =
+    duration > 0 ? Math.min(1250, Math.max(duration, Math.round(750 + Math.max(0, zoomDelta - 2) * 45))) : 0
+  map.easeTo({
+    center: cam.center,
+    zoom: cam.zoom,
+    bearing: 0,
+    pitch: 0,
+    padding: ZERO_PADDING,
+    duration: smoothDuration,
+    easing: (t) => 1 - Math.pow(1 - t, 3),
+    essential: true,
+  })
 }
 
 function buildSinglePointGeoJson(coords: [number, number] | null) {
@@ -433,9 +439,12 @@ export default function MapView({
   const focusOn = (lat: number, lng: number, zoom: number, animate = true) => {
     const map = mapRef.current
     if (!map) return
-    const farJump = Math.abs(map.getZoom() - zoom) > 6
-    const duration = animate && !reducedMotion() ? (farJump ? 850 : 600) : 0
-    map.flyTo({
+    const zoomDelta = Math.abs(map.getZoom() - zoom)
+    const duration =
+      animate && !reducedMotion()
+        ? Math.min(1250, Math.round(700 + Math.max(0, zoomDelta - 2) * 45))
+        : 0
+    map.easeTo({
       center: [lng, lat],
       zoom,
       bearing: 0,
@@ -443,6 +452,7 @@ export default function MapView({
       padding: globePaddingFor(zoom),
       offset: visualOffset(paddingRef.current),
       duration,
+      easing: (t) => 1 - Math.pow(1 - t, 3),
       essential: true,
     })
   }
@@ -467,9 +477,10 @@ export default function MapView({
       dragRotate: { around: 'center' },
       touchZoomRotate: true,
       touchPitch: false,
-      maxTileCacheZoomLevels: 18,
+      maxTileCacheZoomLevels: 20,
+      maxTileCacheSize: 800,
       refreshExpiredTiles: false,
-      cancelPendingTileRequestsWhileZooming: true,
+      cancelPendingTileRequestsWhileZooming: false,
       fadeDuration: 0,
       attributionControl: { compact: true },
       canvasContextAttributes: { alpha: true },
@@ -1385,7 +1396,7 @@ export default function MapView({
     }
     clearTimeout(wipeTimerRef.current)
 
-    const fitDuration = reducedMotion() ? 0 : 650
+    let fitDuration = reducedMotion() ? 0 : 750
     const host = hostRef.current
     if (bottom > 0 && left === 0 && right === 0 && host && host.clientWidth > 0 && host.clientHeight > 0) {
       const w = host.clientWidth
@@ -1396,6 +1407,8 @@ export default function MapView({
       const zoomH = Math.log2((180 * availH) / (512 * 18))
       const targetZoom = Math.min(4.2, Math.max(2.1, Math.min(zoomW, zoomH)))
       const offsetY = -Math.round(bottom * 0.25)
+      const zoomDelta = Math.abs(map.getZoom() - targetZoom)
+      fitDuration = reducedMotion() ? 0 : Math.min(1250, Math.round(750 + Math.max(0, zoomDelta - 2) * 45))
 
       map.stop()
       map.easeTo({
@@ -1406,9 +1419,12 @@ export default function MapView({
         padding: ZERO_PADDING,
         offset: [0, offsetY],
         duration: fitDuration,
+        easing: (t) => 1 - Math.pow(1 - t, 3),
         essential: true,
       })
     } else {
+      const zoomDelta = Math.max(0, map.getZoom() - 4)
+      fitDuration = reducedMotion() ? 0 : Math.min(1350, Math.round(750 + Math.max(0, zoomDelta - 2) * 55))
       fitBox(
         map,
         INDONESIA_BOUNDS,
@@ -1427,7 +1443,7 @@ export default function MapView({
     if (radarModeRef.current && pendingWipeRef.current) {
       moveEndHandlerRef.current = runWipe
       map.once('moveend', runWipe)
-      wipeTimerRef.current = window.setTimeout(runWipe, Math.max(0, fitDuration - 220))
+      wipeTimerRef.current = window.setTimeout(runWipe, Math.max(0, fitDuration - 80))
     }
   }, [fitIndonesiaSignal])
 
@@ -1460,13 +1476,19 @@ export default function MapView({
       const map = mapRef.current
       if (!map) return
       const targetZoom = Math.min(18, Math.max(map.getZoom(), LOCATE_ZOOM))
+      const zoomDelta = Math.abs(map.getZoom() - targetZoom)
+      const duration =
+        animateMove && !reducedMotion()
+          ? Math.min(1250, Math.round(650 + Math.max(0, zoomDelta - 2) * 45))
+          : 0
       map.easeTo({
         center: [lng, lat],
         zoom: targetZoom,
         bearing: 0,
         pitch: 0,
         padding: globePaddingFor(targetZoom),
-        duration: animateMove && !reducedMotion() ? 550 : 0,
+        duration,
+        easing: (t) => 1 - Math.pow(1 - t, 3),
         essential: true,
       })
       jumped = true

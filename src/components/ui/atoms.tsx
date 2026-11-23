@@ -188,9 +188,9 @@ export function ModalShell({
 }
 
 const TIER_ITEMS: ReadonlyArray<{ id: SignalVerificationState; label: string; shortLabel: string }> = [
-  { id: 'unverified', label: 'Belum Verifikasi', shortLabel: 'Belum Verifikasi' },
+  { id: 'unverified', label: 'Belum Verifikasi', shortLabel: 'Belum' },
   { id: 'verified', label: 'Terverifikasi', shortLabel: 'Terverifikasi' },
-  { id: 'has_action', label: 'Ada Gerakan', shortLabel: 'Ada Gerakan' },
+  { id: 'has_action', label: 'Ada Gerakan', shortLabel: 'Gerakan' },
 ]
 
 export function MarkerTierLegend({
@@ -221,7 +221,7 @@ export function MarkerTierLegend({
         vertical
           ? 'w-full flex-col gap-0.5'
           : onToggleTier && compact
-            ? 'w-full flex-nowrap items-center gap-1 rounded-[12px] bg-white/80 p-1 shadow-[0_1px_2px_rgba(15,23,42,0.05)]'
+            ? 'w-full flex-nowrap items-center gap-1 overflow-x-auto rounded-[12px] bg-white/80 p-1 text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.05)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
             : compact
               ? 'flex-nowrap items-center gap-1 overflow-x-auto [scrollbar-width:none]'
               : 'flex-wrap items-center gap-1.5'
@@ -270,7 +270,7 @@ export function MarkerTierLegend({
             aria-pressed={active}
             onClick={() => onToggleTier(item.id)}
             className={`inline-flex items-center justify-center rounded-[8px] whitespace-nowrap transition-colors ${
-              compact ? 'flex-1 gap-1 px-1.5 py-1.5 tracking-[-0.01em]' : 'shrink-0 gap-1.5 border px-2.5 py-1'
+              compact ? 'shrink-0 flex-1 gap-1 px-2 py-1.5 tracking-[-0.01em]' : 'shrink-0 gap-1.5 border px-2.5 py-1'
             } ${active
               ? compact
                 ? 'bg-mint font-medium text-forest shadow-2xs'
