@@ -79,26 +79,10 @@ export function buildAirArc(from: RoutePoint, to: RoutePoint, segments = 48): {
   return { distanceKm, coordinates }
 }
 
-export function requestUserLocation(): Promise<RoutePoint> {
-  return new Promise((resolve, reject) => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      reject(new Error('Perangkat ini tidak mendukung GPS browser.'))
-      return
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) {
-          reject(new Error('Izin lokasi GPS ditolak. Aktifkan izin lokasi di browser lalu coba lagi.'))
-          return
-        }
-        if (err.code === err.TIMEOUT) {
-          reject(new Error('Waktu pencarian sinyal GPS habis. Coba lagi di tempat terbuka.'))
-          return
-        }
-        reject(new Error('Lokasi GPS tidak tersedia saat ini.'))
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
-    )
-  })
+import { requestUserLocation as requestSharedUserLocation } from '../../lib/location'
+
+export async function requestUserLocation(): Promise<RoutePoint> {
+  const coords = await requestSharedUserLocation({ highAccuracy: true, timeoutMs: 8000 })
+  if (coords) return coords
+  throw new Error('Izin lokasi GPS belum aktif. Aktifkan izin lokasi di browser lalu coba lagi.')
 }

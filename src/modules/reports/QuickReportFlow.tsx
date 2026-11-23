@@ -15,6 +15,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ReportStatusPill } from '../../components/ui/atoms'
 import { reverseGeocode, verifyAndCreateReport } from '../../lib/api'
+import { requestUserLocation } from '../../lib/location'
 import type { BlamSnapPrefill, VerifyReportResult } from '../../lib/api'
 import { compressImage } from '../../lib/imageCompress'
 import type { CompressedImage } from '../../lib/imageCompress'
@@ -111,40 +112,33 @@ export default function QuickReportFlow({ onClose, onSubmitted, onOpenVerificati
   }, [stopRecordingStream])
 
   const locateUser = useCallback((fromRetry = false) => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setGpsBusy(false)
-      setGpsFailed(true)
-      return
-    }
     if (fromRetry) {
       setGpsBusy(true)
       setGpsFailed(false)
       setError(null)
     }
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        const dLat = p.coords.latitude
-        const dLng = p.coords.longitude
-        setCoords({ lat: dLat, lng: dLng })
-        setGpsFailed(false)
-        void reverseGeocode(dLat, dLng)
-          .then((geo) => {
-            setRegion({ name: geo.name, detail: geo.detail, fullAddress: geo.fullAddress })
-          })
-          .catch(() => {
-            const fallback = `Lokasi (${dLat.toFixed(4)}, ${dLng.toFixed(4)})`
-            setRegion({ name: 'Lokasi GPS', detail: `${dLat.toFixed(4)}, ${dLng.toFixed(4)}`, fullAddress: fallback })
-          })
-          .finally(() => {
-            setGpsBusy(false)
-          })
-      },
-      () => {
+    void requestUserLocation({ highAccuracy: true, forceRefresh: fromRetry, timeoutMs: 8000 }).then((loc) => {
+      if (!loc) {
         setGpsBusy(false)
         setGpsFailed(true)
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
-    )
+        return
+      }
+      const dLat = loc.lat
+      const dLng = loc.lng
+      setCoords({ lat: dLat, lng: dLng })
+      setGpsFailed(false)
+      void reverseGeocode(dLat, dLng)
+        .then((geo) => {
+          setRegion({ name: geo.name, detail: geo.detail, fullAddress: geo.fullAddress })
+        })
+        .catch(() => {
+          const fallback = `Lokasi (${dLat.toFixed(4)}, ${dLng.toFixed(4)})`
+          setRegion({ name: 'Lokasi GPS', detail: `${dLat.toFixed(4)}, ${dLng.toFixed(4)}`, fullAddress: fallback })
+        })
+        .finally(() => {
+          setGpsBusy(false)
+        })
+    })
   }, [])
 
   useEffect(() => {

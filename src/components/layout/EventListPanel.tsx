@@ -1,5 +1,6 @@
 import { BadgeCheck, Check, LocateFixed, Search, SlidersHorizontal, Users, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { requestUserLocation as requestSharedUserLocation, useUserLocation } from '../../lib/location'
 import type { ReactNode } from 'react'
 import { ECOSYSTEM_FILTERS, EVENT_STATUS_LABEL, mapEventTone, shortLocation } from '../../lib/constants'
 import { haversineDistanceKm } from '../../lib/imageCompress'
@@ -372,46 +373,52 @@ export default function EventListPanel({
   const [statusFilter, setStatusFilter] = useState<EventStatusFilter>('active')
   const [ecosystemFilter, setEcosystemFilter] = useState<Ecosystem | 'all'>('all')
   const [hazardFilter, setHazardFilter] = useState<HazardKindFilter>('all')
-  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null)
-  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'ready' | 'denied' | 'unsupported'>('idle')
+  const sharedLoc = useUserLocation()
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(() => sharedLoc.coords)
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'ready' | 'denied' | 'unsupported'>(() =>
+    sharedLoc.coords ? 'ready' : sharedLoc.permission === 'denied' ? 'denied' : sharedLoc.permission === 'unsupported' ? 'unsupported' : 'idle',
+  )
   const searchRef = useRef<HTMLInputElement>(null)
   const tierMenuRef = useRef<HTMLDivElement>(null)
   const eventFilterRef = useRef<HTMLDivElement>(null)
   const locationRequestedRef = useRef(false)
 
-  const requestUserLocation = useCallback(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+  useEffect(() => {
+    if (sharedLoc.coords) {
+      setUserCoords(sharedLoc.coords)
+      setLocationStatus('ready')
+    } else if (sharedLoc.permission === 'denied') {
+      setLocationStatus('denied')
+    } else if (sharedLoc.permission === 'unsupported') {
       setLocationStatus('unsupported')
-      return
     }
+  }, [sharedLoc.coords, sharedLoc.permission])
+
+  const requestUserLocation = useCallback(() => {
     setLocationStatus('loading')
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+    void requestSharedUserLocation({ forceRefresh: true }).then((coords) => {
+      if (coords) {
+        setUserCoords(coords)
         setLocationStatus('ready')
-      },
-      () => {
+      } else {
         setLocationStatus('denied')
-      },
-      { enableHighAccuracy: false, timeout: 6000, maximumAge: 120_000 },
-    )
+      }
+    })
   }, [])
 
   useEffect(() => {
     if (tab !== 'Terdekat' || locationRequestedRef.current) return
     locationRequestedRef.current = true
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+    if (sharedLoc.coords) return
+    void requestSharedUserLocation().then((coords) => {
+      if (coords) {
+        setUserCoords(coords)
         setLocationStatus('ready')
-      },
-      () => {
+      } else {
         setLocationStatus('denied')
-      },
-      { enableHighAccuracy: false, timeout: 6000, maximumAge: 120_000 },
-    )
-  }, [tab])
+      }
+    })
+  }, [tab, sharedLoc.coords])
 
   useEffect(() => {
     if (!tierMenuOpen && !eventFilterOpen) return

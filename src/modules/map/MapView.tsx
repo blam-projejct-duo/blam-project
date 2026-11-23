@@ -2,6 +2,7 @@ import { LngLatBounds, Map as MapLibreMap, Popup, setWorkerUrl } from 'maplibre-
 import type { GeoJSONSource } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { useEffect, useRef } from 'react'
+import { getCachedUserCoords, requestUserLocation, useUserLocation } from '../../lib/location'
 import type { CitizenReport, ConservationEvent, MapStyle, Profile, SatelliteSignal } from '../../types'
 import { useAuth } from '../auth/AuthContext'
 import type { ActiveRoute } from './directions'
@@ -1437,6 +1438,16 @@ export default function MapView({
     src?.setData(buildAdminReportsGeoJson(adminReports))
   }, [adminReports])
 
+  const { coords: sharedUserCoords } = useUserLocation()
+
+  useEffect(() => {
+    if (!sharedUserCoords) return
+    userCoordRef.current = [sharedUserCoords.lng, sharedUserCoords.lat]
+    if (!readyRef.current) return
+    const userSrc = mapRef.current?.getSource('blam-user') as GeoJSONSource | undefined
+    userSrc?.setData(buildSinglePointGeoJson(userCoordRef.current))
+  }, [sharedUserCoords])
+
   useEffect(() => {
     if (locateSignal === 0) return
     const fitAtStart = fitIndonesiaSignalRef.current
@@ -1451,34 +1462,24 @@ export default function MapView({
       jumped = true
     }
 
-    // Jika koordinat pengguna sudah diketahui sebelumnya, langsung terbang ke titik tanpa menunggu GPS.
-    const cached = userCoordRef.current
+    const cached = getCachedUserCoords()
     if (cached) {
-      go(cached[1], cached[0])
+      go(cached.lat, cached.lng)
     }
 
-    if (!navigator.geolocation) {
-      if (!jumped) go(DEFAULT_CENTER[1], DEFAULT_CENTER[0])
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        const nextLat = p.coords.latitude
-        const nextLng = p.coords.longitude
+    void requestUserLocation({ forceRefresh: Boolean(cached), timeoutMs: 3500 }).then((fresh) => {
+      if (fresh) {
         if (
           !jumped ||
           !cached ||
-          Math.hypot(nextLat - cached[1], nextLng - cached[0]) > 0.0005
+          Math.hypot(fresh.lat - cached.lat, fresh.lng - cached.lng) > 0.0005
         ) {
-          go(nextLat, nextLng)
+          go(fresh.lat, fresh.lng)
         }
-      },
-      () => {
-        if (!jumped) go(DEFAULT_CENTER[1], DEFAULT_CENTER[0])
-      },
-      { enableHighAccuracy: false, maximumAge: 60000, timeout: 2500 },
-    )
+      } else if (!jumped) {
+        go(DEFAULT_CENTER[1], DEFAULT_CENTER[0])
+      }
+    })
   }, [locateSignal])
 
   useEffect(() => {

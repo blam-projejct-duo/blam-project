@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarPlus, ImagePlus, LocateFixed, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { createEvent, fetchOrgs } from '../../lib/api'
+import { requestUserLocation } from '../../lib/location'
 import { compressImage } from '../../lib/imageCompress'
 import type { CompressedImage } from '../../lib/imageCompress'
 import type { CitizenReport, Ecosystem, EventVisibility, SatelliteSignal } from '../../types'
@@ -97,21 +98,18 @@ export default function CreateEventForm({ initialReport, initialSignal, onClose,
   const canSetMembersOnly = profile?.role === 'admin' || isLeadOf(effectiveOrgId)
 
   const useGps = () => {
-    if (!navigator.geolocation) return setError('GPS tidak tersedia di perangkat ini')
     setGpsBusy(true)
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        setLat(p.coords.latitude.toFixed(5))
-        setLng(p.coords.longitude.toFixed(5))
+    void requestUserLocation({ highAccuracy: true, forceRefresh: true, timeoutMs: 8000 }).then((loc) => {
+      if (loc) {
+        setLat(loc.lat.toFixed(5))
+        setLng(loc.lng.toFixed(5))
         setGpsBusy(false)
         setError(null)
-      },
-      () => {
+      } else {
         setGpsBusy(false)
         setError('Izin lokasi ditolak. Isi koordinat manual.')
-      },
-      { enableHighAccuracy: true, timeout: 8000 },
-    )
+      }
+    })
   }
 
   const pickFile = async (f?: File) => {
